@@ -67,70 +67,10 @@ factory functions).
 
 ## Working with resource
 
-`mutation()` has no cache and won't touch a `resource()`/`httpResource()` for you. Two common patterns:
-
-### Refreshing a resource after a mutation
-
-```ts
-readonly usersResource = resource({
-  loader: ({ abortSignal }) => this.api.fetchUsers(abortSignal),
-});
-
-readonly createUser = mutation<string, User>({
-  mutationFn: (name, signal) => this.api.createUser(name, signal),
-  onSuccess: () => this.usersResource.reload(),
-});
-```
-
-Use `onSuccess` (or an `effect()` on `status()`), not `.then()` on `mutate()`. The returned
-promise settles even for a call that [automatic
-cancellation](#automatic-cancellation-of-stale-mutations) already discarded, so it resolves with the
-real value or `undefined` (never rejects) if `mutationFn` fails.
-
-### Optimistic updates
-
-`resource().value` is a `WritableSignal`: update it immediately, roll back in `.catch()`
-(`mutate()` rejects like `mutationFn` does, as long as this call hasn't been
-[superseded](#refreshing-a-resource-after-a-mutation) by a newer one):
-
-```ts
-readonly deleteUser = mutation<string, void>({
-  mutationFn: (id, signal) => this.api.deleteUser(id, signal),
-});
-
-removeUser(id: string) {
-  const previous = this.usersResource.value();
-  this.usersResource.update((users) => users.filter((u) => u.id !== id));
-
-  this.deleteUser.mutate(id).catch(() => this.usersResource.set(previous));
-}
-```
-
-`deleteUser` is one shared instance, so two `removeUser` calls in a row cancel the first delete
-(same [automatic cancellation](#automatic-cancellation-of-stale-mutations)). For independent
-concurrent operations, use one `mutation()` per operation instead.
-
-## Using HttpClient
-
-`mutationFn` expects `(input, abortSignal) => Promise<TOutput>` while `HttpClient` returns an
-`Observable`. Bridge the two by subscribing manually and wiring the abort signal to
-`unsubscribe()`, so cancellation still works:
-
-```ts
-function fromHttp<T>(source: Observable<T>, abortSignal: AbortSignal): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const sub = source.subscribe({ next: resolve, error: reject });
-    abortSignal.addEventListener('abort', () => {
-      sub.unsubscribe();
-      reject(new DOMException('Aborted', 'AbortError'));
-    });
-  });
-}
-
-readonly createUser = mutation<string, User>({
-  mutationFn: (name, signal) => fromHttp(this.http.post<User>('/api/users', { name }), signal),
-});
-```
+`mutation()` has no cache and won't touch a `resource()`/`httpResource()` for you.
+See [docs/RECIPES.md](./docs/RECIPES.md) for refreshing a resource after a mutation,
+optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-based
+`mutationFn`.
 
 ## API
 
@@ -152,27 +92,9 @@ readonly createUser = mutation<string, User>({
 
 ## Design choices
 
-Directly inspired by the internal structure of `resource.ts` in Angular
-core: raw writable signals, a generation counter to ignore responses from
-stale requests, `PendingTasks` for SSR stability, and cleanup via
-`DestroyRef` if the context is destroyed while a mutation is in flight.
-
-## Why not TanStack Query?
-
-[`@tanstack/angular-query-experimental`](https://www.npmjs.com/package/@tanstack/angular-query-experimental)
-already ships `injectMutation`, and is a mature choice if you want it. Different tradeoffs:
-
-- **Scope**: it's a full cache/data-sync layer (queries, infinite queries, devtools,
-  persistence) built on `@tanstack/query-core`, where mutations are one feature among many.
-- **Setup**: `injectMutation` needs a `QueryClient` provided app-wide, even for a single
-  mutation and zero queries while `mutation()` needs only an injection context.
-- **Cancellation**: TanStack's `MutationFunctionContext` carries no `AbortSignal` so mutations
-  aren't auto-cancelled when superseded while `mutation()` gives that for free, the same way
-  `resource()` does for reads.
-
-Reach for TanStack if you want retries, offline support, or cross-component cache invalidation.
-Reach for this if you want the smallest primitive that behaves like `resource()`'s write-side
-counterpart.
+Directly inspired by the internal structure of `resource.ts` in Angular core. See
+[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the implementation rationale and a
+comparison with `@tanstack/angular-query-experimental`.
 
 ## Status & Stability
 

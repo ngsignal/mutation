@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Ensure npm supports trusted publishing (requires >=11.5.1)
+        run: npm install -g npm@^11.5.1
+
+      - run: npm ci
+
+      - name: Verify tag matches package.json version
+        run: |
+          pkg_version="v$(node -p "require('./package.json').version")"
+          if [ "$pkg_version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $pkg_version"
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check package exports & types
+        run: npm run check:exports
+
+      - name: Publish
+        run: npm publish

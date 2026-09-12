@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check package exports & types
+        run: npm run check:exports
+
+  angular-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        angular-tag: ["21", "22", "latest", "next"]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install @angular/core@${{ matrix.angular-tag }}
+        run: npm install --no-save --force @angular/core@${{ matrix.angular-tag }} @angular/common@${{ matrix.angular-tag }} @angular/compiler@${{ matrix.angular-tag }} @angular/platform-browser@${{ matrix.angular-tag }}
+
+      - name: Typecheck
+        run: npm run typecheck
+        continue-on-error: ${{ matrix.angular-tag == 'next' }}
+
+      - name: Tests
+        run: npm test
+        continue-on-error: ${{ matrix.angular-tag == 'next' }}

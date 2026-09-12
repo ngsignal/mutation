@@ -174,10 +174,26 @@ Reach for TanStack if you want retries, offline support, or cross-component cach
 Reach for this if you want the smallest primitive that behaves like `resource()`'s write-side
 counterpart.
 
-## Status
+## Status & Stability
 
-Experimental project.
-Filling a gap while waiting for a possible official API. Real-world usage feedback is welcome, especially to help inform the official RFC discussion on the evolution of Resources in Angular.
+Experimental project, filling a gap while waiting for a possible official API. Real-world
+usage feedback is welcome, especially to help inform the official RFC discussion on the
+evolution of Resources in Angular.
+
+Versioning follows [semver](https://semver.org/), with the `0.x` allowance it defines for
+initial development:
+
+- **Patch releases (`0.1.x`)** are always backward compatible: bug fixes only.
+- **Minor releases (`0.x.0`)** may include breaking changes to the public API
+  (`mutation()` options, return signals, exported types) while the major stays `0`. Any
+  breaking change is called out at the top of the relevant [CHANGELOG.md](./CHANGELOG.md)
+  entry.
+- **`1.0.0`** will land once the API has settled through real-world usage (or the Angular
+  RFC above lands), at which point breaking changes require a major bump like any other
+  semver-following package.
+
+Until then, pin an exact version or a `0.1.x` range if you want to avoid absorbing
+behavioral changes on `npm install`.
 
 ## Contributing
 

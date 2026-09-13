@@ -1,3 +1,7 @@
+<div align="center">
+
+<img src="./mutation-icon.svg" alt="@ngsignal/mutation" width="120" height="120">
+
 # @ngsignal/mutation
 
 [![CI](https://github.com/ngsignal/mutation/actions/workflows/ci.yml/badge.svg)](https://github.com/ngsignal/mutation/actions/workflows/ci.yml)
@@ -6,9 +10,11 @@
 [![license](https://img.shields.io/npm/l/%40ngsignal%2Fmutation.svg)](./LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ngsignal/mutation/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ngsignal/mutation)
 
-An Angular low-level Signal based primitive for mutations (POST/PUT/DELETE).
+An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 
 [Live demo on StackBlitz](https://stackblitz.com/~/github.com/ErwanRaulo/ng-mutation-demo)
+
+</div>
 
 ## Why
 
@@ -24,18 +30,23 @@ but explicitly not for mutations:
 Today, handling a POST/PUT/DELETE means either manually overloading
 `httpResource`, or hand-rolling the write in a service.
 
+</br>
 
-## Installation
+
+## How to install
 
 ```bash
 npm install @ngsignal/mutation
 ```
+</br>
+
 
 ## Features
 
 ### Automatic cancellation of stale mutations
 
-Calling `mutate()` again while one is already in flight aborts the previous call's `AbortSignal` and ignores its result if it resolves anyway, so only the last call's outcome ever reaches `status`/`value`.
+Calling `mutate()` again while one is already in flight aborts the previous call's `AbortSignal` and ignores its result if it resolves anyway, so only the last call's outcome ever reaches `status`/`value`.    
+
 
 ### callbacks: onSuccess / onError 
 
@@ -65,6 +76,8 @@ immediately if superseded or reset, rather than waiting for the stale call to ac
 Pass `injector` to call `mutation()` outside of an injection context (e.g.
 factory functions).
 
+</br>
+
 ## Working with resource
 
 `mutation()` has no cache and won't touch a `resource()`/`httpResource()` for you.
@@ -84,11 +97,13 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 ### Return value
 
 - `status: Signal<'idle' | 'pending' | 'success' | 'error'>`
-- `value: Signal<TOutput | undefined>` keeps the last successful result when a later call fails; only `reset()` or a subsequent success clears it
+- `value: Signal<TOutput | undefined>`
 - `error: Signal<unknown>`
 - `isPending: Signal<boolean>`
-- `mutate(input: TInput): Promise<TOutput | undefined>` resolves to `undefined` if the call was superseded before it settled
+- `mutate(input: TInput): Promise<TOutput | undefined>`
 - `reset(): void`
+
+</br>
 
 ## Design choices
 
@@ -96,30 +111,20 @@ Directly inspired by the internal structure of `resource.ts` in Angular core. Se
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the implementation rationale and a
 comparison with `@tanstack/angular-query-experimental`.
 
+</br>
+
 ## Status & Stability
 
-Experimental project, filling a gap while waiting for a possible official API. Real-world
-usage feedback is welcome, especially to help inform the official RFC discussion on the
-evolution of Resources in Angular.
+Experimental (`0.x`): minor releases may include breaking changes, called out in the
+[CHANGELOG.md](./CHANGELOG.md). Pin an exact version to avoid surprises.
 
-Versioning follows [semver](https://semver.org/), with the `0.x` allowance it defines for
-initial development:
-
-- **Patch releases (`0.1.x`)** are always backward compatible: bug fixes only.
-- **Minor releases (`0.x.0`)** may include breaking changes to the public API
-  (`mutation()` options, return signals, exported types) while the major stays `0`. Any
-  breaking change is called out at the top of the relevant [CHANGELOG.md](./CHANGELOG.md)
-  entry.
-- **`1.0.0`** will land once the API has settled through real-world usage (or the Angular
-  RFC above lands), at which point breaking changes require a major bump like any other
-  semver-following package.
-
-Until then, pin an exact version or a `0.1.x` range if you want to avoid absorbing
-behavioral changes on `npm install`.
+</br>
 
 ## Contributing
 
 Issues and PRs are welcome, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+</br>
 
 ## License
 

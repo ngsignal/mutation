@@ -392,4 +392,26 @@ describe('mutation()', () => {
     expect(m.status()).toBe('pending');
     expect(m.value()).toBeUndefined();
   });
+
+  it('resolves a mutate() call whose mutationFn rejects because the injector was destroyed', async () => {
+    const deferred = createDeferred<string>();
+    const parentInjector = TestBed.inject(EnvironmentInjector);
+    const childInjector = createEnvironmentInjector([], parentInjector);
+
+    const m = mutation<void, string>({
+      mutationFn: (_input, signal) => {
+        signal.addEventListener('abort', () => {
+          deferred.reject(new DOMException('Aborted', 'AbortError'));
+        });
+        return deferred.promise;
+      },
+      injector: childInjector,
+    });
+
+    const call = m.mutate();
+
+    childInjector.destroy();
+
+    await expect(call).resolves.toBeUndefined();
+  });
 });

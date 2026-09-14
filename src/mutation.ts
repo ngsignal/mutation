@@ -71,6 +71,7 @@ export function mutation<TInput, TOutput>(
 
   destroyRef.onDestroy(() => {
     destroyed = true;
+    generation++;
     abortInProgress();
   });
 

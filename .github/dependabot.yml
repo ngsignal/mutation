@@ -8,8 +8,16 @@ updates:
       angular:
         patterns:
           - "@angular/*"
+      npm-dev-dependencies:
+        dependency-type: development
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"

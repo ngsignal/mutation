@@ -16,9 +16,9 @@ already ships `injectMutation`, and is a mature choice if you want it. Different
   persistence) built on `@tanstack/query-core`, where mutations are one feature among many.
 - **Setup**: `injectMutation` needs a `QueryClient` provided app-wide, even for a single
   mutation and zero queries while `mutation()` needs only an injection context.
-- **Cancellation**: TanStack's `MutationFunctionContext` carries no `AbortSignal` so mutations
-  aren't auto-cancelled when superseded while `mutation()` gives that for free, the same way
-  `resource()` does for reads.
+- **Cancellation**: neither auto-cancels a mutation when superseded, a write may already have
+  reached the server and be unsafe to cancel there, unlike a read. `mutation()` still hands
+  `mutationFn` an `AbortSignal`, but only aborts it on explicit reset or destroy.
 
 Reach for TanStack if you want retries, offline support, or cross-component cache invalidation.
 Reach for this if you want the smallest primitive that behaves like `resource()`'s write-side

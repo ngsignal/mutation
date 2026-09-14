@@ -17,16 +17,13 @@ readonly createUser = mutation<string, User>({
 });
 ```
 
-Use `onSuccess` (or an `effect()` on `status()`), not `.then()` on `mutate()`. The returned
-promise settles even for a call that [automatic
-cancellation](../README.md#automatic-cancellation-of-stale-mutations) already discarded, so it resolves with the
-real value or `undefined` (never rejects) if `mutationFn` fails.
+Use `onSuccess` (or an `effect()` on `status()`) to react to whichever call ends up being
+current.
 
 ### Optimistic updates
 
 `resource().value` is a `WritableSignal`: update it immediately, roll back in `.catch()`
-(`mutate()` rejects like `mutationFn` does, as long as this call hasn't been
-[superseded](#refreshing-a-resource-after-a-mutation) by a newer one):
+(`mutate()` always rejects like `mutationFn` does, for that specific call):
 
 ```ts
 readonly deleteUser = mutation<string, void>({
@@ -41,9 +38,10 @@ removeUser(id: string) {
 }
 ```
 
-`deleteUser` is one shared instance, so two `removeUser` calls in a row cancel the first delete
-(same [automatic cancellation](../README.md#automatic-cancellation-of-stale-mutations)). For independent
-concurrent operations, use one `mutation()` per operation instead.
+`deleteUser` is one shared instance: calling `removeUser` twice in a row no longer cancels the
+first delete (see [stale-response guarding](../README.md#stale-response-guarding)), both DELETE
+requests run to completion independently, and each call's own `.catch()` rolls back its own
+optimistic update if it fails.
 
 ## Using HttpClient
 

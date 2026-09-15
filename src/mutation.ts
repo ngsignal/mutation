@@ -24,7 +24,7 @@ export interface MutationRef<TInput, TOutput> {
   readonly value: Signal<TOutput | undefined>;
   readonly error: Signal<unknown>;
   readonly isPending: Signal<boolean>;
-  mutate(input: TInput): Promise<TOutput | undefined>;
+  mutate(input: TInput): Promise<TOutput>;
   reset(): void;
 }
 
@@ -35,9 +35,10 @@ export interface MutationRef<TInput, TOutput> {
  *
  * Implementation choices directly inspired by packages/core/src/resource/resource.ts:
  *  - raw WritableSignals for internal state
- *  - a generation counter to ignore responses from stale requests
+ *  - a generation counter so only the current call's outcome ever reaches the signals
  *  - PendingTasks for SSR stability (ApplicationRef.isStable)
  *  - DestroyRef to ignore the result if the context is destroyed in flight
+ *
  */
 export function mutation<TInput, TOutput>(
   options: MutationOptions<TInput, TOutput>,
@@ -55,29 +56,29 @@ export function mutation<TInput, TOutput>(
 
   let generation = 0;
   let destroyed = false;
-  let activeAbortController: AbortController | undefined;
-  let activeRemoveTask: (() => void) | undefined;
+  const activeAbortControllers = new Set<AbortController>();
+  const activeRemoveTasks = new Set<() => void>();
 
-  /**
-   * Aborts the in-flight mutation, if any, and immediately releases its PendingTask so
-   * SSR/zoneless stability doesn't wait on a request we no longer care about.
-   */
-  function abortInProgress(): void {
-    activeAbortController?.abort();
-    activeAbortController = undefined;
-    activeRemoveTask?.();
-    activeRemoveTask = undefined;
+  function abortAllInProgress(): void {
+    for (const controller of activeAbortControllers) {
+      controller.abort();
+    }
+    activeAbortControllers.clear();
+    for (const removeTask of activeRemoveTasks) {
+      removeTask();
+    }
+    activeRemoveTasks.clear();
   }
 
   destroyRef.onDestroy(() => {
     destroyed = true;
     generation++;
-    abortInProgress();
+    abortAllInProgress();
   });
 
   function reset(): void {
     generation++;
-    abortInProgress();
+    abortAllInProgress();
     status.set('idle');
     value.set(undefined);
     error.set(undefined);
@@ -108,22 +109,19 @@ export function mutation<TInput, TOutput>(
     options.onError?.(err, input);
   }
 
-  async function mutate(input: TInput): Promise<TOutput | undefined> {
+  async function mutate(input: TInput): Promise<TOutput> {
     const currentGeneration = ++generation;
 
-    abortInProgress();
     const abortController = new AbortController();
-    activeAbortController = abortController;
+    activeAbortControllers.add(abortController);
 
     untracked(() => {
       status.set('pending');
       error.set(undefined);
     });
 
-    // Captured locally since `activeRemoveTask`/`activeAbortController` may already point to a
-    // newer mutation's own state by the time this one settles.
-    activeRemoveTask = pendingTasks.add();
-    let removeTask: (() => void) | undefined = activeRemoveTask;
+    const removeTask = pendingTasks.add();
+    activeRemoveTasks.add(removeTask);
 
     try {
       const result = await untracked(() => options.mutationFn(input, abortController.signal));
@@ -132,25 +130,12 @@ export function mutation<TInput, TOutput>(
 
     } catch (err) {
       commitError(err, input, currentGeneration);
-
-      // A superseded call's rejection (like AbortSignal) isn't a real
-      // failure of this call's request, so only the still-current call propagates it.
-      if (currentGeneration === generation) {
-        throw err;
-      }
-      return undefined;
+      throw err;
 
     } finally {
-      removeTask?.();
-      // Only clear the shared references if they still point at this call's own state; a newer
-      // mutate() may already have replaced them via abortInProgress() while this one was settling.
-      if (activeRemoveTask === removeTask) {
-        activeRemoveTask = undefined;
-      }
-      if (activeAbortController === abortController) {
-        activeAbortController = undefined;
-      }
-      removeTask = undefined;
+      removeTask();
+      activeRemoveTasks.delete(removeTask);
+      activeAbortControllers.delete(abortController);
     }
   }
 

@@ -43,9 +43,10 @@ npm install @ngsignal/mutation
 
 ## Features
 
-### Automatic cancellation of stale mutations
+### Stale-response guarding
 
-Calling `mutate()` again while one is already in flight aborts the previous call's `AbortSignal` and ignores its result if it resolves anyway, so only the last call's outcome ever reaches `status`/`value`.    
+Calling `mutate()` again while one is already in flight does **not** abort the previous call, a write may already have reached the server and be unsafe to cancel there, so both calls run to
+completion independently. Only the last call's outcome is committed to `status`/`value`/`error`;
 
 
 ### callbacks: onSuccess / onError 
@@ -63,13 +64,13 @@ is declared, in addition to `await mutate(...)` at the call site.
 
 ### Reset
 
-Brings `status`/`value`/`error` back to their initial state and aborts an in-flight call, if any.
+Brings `status`/`value`/`error` back to their initial state and aborts any in-flight call(s).
 
 ### SSR support
 
 Every in-flight mutation registers itself with Angular's `PendingTasks`, so
-`ApplicationRef.isStable` (and SSR rendering) waits for it and releases it 
-immediately if superseded or reset, rather than waiting for the stale call to actually settle.
+`ApplicationRef.isStable` (and SSR rendering) waits for it and releases it
+immediately on reset/destroy, rather than waiting for a stale call to actually settle.
 
 ### Custom injector
 
@@ -100,7 +101,7 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `value: Signal<TOutput | undefined>`
 - `error: Signal<unknown>`
 - `isPending: Signal<boolean>`
-- `mutate(input: TInput): Promise<TOutput | undefined>`
+- `mutate(input: TInput): Promise<TOutput>`
 - `reset(): void`
 
 </br>

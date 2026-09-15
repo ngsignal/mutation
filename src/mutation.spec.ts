@@ -165,7 +165,7 @@ describe('mutation()', () => {
     expect(m.value()).toBe('second');
 
     first.reject(new Error('too late'));
-    await firstCall;
+    await expect(firstCall).rejects.toThrow('too late');
 
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('second');
@@ -173,7 +173,7 @@ describe('mutation()', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
-  it('resolves (does not reject) a superseded call whose mutationFn rejects', async () => {
+  it('rejects a superseded call with its own real error, even though the signals ignore it', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
     const calls = [first, second];
@@ -188,7 +188,7 @@ describe('mutation()', () => {
     const secondCall = m.mutate();
 
     first.reject(new DOMException('Aborted', 'AbortError'));
-    await expect(firstCall).resolves.toBeUndefined();
+    await expect(firstCall).rejects.toMatchObject({ name: 'AbortError' });
 
     second.resolve('second');
     await secondCall;
@@ -198,7 +198,7 @@ describe('mutation()', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
-  it('aborts the AbortSignal of the previous mutation when a new one starts', () => {
+  it('does not abort a previous mutation when a new one starts', () => {
     const abortSignals: AbortSignal[] = [];
     const m = TestBed.runInInjectionContext(() =>
       mutation<void, void>({
@@ -213,7 +213,7 @@ describe('mutation()', () => {
     expect(abortSignals[0].aborted).toBe(false);
 
     m.mutate();
-    expect(abortSignals[0].aborted).toBe(true);
+    expect(abortSignals[0].aborted).toBe(false);
     expect(abortSignals[1].aborted).toBe(false);
   });
 
@@ -257,7 +257,7 @@ describe('mutation()', () => {
     expect(m.value()).toBeUndefined();
   });
 
-  it('releases the pending task immediately when a newer mutation aborts the previous one', async () => {
+  it('keeps the pending task of a superseded call open until its own mutationFn settles', async () => {
     const removeFns = spyOnPendingTasks();
 
     const first = createDeferred<string>();
@@ -273,13 +273,18 @@ describe('mutation()', () => {
     expect(removeFns[0]).not.toHaveBeenCalled();
 
     const secondCall = m.mutate();
-    // The first task is released as soon as it's superseded, not when its promise eventually settles.
-    expect(removeFns[0]).toHaveBeenCalledTimes(1);
+
+    expect(removeFns[0]).not.toHaveBeenCalled();
     expect(removeFns[1]).not.toHaveBeenCalled();
 
-    first.resolve('too late');
     second.resolve('done');
-    await Promise.all([firstCall, secondCall]);
+    await secondCall;
+    expect(removeFns[1]).toHaveBeenCalledTimes(1);
+    expect(removeFns[0]).not.toHaveBeenCalled();
+
+    first.resolve('too late');
+    await firstCall;
+    expect(removeFns[0]).toHaveBeenCalledTimes(1);
   });
 
   it('releases the pending task immediately when reset() is called mid-flight', async () => {
@@ -393,7 +398,7 @@ describe('mutation()', () => {
     expect(m.value()).toBeUndefined();
   });
 
-  it('resolves a mutate() call whose mutationFn rejects because the injector was destroyed', async () => {
+  it('rejects a mutate() call with the abort error when the injector is destroyed mid-flight', async () => {
     const deferred = createDeferred<string>();
     const parentInjector = TestBed.inject(EnvironmentInjector);
     const childInjector = createEnvironmentInjector([], parentInjector);
@@ -412,6 +417,6 @@ describe('mutation()', () => {
 
     childInjector.destroy();
 
-    await expect(call).resolves.toBeUndefined();
+    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

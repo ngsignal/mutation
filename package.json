@@ -1,6 +1,6 @@
 {
   "name": "@ngsignal/mutation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Low-level Signals primitive for mutations (POST/PUT/DELETE), designed to complement resource()/httpResource()",
   "keywords": [
     "angular",

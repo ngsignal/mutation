@@ -7,27 +7,13 @@ import {
   DestroyRef,
   assertInInjectionContext,
   PendingTasks,
-  type Signal,
 } from '@angular/core';
-
-export type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
-
-export interface MutationOptions<TInput, TOutput, TError = unknown> {
-  mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>;
-  onSuccess?: (output: TOutput, input: TInput) => void;
-  onError?: (error: TError, input: TInput) => void;
-  injector?: Injector;
-}
-
-export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TError = unknown> {
-  readonly status: Signal<MutationStatus>;
-  readonly value: Signal<TValue>;
-  readonly error: Signal<TError | undefined>;
-  readonly isPending: Signal<boolean>;
-  hasValue(): this is MutationRef<TInput, TOutput, TOutput>;
-  mutate(input: TInput): Promise<TOutput>;
-  reset(): void;
-}
+import type {
+  MutationOptions,
+  MutationRef,
+  MutationSnapshot,
+  MutationStatus,
+} from './mutation.types.js';
 
 /**
  * Low-level primitive for mutations (POST/PUT/DELETE), designed to
@@ -140,12 +126,27 @@ export function mutation<TInput, TOutput, TError = unknown>(
     }
   }
 
+  const snapshot = computed<MutationSnapshot<TOutput, TError>>(() => {
+    const currentStatus = status();
+    switch (currentStatus) {
+      case 'idle':
+        return { status: currentStatus, value: undefined, error: undefined };
+      case 'pending':
+        return { status: currentStatus, value: value(), error: undefined };
+      case 'success':
+        return { status: currentStatus, value: value() as TOutput, error: undefined };
+      case 'error':
+        return { status: currentStatus, value: value(), error: error() as TError };
+    }
+  });
+
   return {
     status: status.asReadonly(),
     value: value.asReadonly(),
     error: error.asReadonly(),
     isPending: computed(() => status() === 'pending'),
-    hasValue(): this is MutationRef<TInput, TOutput, TOutput> {
+    snapshot,
+    hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError> {
       return value() !== undefined;
     },
     mutate,

@@ -1,5 +1,3 @@
-import { expectTypeOf } from 'vitest';
-import { TestBed } from '@angular/core/testing';
 import {
   provideZonelessChangeDetection,
   EnvironmentInjector,
@@ -7,6 +5,8 @@ import {
   PendingTasks,
   ApplicationRef,
 } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { expectTypeOf } from 'vitest';
 import { mutation } from './mutation';
 
 /** Spies on PendingTasks.add() so each returned cleanup fn can be asserted on individually. */
@@ -33,13 +33,13 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
-describe('mutation()', () => {
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [provideZonelessChangeDetection()],
-    });
+beforeEach(() => {
+  TestBed.configureTestingModule({
+    providers: [provideZonelessChangeDetection()],
   });
+});
 
+describe('lifecycle', () => {
   it('goes through pending then success with the returned value', async () => {
     const deferred = createDeferred<string>();
     const m = TestBed.runInInjectionContext(() =>
@@ -100,6 +100,19 @@ describe('mutation()', () => {
     expect(onError).toHaveBeenCalledWith(failure, 'task');
   });
 
+  it('types error() and onError() as TError instead of unknown', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string, Error>({
+        mutationFn: (input) => Promise.resolve(input),
+        onError: (err) => expectTypeOf(err).toEqualTypeOf<Error>(),
+      }),
+    );
+
+    expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
+  });
+});
+
+describe('concurrent mutate() calls', () => {
   it('keeps the previous value when a later mutation fails', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
@@ -217,8 +230,10 @@ describe('mutation()', () => {
     expect(abortSignals[0].aborted).toBe(false);
     expect(abortSignals[1].aborted).toBe(false);
   });
+});
 
-  it('reset() resets status/value/error to their initial state', async () => {
+describe('reset()', () => {
+  it('resets status/value/error to their initial state', async () => {
     const m = TestBed.runInInjectionContext(() =>
       mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
     );
@@ -232,7 +247,7 @@ describe('mutation()', () => {
     expect(m.error()).toBeUndefined();
   });
 
-  it('reset() ignores the result of a mutation that was still in flight', async () => {
+  it('ignores the result of a mutation that was still in flight', async () => {
     const deferred = createDeferred<string>();
     let abortSignal!: AbortSignal;
     const m = TestBed.runInInjectionContext(() =>
@@ -257,8 +272,10 @@ describe('mutation()', () => {
     expect(m.status()).toBe('idle');
     expect(m.value()).toBeUndefined();
   });
+});
 
-  it('hasValue() reflects whether value() is set', async () => {
+describe('hasValue()', () => {
+  it('reflects whether value() is set', async () => {
     const m = TestBed.runInInjectionContext(() =>
       mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
     );
@@ -271,7 +288,31 @@ describe('mutation()', () => {
     expect(m.value()).toBe('ok');
   });
 
-  it('snapshot() reflects idle, pending, success and error with the right shape', async () => {
+  it('types value() as TOutput once hasValue() narrows it', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
+    );
+
+    expectTypeOf(m.value()).toEqualTypeOf<string | undefined>();
+
+    if (m.hasValue()) {
+      expectTypeOf(m.value()).toEqualTypeOf<string>();
+    }
+  });
+
+  it('keeps TError typed on error() after hasValue() narrows the ref', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
+    );
+
+    if (m.hasValue()) {
+      expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
+    }
+  });
+});
+
+describe('snapshot()', () => {
+  it('reflects idle, pending, success and error with the right shape', async () => {
     const deferred = createDeferred<string>();
     const m = TestBed.runInInjectionContext(() =>
       mutation<void, string>({ mutationFn: () => deferred.promise }),
@@ -287,7 +328,7 @@ describe('mutation()', () => {
     expect(m.snapshot()).toEqual({ status: 'success', value: 'ok', error: undefined });
   });
 
-  it('snapshot() keeps the last known value alongside the error on failure', async () => {
+  it('keeps the last known value alongside the error on failure', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
     const calls = [first, second];
@@ -308,7 +349,7 @@ describe('mutation()', () => {
     expect(m.snapshot()).toEqual({ status: 'error', value: 'ok', error: failure });
   });
 
-  it('types snapshot() as a discriminated union narrowed by status', () => {
+  it('is typed as a discriminated union narrowed by status', () => {
     const m = TestBed.runInInjectionContext(() =>
       mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
     );
@@ -324,18 +365,19 @@ describe('mutation()', () => {
     }
   });
 
-  it('types value() as TOutput once hasValue() narrows it', () => {
+  it('types .error as TError instead of unknown', () => {
     const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
+      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
     );
 
-    expectTypeOf(m.value()).toEqualTypeOf<string | undefined>();
-
-    if (m.hasValue()) {
-      expectTypeOf(m.value()).toEqualTypeOf<string>();
+    const snap = m.snapshot();
+    if (snap.status === 'error') {
+      expectTypeOf(snap.error).toEqualTypeOf<Error>();
     }
   });
+});
 
+describe('pending tasks', () => {
   it('keeps the pending task of a superseded call open until its own mutationFn settles', async () => {
     const removeFns = spyOnPendingTasks();
 
@@ -430,7 +472,9 @@ describe('mutation()', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(stable).toBe(true);
   });
+});
 
+describe('injector option', () => {
   it('works end-to-end when created outside an injection context via the injector option', async () => {
     // Simulates a factory function: no TestBed.runInInjectionContext / constructor call stack.
     function createMutation() {
@@ -497,37 +541,5 @@ describe('mutation()', () => {
     childInjector.destroy();
 
     await expect(call).rejects.toMatchObject({ name: 'AbortError' });
-  });
-
-  it('types error() and onError() as TError instead of unknown', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string, Error>({
-        mutationFn: (input) => Promise.resolve(input),
-        onError: (err) => expectTypeOf(err).toEqualTypeOf<Error>(),
-      }),
-    );
-
-    expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
-  });
-
-  it('types snapshot().error as TError instead of unknown', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
-    );
-
-    const snap = m.snapshot();
-    if (snap.status === 'error') {
-      expectTypeOf(snap.error).toEqualTypeOf<Error>();
-    }
-  });
-
-  it('keeps TError typed on error() after hasValue() narrows the ref', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
-    );
-
-    if (m.hasValue()) {
-      expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
-    }
   });
 });

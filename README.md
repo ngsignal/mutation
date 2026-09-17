@@ -77,6 +77,22 @@ immediately on reset/destroy, rather than waiting for a stale call to actually s
 Pass `injector` to call `mutation()` outside of an injection context (e.g.
 factory functions).
 
+### hasValue guard
+
+`value()` is undefined since nothing has been created before the first
+successful `mutate()`. `hasValue()` narrows it, so you can act on the
+result safely.
+
+```ts
+const createInvoice = mutation<Order, Invoice>({
+  mutationFn: (order, signal) => api.createInvoice(order, signal),
+});
+
+if (createInvoice.hasValue()) {
+  downloadPdf(createInvoice.value());
+}
+```
+
 </br>
 
 ## Working with resource
@@ -101,6 +117,7 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `value: Signal<TOutput | undefined>`
 - `error: Signal<unknown>`
 - `isPending: Signal<boolean>`
+- `hasValue(): boolean` — type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
 - `mutate(input: TInput): Promise<TOutput>`
 - `reset(): void`
 

@@ -1,3 +1,4 @@
+import { expectTypeOf } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import {
   provideZonelessChangeDetection,
@@ -255,6 +256,31 @@ describe('mutation()', () => {
 
     expect(m.status()).toBe('idle');
     expect(m.value()).toBeUndefined();
+  });
+
+  it('hasValue() reflects whether value() is set', async () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
+    );
+
+    expect(m.hasValue()).toBe(false);
+
+    await m.mutate();
+
+    expect(m.hasValue()).toBe(true);
+    expect(m.value()).toBe('ok');
+  });
+
+  it('types value() as TOutput once hasValue() narrows it', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
+    );
+
+    expectTypeOf(m.value()).toEqualTypeOf<string | undefined>();
+
+    if (m.hasValue()) {
+      expectTypeOf(m.value()).toEqualTypeOf<string>();
+    }
   });
 
   it('keeps the pending task of a superseded call open until its own mutationFn settles', async () => {

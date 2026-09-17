@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add a `hasValue()` type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
+
 ## 0.2.0
 
 - **Breaking:** `mutate()` no longer aborts a previous in-flight call when superseded by a new

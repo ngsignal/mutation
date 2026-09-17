@@ -19,11 +19,12 @@ export interface MutationOptions<TInput, TOutput> {
   injector?: Injector;
 }
 
-export interface MutationRef<TInput, TOutput> {
+export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined> {
   readonly status: Signal<MutationStatus>;
-  readonly value: Signal<TOutput | undefined>;
+  readonly value: Signal<TValue>;
   readonly error: Signal<unknown>;
   readonly isPending: Signal<boolean>;
+  hasValue(): this is MutationRef<TInput, TOutput, TOutput>;
   mutate(input: TInput): Promise<TOutput>;
   reset(): void;
 }
@@ -42,7 +43,7 @@ export interface MutationRef<TInput, TOutput> {
  */
 export function mutation<TInput, TOutput>(
   options: MutationOptions<TInput, TOutput>,
-): MutationRef<TInput, TOutput> {
+): MutationRef<TInput, TOutput, TOutput | undefined> {
   if (!options.injector) {
     assertInInjectionContext(mutation);
   }
@@ -144,6 +145,9 @@ export function mutation<TInput, TOutput>(
     value: value.asReadonly(),
     error: error.asReadonly(),
     isPending: computed(() => status() === 'pending'),
+    hasValue(): this is MutationRef<TInput, TOutput, TOutput> {
+      return value() !== undefined;
+    },
     mutate,
     reset,
   };

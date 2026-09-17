@@ -106,16 +106,18 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 
 ### Options
 
+`mutation<TInput, TOutput, TError = unknown>(options)`
+
 - `mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>`
 - `onSuccess?: (output: TOutput, input: TInput) => void`
-- `onError?: (error: unknown, input: TInput) => void`
+- `onError?: (error: TError, input: TInput) => void`
 - `injector?: Injector`
 
 ### Return value
 
 - `status: Signal<'idle' | 'pending' | 'success' | 'error'>`
 - `value: Signal<TOutput | undefined>`
-- `error: Signal<unknown>`
+- `error: Signal<TError | undefined>`
 - `isPending: Signal<boolean>`
 - `hasValue(): boolean` — type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
 - `mutate(input: TInput): Promise<TOutput>`

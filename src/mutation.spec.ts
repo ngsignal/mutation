@@ -445,4 +445,15 @@ describe('mutation()', () => {
 
     await expect(call).rejects.toMatchObject({ name: 'AbortError' });
   });
+
+  it('types error() and onError() as TError instead of unknown', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string, Error>({
+        mutationFn: (input) => Promise.resolve(input),
+        onError: (err) => expectTypeOf(err).toEqualTypeOf<Error>(),
+      }),
+    );
+
+    expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
+  });
 });

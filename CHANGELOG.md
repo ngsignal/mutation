@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add a `hasValue()` type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
+- feat: `error` and `onError` can be strong typed instead of `unknown`.
 
 ## 0.2.0
 

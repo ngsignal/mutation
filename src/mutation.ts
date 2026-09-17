@@ -12,17 +12,17 @@ import {
 
 export type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
 
-export interface MutationOptions<TInput, TOutput> {
+export interface MutationOptions<TInput, TOutput, TError = unknown> {
   mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>;
   onSuccess?: (output: TOutput, input: TInput) => void;
-  onError?: (error: unknown, input: TInput) => void;
+  onError?: (error: TError, input: TInput) => void;
   injector?: Injector;
 }
 
-export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined> {
+export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TError = unknown> {
   readonly status: Signal<MutationStatus>;
   readonly value: Signal<TValue>;
-  readonly error: Signal<unknown>;
+  readonly error: Signal<TError | undefined>;
   readonly isPending: Signal<boolean>;
   hasValue(): this is MutationRef<TInput, TOutput, TOutput>;
   mutate(input: TInput): Promise<TOutput>;
@@ -41,9 +41,9 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined> {
  *  - DestroyRef to ignore the result if the context is destroyed in flight
  *
  */
-export function mutation<TInput, TOutput>(
-  options: MutationOptions<TInput, TOutput>,
-): MutationRef<TInput, TOutput, TOutput | undefined> {
+export function mutation<TInput, TOutput, TError = unknown>(
+  options: MutationOptions<TInput, TOutput, TError>,
+): MutationRef<TInput, TOutput, TOutput | undefined, TError> {
   if (!options.injector) {
     assertInInjectionContext(mutation);
   }
@@ -53,7 +53,7 @@ export function mutation<TInput, TOutput>(
 
   const status = signal<MutationStatus>('idle');
   const value = signal<TOutput | undefined>(undefined);
-  const error = signal<unknown>(undefined);
+  const error = signal<TError | undefined>(undefined);
 
   let generation = 0;
   let destroyed = false;
@@ -97,7 +97,7 @@ export function mutation<TInput, TOutput>(
     options.onSuccess?.(result, input);
   }
 
-  function commitError(err: unknown, input: TInput, expectedGeneration: number): void {
+  function commitError(err: TError, input: TInput, expectedGeneration: number): void {
     if (destroyed || expectedGeneration !== generation) {
       return;
     }
@@ -130,7 +130,7 @@ export function mutation<TInput, TOutput>(
       return result;
 
     } catch (err) {
-      commitError(err, input, currentGeneration);
+      commitError(err as TError, input, currentGeneration);
       throw err;
 
     } finally {

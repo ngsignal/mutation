@@ -271,6 +271,59 @@ describe('mutation()', () => {
     expect(m.value()).toBe('ok');
   });
 
+  it('snapshot() reflects idle, pending, success and error with the right shape', async () => {
+    const deferred = createDeferred<string>();
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => deferred.promise }),
+    );
+
+    expect(m.snapshot()).toEqual({ status: 'idle', value: undefined, error: undefined });
+
+    const call = m.mutate();
+    expect(m.snapshot()).toEqual({ status: 'pending', value: undefined, error: undefined });
+
+    deferred.resolve('ok');
+    await call;
+    expect(m.snapshot()).toEqual({ status: 'success', value: 'ok', error: undefined });
+  });
+
+  it('snapshot() keeps the last known value alongside the error on failure', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const calls = [first, second];
+    let callIndex = 0;
+    const failure = new Error('boom');
+
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise }),
+    );
+
+    first.resolve('ok');
+    await m.mutate();
+
+    const call = m.mutate().catch(() => undefined);
+    second.reject(failure);
+    await call;
+
+    expect(m.snapshot()).toEqual({ status: 'error', value: 'ok', error: failure });
+  });
+
+  it('types snapshot() as a discriminated union narrowed by status', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
+    );
+
+    const snap = m.snapshot();
+    if (snap.status === 'success') {
+      expectTypeOf(snap.value).toEqualTypeOf<string>();
+    } else if (snap.status === 'error') {
+      expectTypeOf(snap.value).toEqualTypeOf<string | undefined>();
+      expectTypeOf(snap.error).toEqualTypeOf<unknown>();
+    } else {
+      expectTypeOf(snap.value).toEqualTypeOf<string | undefined>();
+    }
+  });
+
   it('types value() as TOutput once hasValue() narrows it', () => {
     const m = TestBed.runInInjectionContext(() =>
       mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
@@ -455,5 +508,26 @@ describe('mutation()', () => {
     );
 
     expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
+  });
+
+  it('types snapshot().error as TError instead of unknown', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
+    );
+
+    const snap = m.snapshot();
+    if (snap.status === 'error') {
+      expectTypeOf(snap.error).toEqualTypeOf<Error>();
+    }
+  });
+
+  it('keeps TError typed on error() after hasValue() narrows the ref', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
+    );
+
+    if (m.hasValue()) {
+      expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
+    }
   });
 });

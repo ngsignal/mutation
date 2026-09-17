@@ -77,6 +77,22 @@ immediately on reset/destroy, rather than waiting for a stale call to actually s
 Pass `injector` to call `mutation()` outside of an injection context (e.g.
 factory functions).
 
+### snapshot
+
+`status`/`value`/`error` are three separate signals, so TypeScript can't narrow `value()` from
+`status()` alone. `snapshot()` bundles them into one discriminated-union read for exhaustive
+`@switch`/`switch` handling:
+
+```ts
+@switch (createInvoice.snapshot(); as snap) {
+  @case ('success') { {{ snap.value.id }} }
+  @case ('error') { {{ snap.error }} }
+}
+```
+
+`value` stays populated on `'pending'`/`'error'` too, since `mutation()` keeps the last known
+value across those states (see [stale-response guarding](#stale-response-guarding)).
+
 ### hasValue guard
 
 `value()` is undefined since nothing has been created before the first
@@ -119,6 +135,7 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `value: Signal<TOutput | undefined>`
 - `error: Signal<TError | undefined>`
 - `isPending: Signal<boolean>`
+- `snapshot: Signal<MutationSnapshot<TOutput>>` — discriminated union of `status`/`value`/`error`.
 - `hasValue(): boolean` — type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
 - `mutate(input: TInput): Promise<TOutput>`
 - `reset(): void`

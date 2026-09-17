@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a `snapshot` signal: a discriminated union of `status`/`value`/`error` for exhaustive
+  `switch`/`@switch` narrowing in a single read.
 - Add a `hasValue()` type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
 - feat: `error` and `onError` can be strong typed instead of `unknown`.
 

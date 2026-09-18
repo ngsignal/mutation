@@ -71,11 +71,8 @@ export function mutation<TInput, TOutput, TError = unknown>(
     if (destroyed || expectedGeneration !== generation) {
       return;
     }
-    
-    untracked(() => {
-      value.set(result);
-      status.set('success');
-    });
+    value.set(result);
+    status.set('success');
     options.onSuccess?.(result, input);
   }
 
@@ -83,12 +80,8 @@ export function mutation<TInput, TOutput, TError = unknown>(
     if (destroyed || expectedGeneration !== generation) {
       return;
     }
-
-    untracked(() => {
-      error.set(err);
-      status.set('error');
-    });
-
+    error.set(err);
+    status.set('error');
     options.onError?.(err, input);
   }
 

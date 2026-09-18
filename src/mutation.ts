@@ -43,18 +43,14 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
   let generation = 0;
   let destroyed = false;
-  const activeAbortControllers = new Set<AbortController>();
-  const activeRemoveTasks = new Set<() => void>();
+  const activeCalls = new Map<AbortController, () => void>();
 
   function abortAllInProgress(): void {
-    for (const controller of activeAbortControllers) {
+    for (const [controller, removeTask] of activeCalls) {
       controller.abort();
-    }
-    activeAbortControllers.clear();
-    for (const removeTask of activeRemoveTasks) {
       removeTask();
     }
-    activeRemoveTasks.clear();
+    activeCalls.clear();
   }
 
   destroyRef.onDestroy(() => {
@@ -100,7 +96,6 @@ export function mutation<TInput, TOutput, TError = unknown>(
     const currentGeneration = ++generation;
 
     const abortController = new AbortController();
-    activeAbortControllers.add(abortController);
 
     untracked(() => {
       status.set('pending');
@@ -108,7 +103,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     });
 
     const removeTask = pendingTasks.add();
-    activeRemoveTasks.add(removeTask);
+    activeCalls.set(abortController, removeTask);
 
     try {
       const result = await untracked(() => options.mutationFn(input, abortController.signal));
@@ -121,8 +116,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
     } finally {
       removeTask();
-      activeRemoveTasks.delete(removeTask);
-      activeAbortControllers.delete(abortController);
+      activeCalls.delete(abortController);
     }
   }
 

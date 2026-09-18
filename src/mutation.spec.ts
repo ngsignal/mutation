@@ -424,6 +424,8 @@ describe('pending tasks', () => {
 
     deferred.resolve('too late');
     await call;
+
+    expect(removeFns[0]).toHaveBeenCalledTimes(2);
   });
 
   it('does not release the pending task or abort the controller again when reset() follows a settled mutation', async () => {

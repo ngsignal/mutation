@@ -23,6 +23,9 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TErr
   readonly error: Signal<TError | undefined>;
   readonly input: Signal<TInput | undefined>;
   readonly isPending: Signal<boolean>;
+  readonly isIdle: Signal<boolean>;
+  readonly isSuccess: Signal<boolean>;
+  readonly isError: Signal<boolean>;
   readonly snapshot: Signal<MutationSnapshot<TOutput, TError>>;
   hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError>;
   mutate(input: TInput): Promise<TOutput>;

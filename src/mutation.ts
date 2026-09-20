@@ -162,6 +162,9 @@ export function mutation<TInput, TOutput, TError = unknown>(
     error: error.asReadonly(),
     input: currentInput.asReadonly(),
     isPending: computed(() => status() === 'pending'),
+    isIdle: computed(() => status() === 'idle'),
+    isSuccess: computed(() => status() === 'success'),
+    isError: computed(() => status() === 'error'),
     snapshot,
     hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError> {
       return value() !== undefined;

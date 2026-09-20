@@ -110,6 +110,79 @@ describe('lifecycle', () => {
 
     expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
   });
+
+  it('calls onSettled with the output after a success, once onSuccess has run', async () => {
+    const calls: string[] = [];
+    const onSettled = vi.fn((..._args) => calls.push('onSettled'));
+    const onSuccess = vi.fn(() => calls.push('onSuccess'));
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({
+        mutationFn: (input) => Promise.resolve(`${input}-done`),
+        onSuccess,
+        onSettled,
+      }),
+    );
+
+    await m.mutate('task');
+
+    expect(onSettled).toHaveBeenCalledWith('task-done', undefined, 'task');
+    expect(calls).toEqual(['onSuccess', 'onSettled']);
+  });
+
+  it('calls onSettled with the error after a rejection, once onError has run', async () => {
+    const calls: string[] = [];
+    const failure = new Error('boom');
+    const onSettled = vi.fn((..._args) => calls.push('onSettled'));
+    const onError = vi.fn(() => calls.push('onError'));
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({
+        mutationFn: () => Promise.reject(failure),
+        onError,
+        onSettled,
+      }),
+    );
+
+    await m.mutate('task').catch(() => undefined);
+
+    expect(onSettled).toHaveBeenCalledWith(undefined, failure, 'task');
+    expect(calls).toEqual(['onError', 'onSettled']);
+  });
+});
+
+describe('input', () => {
+  it('is undefined before the first mutate() call', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({ mutationFn: (input) => Promise.resolve(input) }),
+    );
+
+    expect(m.input()).toBeUndefined();
+  });
+
+  it('reflects the submitted input while pending and after settling', async () => {
+    const deferred = createDeferred<string>();
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({ mutationFn: () => deferred.promise }),
+    );
+
+    const call = m.mutate('task');
+    expect(m.input()).toBe('task');
+
+    deferred.resolve('done');
+    await call;
+    expect(m.input()).toBe('task');
+  });
+
+  it('resets to undefined after reset()', async () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({ mutationFn: (input) => Promise.resolve(input) }),
+    );
+
+    await m.mutate('task');
+    expect(m.input()).toBe('task');
+
+    m.reset();
+    expect(m.input()).toBeUndefined();
+  });
 });
 
 describe('concurrent mutate() calls', () => {
@@ -210,6 +283,47 @@ describe('concurrent mutate() calls', () => {
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('second');
     expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('reflects the most recently submitted input as soon as mutate() is called', () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const calls = [first, second];
+    let callIndex = 0;
+
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({ mutationFn: () => calls[callIndex++].promise }),
+    );
+
+    m.mutate('first');
+    expect(m.input()).toBe('first');
+
+    m.mutate('second');
+    expect(m.input()).toBe('second');
+  });
+
+  it('does not call onSettled for a stale call superseded by a more recent mutation', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const calls = [first, second];
+    let callIndex = 0;
+    const onSettled = vi.fn();
+
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise, onSettled }),
+    );
+
+    const firstCall = m.mutate();
+    const secondCall = m.mutate();
+
+    second.resolve('second');
+    await secondCall;
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    expect(onSettled).toHaveBeenCalledWith('second', undefined, undefined);
+
+    first.resolve('first');
+    await firstCall;
+    expect(onSettled).toHaveBeenCalledTimes(1);
   });
 
   it('does not abort a previous mutation when a new one starts', () => {

@@ -6,6 +6,7 @@ export interface MutationOptions<TInput, TOutput, TError = unknown> {
   mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>;
   onSuccess?: (output: TOutput, input: TInput) => void;
   onError?: (error: TError, input: TInput) => void;
+  onSettled?: (output: TOutput | undefined, error: TError | undefined, input: TInput) => void;
   injector?: Injector;
 }
 
@@ -19,6 +20,7 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TErr
   readonly status: Signal<MutationStatus>;
   readonly value: Signal<TValue>;
   readonly error: Signal<TError | undefined>;
+  readonly input: Signal<TInput | undefined>;
   readonly isPending: Signal<boolean>;
   readonly snapshot: Signal<MutationSnapshot<TOutput, TError>>;
   hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError>;

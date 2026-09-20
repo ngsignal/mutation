@@ -40,6 +40,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
   const status = signal<MutationStatus>('idle');
   const value = signal<TOutput | undefined>(undefined);
   const error = signal<TError | undefined>(undefined);
+  const currentInput = signal<TInput | undefined>(undefined);
 
   let generation = 0;
   let destroyed = false;
@@ -65,6 +66,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     status.set('idle');
     value.set(undefined);
     error.set(undefined);
+    currentInput.set(undefined);
   }
 
   function commitSuccess(result: TOutput, input: TInput, expectedGeneration: number): void {
@@ -74,6 +76,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     value.set(result);
     status.set('success');
     options.onSuccess?.(result, input);
+    options.onSettled?.(result, undefined, input);
   }
 
   function commitError(err: TError, input: TInput, expectedGeneration: number): void {
@@ -83,6 +86,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     error.set(err);
     status.set('error');
     options.onError?.(err, input);
+    options.onSettled?.(undefined, err, input);
   }
 
   async function mutate(input: TInput): Promise<TOutput> {
@@ -93,6 +97,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     untracked(() => {
       status.set('pending');
       error.set(undefined);
+      currentInput.set(input);
     });
 
     const removeTask = pendingTasks.add();
@@ -131,6 +136,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     status: status.asReadonly(),
     value: value.asReadonly(),
     error: error.asReadonly(),
+    input: currentInput.asReadonly(),
     isPending: computed(() => status() === 'pending'),
     snapshot,
     hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError> {

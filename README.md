@@ -62,9 +62,27 @@ const createTodo = mutation<string, Todo>({
 Run side effects (cache updates, navigation, toasts) right where the mutation
 is declared, in addition to `await mutate(...)` at the call site.
 
+### onSettled
+
+```ts
+const createTodo = mutation<string, Todo>({
+  mutationFn: (title, signal) => api.createTodo(title, signal),
+  onSettled: () => this.isModalOpen.set(false),
+});
+```
+
+Runs after `onSuccess` or `onError`, whichever fired. Use it for cleanup that must happen either way (closing a modal, releasing a UI lock).
+
+### input
+
+`input()` holds the input of the most recent `mutate()` call, from the moment it's called
+until the next `mutate()` or `reset()`. Useful for rendering the in-flight or failed input
+without the caller having to store it separately".
+
 ### Reset
 
-Brings `status`/`value`/`error` back to their initial state and aborts any in-flight call(s).
+Brings `status`/`value`/`error`/`input` back to their initial state and aborts any in-flight
+call(s).
 
 ### SSR support
 
@@ -127,6 +145,7 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>`
 - `onSuccess?: (output: TOutput, input: TInput) => void`
 - `onError?: (error: TError, input: TInput) => void`
+- `onSettled?: (output: TOutput | undefined, error: TError | undefined, input: TInput) => void`
 - `injector?: Injector`
 
 ### Return value
@@ -134,9 +153,10 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `status: Signal<'idle' | 'pending' | 'success' | 'error'>`
 - `value: Signal<TOutput | undefined>`
 - `error: Signal<TError | undefined>`
+- `input: Signal<TInput | undefined>`
 - `isPending: Signal<boolean>`
-- `snapshot: Signal<MutationSnapshot<TOutput>>` — discriminated union of `status`/`value`/`error`.
-- `hasValue(): boolean` — type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.
+- `snapshot: Signal<MutationSnapshot<TOutput>>`.
+- `hasValue(): boolean`.
 - `mutate(input: TInput): Promise<TOutput>`
 - `reset(): void`
 

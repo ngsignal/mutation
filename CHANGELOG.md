@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- New optional peer dependencies `rxjs` (`^6.5.3 || ^7.4.0`, the same range as Angular 21) and
+  `@angular/common`, only needed for the new entry points below. Not breaking: the main entry
+  point imports neither, and the adapters avoid RxJS-7-only APIs.
+- Add `rxMutation()`, from `@ngsignal/mutation/rxjs-interop`: `mutation()` for
+  Observable-returning calls (existing services, generated API clients, `HttpClient`...),
+  bridging the Observable to the Promise `mutation()` expects and wiring cancellation to
+  `unsubscribe()`. The mutation counterpart of `rxResource()`, except that only the first
+  emitted value is kept: it resolves the call, then the Observable is unsubscribed.
+- Add `httpMutation()`, from `@ngsignal/mutation/http`: the mutation counterpart of
+  `httpResource()`. Takes a request description (`{ method, url, body, headers, params,
+  reportProgress, ... }`), sends it through `HttpClient`, and exposes `progress`, `statusCode`
+  and `headers` signals. They reset to `undefined` when a call's request starts (with
+  `concurrency: 'queue'`, when the queued request starts, not when `mutate()` is called) and on
+  `reset()`, and are guarded by the same stale-call semantics as `value`/`status`. A response
+  without a body (`204`) resolves with `null`, as with `httpResource()`.
+- Both live in secondary entry points so that `@ngsignal/mutation` never loads
+  `@angular/common/http` or RxJS-7-only APIs, with or without a bundler.
+
 ## 0.4.0
 
 - Fix: ignoring the promise returned by `mutate()` (e.g. `(click)="save.mutate(x)"`) no longer

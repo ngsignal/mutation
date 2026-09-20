@@ -1,7 +1,9 @@
 # Testing
 
-Vitest + jsdom, global setup in `setup-vitest.ts`, the whole suite in
-`src/mutation.spec.ts`. Tests use `TestBed` for an injection context, and
+Vitest + jsdom, global setup in `setup-vitest.ts`, one spec file per source file
+(`src/*.spec.ts`). Adapter specs must run on RxJS 6 too: use `src/testing/rxjs.ts`
+(`failWith`, `isObserved`), and `npm run test:rxjs6` after `npm install --no-save rxjs@6`.
+Tests use `TestBed` for an injection context, and
 `runInInjectionContext` or an explicit `injector` when the call happens outside one.
 
 When touching the lifecycle, cover it explicitly:

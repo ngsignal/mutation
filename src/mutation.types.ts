@@ -7,6 +7,7 @@ export interface MutationOptions<TInput, TOutput, TError = unknown> {
   onSuccess?: (output: TOutput, input: TInput) => void;
   onError?: (error: TError, input: TInput) => void;
   onSettled?: (output: TOutput | undefined, error: TError | undefined, input: TInput) => void;
+  concurrency?: 'queue';
   injector?: Injector;
 }
 

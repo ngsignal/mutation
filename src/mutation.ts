@@ -46,6 +46,18 @@ export function mutation<TInput, TOutput, TError = unknown>(
   let destroyed = false;
   const activeCalls = new Map<AbortController, () => void>();
 
+  // Promise-queue pattern. queueTail always settles so one failed call
+  //  never blocks the ones queued after it.
+  let queueTail: Promise<void> = Promise.resolve();
+  function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = queueTail.then(task, task);
+    queueTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
   function abortAllInProgress(): void {
     for (const [controller, removeTask] of activeCalls) {
       controller.abort();
@@ -103,8 +115,20 @@ export function mutation<TInput, TOutput, TError = unknown>(
     const removeTask = pendingTasks.add();
     activeCalls.set(abortController, removeTask);
 
+    const callMutationFn = () => untracked(() => options.mutationFn(input, abortController.signal));
+
+    function callMutationFnUnlessAborted(): Promise<TOutput> {
+      if (abortController.signal.aborted) {
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }
+      return callMutationFn();
+    }
+
     try {
-      const result = await untracked(() => options.mutationFn(input, abortController.signal));
+      const result =
+        options.concurrency === 'queue'
+          ? await enqueue(callMutationFnUnlessAborted)
+          : await callMutationFn();
       commitSuccess(result, input, currentGeneration);
       return result;
 

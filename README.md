@@ -48,6 +48,18 @@ npm install @ngsignal/mutation
 Calling `mutate()` again while one is already in flight does **not** abort the previous call, a write may already have reached the server and be unsafe to cancel there, so both calls run to
 completion independently. Only the last call's outcome is committed to `status`/`value`/`error`;
 
+### concurrency: 'queue'
+
+```ts
+const reorderItem = mutation<Reorder, void>({
+  concurrency: 'queue',
+  mutationFn: (reorder, signal) => api.reorder(reorder, signal),
+});
+```
+
+`concurrency: 'queue'` runs `mutationFn` calls one at a time, in submission order: the next
+call only starts once the previous one has settled. `status`/`value`/`error`/`input` still only
+reflect the most recently submitted call.
 
 ### callbacks: onSuccess / onError 
 
@@ -146,6 +158,7 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `onSuccess?: (output: TOutput, input: TInput) => void`
 - `onError?: (error: TError, input: TInput) => void`
 - `onSettled?: (output: TOutput | undefined, error: TError | undefined, input: TInput) => void`
+- `concurrency?: 'queue'`
 - `injector?: Injector`
 
 ### Return value

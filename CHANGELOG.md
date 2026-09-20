@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `concurrency?: 'queue'`, serializing `mutationFn` calls in submission order instead of
+  starting them all immediately. Only commit the most
+  recently submitted call's outcome.
 - Add `onSettled?: (output, error, input) => void`, called after `onSuccess`/`onError`
   regardless of outcome, for cleanup that must run either way.
 - Add an `input` signal holding the input of the most recent `mutate()` call, reset by

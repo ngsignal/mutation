@@ -33,6 +33,23 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
+function createMutation<TInput, TOutput, TError = unknown>(
+  options: Parameters<typeof mutation<TInput, TOutput, TError>>[0],
+) {
+  return TestBed.runInInjectionContext(() => mutation<TInput, TOutput, TError>(options));
+}
+
+/**
+ * A mutationFn that resolves/rejects like `deferredCalls[0]` on the first mutate() call,
+ * then `deferredCalls[1]`, and so on.
+ */
+function sequencedMutationFn<T>(
+  ...deferredCalls: Array<{ promise: Promise<T> }>
+): () => Promise<T> {
+  let callIndex = 0;
+  return () => deferredCalls[callIndex++].promise;
+}
+
 beforeEach(() => {
   TestBed.configureTestingModule({
     providers: [provideZonelessChangeDetection()],
@@ -42,9 +59,7 @@ beforeEach(() => {
 describe('lifecycle', () => {
   it('goes through pending then success with the returned value', async () => {
     const deferred = createDeferred<string>();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => deferred.promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
     expect(m.status()).toBe('idle');
 
@@ -62,12 +77,10 @@ describe('lifecycle', () => {
 
   it('calls onSuccess with the output and input after a success', async () => {
     const onSuccess = vi.fn();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({
-        mutationFn: (input) => Promise.resolve(`${input}-done`),
-        onSuccess,
-      }),
-    );
+    const m = createMutation<string, string>({
+      mutationFn: (input) => Promise.resolve(`${input}-done`),
+      onSuccess,
+    });
 
     await m.mutate('task');
 
@@ -76,9 +89,7 @@ describe('lifecycle', () => {
 
   it('goes into error state if mutationFn rejects', async () => {
     const deferred = createDeferred<string>();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => deferred.promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
     const call = m.mutate().catch(() => undefined);
     deferred.reject(new Error('boom'));
@@ -91,9 +102,10 @@ describe('lifecycle', () => {
   it('calls onError with the error and input after a rejection', async () => {
     const onError = vi.fn();
     const failure = new Error('boom');
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({ mutationFn: () => Promise.reject(failure), onError }),
-    );
+    const m = createMutation<string, string>({
+      mutationFn: () => Promise.reject(failure),
+      onError,
+    });
 
     await m.mutate('task').catch(() => undefined);
 
@@ -101,12 +113,10 @@ describe('lifecycle', () => {
   });
 
   it('types error() and onError() as TError instead of unknown', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string, Error>({
-        mutationFn: (input) => Promise.resolve(input),
-        onError: (err) => expectTypeOf(err).toEqualTypeOf<Error>(),
-      }),
-    );
+    const m = createMutation<string, string, Error>({
+      mutationFn: (input) => Promise.resolve(input),
+      onError: (err) => expectTypeOf(err).toEqualTypeOf<Error>(),
+    });
 
     expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
   });
@@ -115,13 +125,11 @@ describe('lifecycle', () => {
     const calls: string[] = [];
     const onSettled = vi.fn((..._args) => calls.push('onSettled'));
     const onSuccess = vi.fn(() => calls.push('onSuccess'));
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({
-        mutationFn: (input) => Promise.resolve(`${input}-done`),
-        onSuccess,
-        onSettled,
-      }),
-    );
+    const m = createMutation<string, string>({
+      mutationFn: (input) => Promise.resolve(`${input}-done`),
+      onSuccess,
+      onSettled,
+    });
 
     await m.mutate('task');
 
@@ -134,13 +142,11 @@ describe('lifecycle', () => {
     const failure = new Error('boom');
     const onSettled = vi.fn((..._args) => calls.push('onSettled'));
     const onError = vi.fn(() => calls.push('onError'));
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({
-        mutationFn: () => Promise.reject(failure),
-        onError,
-        onSettled,
-      }),
-    );
+    const m = createMutation<string, string>({
+      mutationFn: () => Promise.reject(failure),
+      onError,
+      onSettled,
+    });
 
     await m.mutate('task').catch(() => undefined);
 
@@ -151,18 +157,14 @@ describe('lifecycle', () => {
 
 describe('input', () => {
   it('is undefined before the first mutate() call', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({ mutationFn: (input) => Promise.resolve(input) }),
-    );
+    const m = createMutation<string, string>({ mutationFn: (input) => Promise.resolve(input) });
 
     expect(m.input()).toBeUndefined();
   });
 
   it('reflects the submitted input while pending and after settling', async () => {
     const deferred = createDeferred<string>();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({ mutationFn: () => deferred.promise }),
-    );
+    const m = createMutation<string, string>({ mutationFn: () => deferred.promise });
 
     const call = m.mutate('task');
     expect(m.input()).toBe('task');
@@ -173,9 +175,7 @@ describe('input', () => {
   });
 
   it('resets to undefined after reset()', async () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({ mutationFn: (input) => Promise.resolve(input) }),
-    );
+    const m = createMutation<string, string>({ mutationFn: (input) => Promise.resolve(input) });
 
     await m.mutate('task');
     expect(m.input()).toBe('task');
@@ -189,12 +189,8 @@ describe('concurrent mutate() calls', () => {
   it('keeps the previous value when a later mutation fails', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: sequencedMutationFn(first, second) });
 
     first.resolve('ok');
     await m.mutate();
@@ -211,12 +207,8 @@ describe('concurrent mutate() calls', () => {
   it('ignores the response of a stale call when a more recent mutation has started', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: sequencedMutationFn(first, second) });
 
     const firstCall = m.mutate();
     const secondCall = m.mutate();
@@ -235,13 +227,12 @@ describe('concurrent mutate() calls', () => {
   it('ignores the rejection of a stale call when a more recent mutation has already succeeded', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
     const onError = vi.fn();
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise, onError }),
-    );
+    const m = createMutation<void, string>({
+      mutationFn: sequencedMutationFn(first, second),
+      onError,
+    });
 
     const firstCall = m.mutate();
     const secondCall = m.mutate();
@@ -263,13 +254,12 @@ describe('concurrent mutate() calls', () => {
   it('rejects a superseded call with its own real error, even though the signals ignore it', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
     const onError = vi.fn();
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise, onError }),
-    );
+    const m = createMutation<void, string>({
+      mutationFn: sequencedMutationFn(first, second),
+      onError,
+    });
 
     const firstCall = m.mutate();
     const secondCall = m.mutate();
@@ -288,12 +278,8 @@ describe('concurrent mutate() calls', () => {
   it('reflects the most recently submitted input as soon as mutate() is called', () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string>({ mutationFn: () => calls[callIndex++].promise }),
-    );
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
 
     m.mutate('first');
     expect(m.input()).toBe('first');
@@ -305,13 +291,12 @@ describe('concurrent mutate() calls', () => {
   it('does not call onSettled for a stale call superseded by a more recent mutation', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
     const onSettled = vi.fn();
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise, onSettled }),
-    );
+    const m = createMutation<void, string>({
+      mutationFn: sequencedMutationFn(first, second),
+      onSettled,
+    });
 
     const firstCall = m.mutate();
     const secondCall = m.mutate();
@@ -328,14 +313,12 @@ describe('concurrent mutate() calls', () => {
 
   it('does not abort a previous mutation when a new one starts', () => {
     const abortSignals: AbortSignal[] = [];
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, void>({
-        mutationFn: (_input, signal) => {
-          abortSignals.push(signal);
-          return new Promise<void>(() => {});
-        },
-      }),
-    );
+    const m = createMutation<void, void>({
+      mutationFn: (_input, signal) => {
+        abortSignals.push(signal);
+        return new Promise<void>(() => {});
+      },
+    });
 
     m.mutate();
     expect(abortSignals[0].aborted).toBe(false);
@@ -346,11 +329,182 @@ describe('concurrent mutate() calls', () => {
   });
 });
 
+describe("concurrency: 'queue'", () => {
+  it('does not start the next mutationFn call until the previous one has settled', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const started: string[] = [];
+
+    const m = createMutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: (input) => {
+        started.push(input);
+        return input === 'first' ? first.promise : second.promise;
+      },
+    });
+
+    const firstCall = m.mutate('first');
+    const secondCall = m.mutate('second');
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(started).toEqual(['first']);
+
+    first.resolve('first-done');
+    await firstCall;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(started).toEqual(['first', 'second']);
+
+    second.resolve('second-done');
+    await secondCall;
+  });
+
+  it('still only commits the most recently submitted call, deterministically', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const onSuccess = vi.fn();
+
+    const m = createMutation<void, string>({
+      concurrency: 'queue',
+      mutationFn: sequencedMutationFn(first, second),
+      onSuccess,
+    });
+
+    const firstCall = m.mutate();
+    const secondCall = m.mutate();
+
+    // Resolved out of submission order on purpose: queueing still guarantees mutationFn for
+    // 'second' only runs after 'first' has settled, so this can't make 'first' win.
+    second.resolve('second-done');
+    first.resolve('first-done');
+    await firstCall;
+    await secondCall;
+
+    expect(m.status()).toBe('success');
+    expect(m.value()).toBe('second-done');
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onSuccess).toHaveBeenCalledWith('second-done', undefined);
+  });
+
+  it('skips mutationFn for a call that is still queued when reset() runs', async () => {
+    const first = createDeferred<string>();
+    const started: string[] = [];
+
+    const m = createMutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: (input) => {
+        started.push(input);
+        return input === 'first' ? first.promise : Promise.resolve('unused');
+      },
+    });
+
+    const firstCall = m.mutate('first').catch(() => undefined);
+    const secondCall = m.mutate('second').catch(() => undefined);
+
+    // Let the queue actually start the first call's mutationFn before resetting.
+    await Promise.resolve();
+    expect(started).toEqual(['first']);
+
+    m.reset();
+
+    first.resolve('first-done');
+    await firstCall;
+    await secondCall;
+
+    expect(started).toEqual(['first']);
+  });
+
+  it('does not block calls queued after one that fails', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const third = createDeferred<string>();
+
+    const m = createMutation<void, string>({
+      concurrency: 'queue',
+      mutationFn: sequencedMutationFn(first, second, third),
+    });
+
+    const firstCall = m.mutate().catch(() => undefined);
+    const secondCall = m.mutate().catch(() => undefined);
+    const thirdCall = m.mutate();
+
+    first.reject(new Error('first failed'));
+    await firstCall;
+
+    second.reject(new Error('second failed'));
+    await secondCall;
+
+    third.resolve('third-done');
+    await thirdCall;
+
+    expect(m.status()).toBe('success');
+    expect(m.value()).toBe('third-done');
+  });
+
+  it('releases the pending task of a still-queued call immediately when reset() runs, without calling its mutationFn', async () => {
+    const removeFns = spyOnPendingTasks();
+    const first = createDeferred<string>();
+    const started: string[] = [];
+
+    const m = createMutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: (input) => {
+        started.push(input);
+        return input === 'first' ? first.promise : Promise.resolve('unused');
+      },
+    });
+
+    const firstCall = m.mutate('first');
+    const secondCall = m.mutate('second').catch(() => undefined);
+
+    // Let the queue actually start the first call's mutationFn before resetting.
+    await Promise.resolve();
+    expect(started).toEqual(['first']);
+    expect(removeFns[1]).not.toHaveBeenCalled();
+
+    m.reset();
+    expect(removeFns[1]).toHaveBeenCalledTimes(1);
+
+    first.resolve('first-done');
+    await firstCall;
+    await secondCall;
+
+    expect(started).toEqual(['first']);
+  });
+
+  it('does not call mutationFn for a call still queued when the injector is destroyed', async () => {
+    const first = createDeferred<string>();
+    const started: string[] = [];
+    const parentInjector = TestBed.inject(EnvironmentInjector);
+    const childInjector = createEnvironmentInjector([], parentInjector);
+
+    const m = mutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: (input) => {
+        started.push(input);
+        return input === 'first' ? first.promise : Promise.resolve('unused');
+      },
+      injector: childInjector,
+    });
+
+    m.mutate('first');
+    const secondCall = m.mutate('second').catch(() => undefined);
+
+    // Let the queue actually start the first call's mutationFn before destroying.
+    await Promise.resolve();
+    expect(started).toEqual(['first']);
+
+    childInjector.destroy();
+
+    first.resolve('first-done');
+    await secondCall;
+
+    expect(started).toEqual(['first']);
+  });
+});
+
 describe('reset()', () => {
   it('resets status/value/error to their initial state', async () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });
 
     await m.mutate();
     expect(m.status()).toBe('success');
@@ -364,14 +518,12 @@ describe('reset()', () => {
   it('ignores the result of a mutation that was still in flight', async () => {
     const deferred = createDeferred<string>();
     let abortSignal!: AbortSignal;
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({
-        mutationFn: (_input, signal) => {
-          abortSignal = signal;
-          return deferred.promise;
-        },
-      }),
-    );
+    const m = createMutation<void, string>({
+      mutationFn: (_input, signal) => {
+        abortSignal = signal;
+        return deferred.promise;
+      },
+    });
 
     const call = m.mutate();
     expect(m.status()).toBe('pending');
@@ -390,9 +542,7 @@ describe('reset()', () => {
 
 describe('hasValue()', () => {
   it('reflects whether value() is set', async () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });
 
     expect(m.hasValue()).toBe(false);
 
@@ -403,9 +553,7 @@ describe('hasValue()', () => {
   });
 
   it('types value() as TOutput once hasValue() narrows it', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });
 
     expectTypeOf(m.value()).toEqualTypeOf<string | undefined>();
 
@@ -415,9 +563,9 @@ describe('hasValue()', () => {
   });
 
   it('keeps TError typed on error() after hasValue() narrows the ref', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
-    );
+    const m = createMutation<string, string, Error>({
+      mutationFn: (input) => Promise.resolve(input),
+    });
 
     if (m.hasValue()) {
       expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
@@ -428,9 +576,7 @@ describe('hasValue()', () => {
 describe('snapshot()', () => {
   it('reflects idle, pending, success and error with the right shape', async () => {
     const deferred = createDeferred<string>();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => deferred.promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
     expect(m.snapshot()).toEqual({ status: 'idle', value: undefined, error: undefined });
 
@@ -445,13 +591,9 @@ describe('snapshot()', () => {
   it('keeps the last known value alongside the error on failure', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
     const failure = new Error('boom');
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: sequencedMutationFn(first, second) });
 
     first.resolve('ok');
     await m.mutate();
@@ -464,9 +606,7 @@ describe('snapshot()', () => {
   });
 
   it('is typed as a discriminated union narrowed by status', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => Promise.resolve('ok') }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });
 
     const snap = m.snapshot();
     if (snap.status === 'success') {
@@ -480,9 +620,9 @@ describe('snapshot()', () => {
   });
 
   it('types .error as TError instead of unknown', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<string, string, Error>({ mutationFn: (input) => Promise.resolve(input) }),
-    );
+    const m = createMutation<string, string, Error>({
+      mutationFn: (input) => Promise.resolve(input),
+    });
 
     const snap = m.snapshot();
     if (snap.status === 'error') {
@@ -497,12 +637,8 @@ describe('pending tasks', () => {
 
     const first = createDeferred<string>();
     const second = createDeferred<string>();
-    const calls = [first, second];
-    let callIndex = 0;
 
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => calls[callIndex++].promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: sequencedMutationFn(first, second) });
 
     const firstCall = m.mutate();
     expect(removeFns[0]).not.toHaveBeenCalled();
@@ -526,9 +662,7 @@ describe('pending tasks', () => {
     const removeFns = spyOnPendingTasks();
 
     const deferred = createDeferred<string>();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => deferred.promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
     const call = m.mutate();
     expect(removeFns[0]).not.toHaveBeenCalled();
@@ -546,14 +680,12 @@ describe('pending tasks', () => {
     const removeFns = spyOnPendingTasks();
 
     let abortSignal!: AbortSignal;
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({
-        mutationFn: (_input, signal) => {
-          abortSignal = signal;
-          return Promise.resolve('ok');
-        },
-      }),
-    );
+    const m = createMutation<void, string>({
+      mutationFn: (_input, signal) => {
+        abortSignal = signal;
+        return Promise.resolve('ok');
+      },
+    });
 
     await m.mutate();
     expect(removeFns[0]).toHaveBeenCalledTimes(1);
@@ -567,9 +699,7 @@ describe('pending tasks', () => {
   it('keeps ApplicationRef unstable while a mutation is in flight, for SSR/zoneless stability', async () => {
     const applicationRef = TestBed.inject(ApplicationRef);
     const deferred = createDeferred<string>();
-    const m = TestBed.runInInjectionContext(() =>
-      mutation<void, string>({ mutationFn: () => deferred.promise }),
-    );
+    const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
     m.mutate();
 
@@ -592,8 +722,8 @@ describe('pending tasks', () => {
 
 describe('injector option', () => {
   it('works end-to-end when created outside an injection context via the injector option', async () => {
-    // Simulates a factory function: no TestBed.runInInjectionContext / constructor call stack.
-    function createMutation() {
+    // Simulates a factory function: no injection context / constructor call stack.
+    function createMutationFromFactory() {
       const injector = TestBed.inject(EnvironmentInjector);
       return mutation<string, string>({
         mutationFn: (input) => Promise.resolve(`created:${input}`),
@@ -601,7 +731,7 @@ describe('injector option', () => {
       });
     }
 
-    const m = createMutation();
+    const m = createMutationFromFactory();
     expect(await m.mutate('todo')).toBe('created:todo');
     expect(m.status()).toBe('success');
   });

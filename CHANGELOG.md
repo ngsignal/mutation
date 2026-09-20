@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Add `rxMutation()`, from `@ngsignal/mutation/rxjs-interop`: the mutation counterpart of
+  `rxResource()`, for Observable-returning calls. Only the first emitted value is kept.
+- Add `httpMutation()`, from `@ngsignal/mutation/http`: the mutation counterpart of
+  `httpResource()`, with the same request description, `parse` option and `.text()`/`.blob()`/
+  `.arrayBuffer()` variants, plus `uploadProgress`, `downloadProgress`, `statusCode` and
+  `headers` signals. See [the recipes](./docs/RECIPES.md#using-observables-and-httpclient).
+- New optional peer dependencies `rxjs` (`^6.5.3 || ^7.4.0`, the same range as Angular 21) and
+  `@angular/common`, only needed for these secondary entry points. Not breaking:
+  `@ngsignal/mutation` itself never loads them, with or without a bundler.
+
 ## 0.4.0
 
 - Fix: ignoring the promise returned by `mutate()` (e.g. `(click)="save.mutate(x)"`) no longer

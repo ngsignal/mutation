@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `onSettled?: (output, error, input) => void`, called after `onSuccess`/`onError`
+  regardless of outcome, for cleanup that must run either way.
+- Add an `input` signal holding the input of the most recent `mutate()` call, reset by
+  `reset()`.
 - Add a `snapshot` signal: a discriminated union of `status`/`value`/`error` for exhaustive
   `switch`/`@switch` narrowing in a single read.
 - Add a `hasValue()` type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.

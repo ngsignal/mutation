@@ -9,6 +9,7 @@
   regardless of outcome, for cleanup that must run either way.
 - Add an `input` signal holding the input of the most recent `mutate()` call, reset by
   `reset()`.
+- Add `isIdle`/`isSuccess`/`isError` convenience signals to `mutation()`, derived from `status`.
 - Add a `snapshot` signal: a discriminated union of `status`/`value`/`error` for exhaustive
   `switch`/`@switch` narrowing in a single read.
 - Add a `hasValue()` type-guard narrowing `value` from `TOutput | undefined` to `TOutput`.

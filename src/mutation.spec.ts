@@ -62,10 +62,14 @@ describe('lifecycle', () => {
     const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
     expect(m.status()).toBe('idle');
+    expect(m.isIdle()).toBe(true);
 
     const call = m.mutate();
     expect(m.status()).toBe('pending');
     expect(m.isPending()).toBe(true);
+    expect(m.isIdle()).toBe(false);
+    expect(m.isSuccess()).toBe(false);
+    expect(m.isError()).toBe(false);
 
     deferred.resolve('ok');
     await call;
@@ -73,6 +77,8 @@ describe('lifecycle', () => {
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('ok');
     expect(m.isPending()).toBe(false);
+    expect(m.isSuccess()).toBe(true);
+    expect(m.isError()).toBe(false);
   });
 
   it('calls onSuccess with the output and input after a success', async () => {
@@ -97,6 +103,8 @@ describe('lifecycle', () => {
 
     expect(m.status()).toBe('error');
     expect((m.error() as Error).message).toBe('boom');
+    expect(m.isError()).toBe(true);
+    expect(m.isSuccess()).toBe(false);
   });
 
   it('calls onError with the error and input after a rejection', async () => {

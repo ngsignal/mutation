@@ -170,6 +170,7 @@ optimistic updates, and bridging `HttpClient`'s `Observable` to the `Promise`-ba
 - `isPending: Signal<boolean>`
 - `snapshot: Signal<MutationSnapshot<TOutput>>`.
 - `hasValue(): boolean`.
+- `isIdle: Signal<boolean>` / `isSuccess: Signal<boolean>` / `isError: Signal<boolean>`
 - `mutate(input: TInput): Promise<TOutput>`
 - `reset(): void`
 

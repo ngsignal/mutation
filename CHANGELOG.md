@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - Add `concurrency?: 'queue'`, serializing `mutationFn` calls in submission order instead of
   starting them all immediately. Only commit the most

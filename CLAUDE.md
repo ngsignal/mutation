@@ -90,8 +90,10 @@ last successful result when a later call fails — only `reset()` or a new succe
 
 ```ts
 mutation<TInput, TOutput, TError = unknown>(options): MutationRef<...>
-// options: mutationFn(input, abortSignal) => Promise<TOutput>, onSuccess?, onError?, injector?
-// ref:     status, value, error, isPending, snapshot, hasValue(), mutate(input), reset()
+// options: mutationFn(input, abortSignal) => Promise<TOutput>, onSuccess?, onError?, onSettled?,
+//          concurrency?, injector?
+// ref:     status, value, error, input, isPending, isIdle, isSuccess, isError, snapshot,
+//          hasValue(), mutate(input), reset()
 ```
 
 `mutation()` calls `assertInInjectionContext` unless an `injector` is supplied.

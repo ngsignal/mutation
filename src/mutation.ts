@@ -101,7 +101,14 @@ export function mutation<TInput, TOutput, TError = unknown>(
     options.onSettled?.(undefined, err, input);
   }
 
-  async function mutate(input: TInput): Promise<TOutput> {
+  function mutate(input: TInput): Promise<TOutput> {
+    const call = execute(input);
+    // Marks the call as handled so a caller that ignores it does not get an unhandled rejection;
+    call.catch(() => undefined);
+    return call;
+  }
+
+  async function execute(input: TInput): Promise<TOutput> {
     const currentGeneration = ++generation;
 
     const abortController = new AbortController();

@@ -510,6 +510,31 @@ describe("concurrency: 'queue'", () => {
   });
 });
 
+describe('returned promise', () => {
+  it('does not report an unhandled rejection when the caller ignores it', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const m = createMutation<void, string>({ mutationFn: () => Promise.reject(new Error('boom')) });
+
+      m.mutate();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(m.status()).toBe('error');
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('still rejects with the original error for a caller that awaits it', async () => {
+    const failure = new Error('boom');
+    const m = createMutation<void, string>({ mutationFn: () => Promise.reject(failure) });
+
+    await expect(m.mutate()).rejects.toBe(failure);
+  });
+});
+
 describe('reset()', () => {
   it('resets status/value/error to their initial state', async () => {
     const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });

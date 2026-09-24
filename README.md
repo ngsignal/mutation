@@ -149,6 +149,9 @@ if (createInvoice.hasValue()) {
 - **`concurrency: 'queue'`** runs `mutationFn` calls one at a time, in submission order, instead
   of letting them run concurrently; `status`/`value`/`error`/`input` still only reflect the most
   recently submitted call.
+- **`concurrency: 'drop'`** ignores `mutate()` while a call is already in flight to guards against double-submits. 
+  A dropped call never runs `mutationFn`, leaves the signals untouched, and its promise rejects with a
+  `DOMException` whose message is `'Dropped'`.
 - **`isIdle` / `isSuccess` / `isError`**: convenience signals alongside `isPending`, one per
   `status()` value.
 - **SSR support**: every in-flight mutation registers with Angular's `PendingTasks`, so
@@ -180,7 +183,7 @@ if (createInvoice.hasValue()) {
 | `onSuccess?`  | `(output: TOutput, input: TInput) => void`                                     |
 | `onError?`    | `(error: TError, input: TInput) => void`                                       |
 | `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput) => void` |
-| `concurrency?`| `'queue'`                                                                       |
+| `concurrency?`| `'queue' \| 'drop'`                                                            |
 | `injector?`   | `Injector`                                                                      |
  
 ### Return value

@@ -88,16 +88,6 @@ last successful result when a later call fails — only `reset()` or a new succe
 
 ## Public API — treat as a contract
 
-```ts
-mutation<TInput, TOutput, TError = unknown>(options): MutationRef<...>
-// options: mutationFn(input, abortSignal) => Promise<TOutput>, onSuccess?, onError?, onSettled?,
-//          concurrency?, injector?
-// ref:     status, value, error, input, isPending, isIdle, isSuccess, isError, snapshot,
-//          hasValue(), mutate(input), reset()
-```
-
-`mutation()` calls `assertInInjectionContext` unless an `injector` is supplied.
-
 Any change to option names, returned signals, exported types, or the semantics above is a
 **public API change**:
 

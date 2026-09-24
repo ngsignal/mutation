@@ -195,7 +195,7 @@ if (createInvoice.hasValue()) {
 | `isIdle` / `isSuccess` / `isError`  | `Signal<boolean>`                                     | One per `status()` value                                    |
 | `snapshot`                          | `Signal<MutationSnapshot<TOutput>>`                   | Discriminated union of `status`/`value`/`error`              |
 | `hasValue`                          | `() => boolean`                                       | Type guard narrowing `value` to `TOutput`                    |
-| `mutate`                            | `(input: TInput) => Promise<TOutput>`                 | Rejects like `mutationFn` does, for that specific call       |
+| `mutate`                            | `(input: TInput) => Promise<TOutput>`                 | Rejects like `mutationFn` does, for that specific call; safe to ignore (no unhandled rejection) |
 | `reset`                             | `() => void`                                          |                                                             |
  
 ## Design choices

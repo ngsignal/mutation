@@ -5,6 +5,8 @@
 - Fix: ignoring the promise returned by `mutate()` (e.g. `(click)="save.mutate(x)"`) no longer
   reports an unhandled rejection when the call fails; the error is still exposed through
   `error`/`onError`, and a caller that `await`s or `.catch()`es the promise still receives it as-is.
+- Add `concurrency: 'drop'`: while a call is in flight, further `mutate()` calls are ignored,
+  e.g Prevents double-submits.
 
 ## 0.3.0
 

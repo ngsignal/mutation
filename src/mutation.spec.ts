@@ -535,6 +535,152 @@ describe('returned promise', () => {
   });
 });
 
+describe("concurrency: 'drop'", () => {
+  it('drops mutate() calls made while one is in flight, rejecting them with an AbortError', async () => {
+    const first = createDeferred<string>();
+    const started: string[] = [];
+    const onSuccess = vi.fn();
+
+    const m = createMutation<string, string>({
+      concurrency: 'drop',
+      mutationFn: (input) => {
+        started.push(input);
+        return first.promise;
+      },
+      onSuccess,
+    });
+
+    const firstCall = m.mutate('first');
+    const droppedCall = m.mutate('second');
+
+    await expect(droppedCall).rejects.toMatchObject({ name: 'AbortError', message: 'Dropped' });
+    expect(started).toEqual(['first']);
+    expect(m.status()).toBe('pending');
+    expect(m.input()).toBe('first');
+
+    first.resolve('first-done');
+    await expect(firstCall).resolves.toBe('first-done');
+
+    expect(m.value()).toBe('first-done');
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onSuccess).toHaveBeenCalledWith('first-done', 'first');
+  });
+
+  it('does not report an unhandled rejection for a dropped call the caller ignores', async () => {
+    const first = createDeferred<string>();
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const m = createMutation<void, string>({
+        concurrency: 'drop',
+        mutationFn: () => first.promise,
+      });
+
+      m.mutate();
+      m.mutate();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(unhandled).not.toHaveBeenCalled();
+      first.resolve('done');
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('does not register a pending task for a dropped call', async () => {
+    const removeFns = spyOnPendingTasks();
+    const first = createDeferred<string>();
+
+    const m = createMutation<void, string>({
+      concurrency: 'drop',
+      mutationFn: () => first.promise,
+    });
+
+    const firstCall = m.mutate();
+    await m.mutate().catch(() => undefined);
+    expect(removeFns).toHaveLength(1);
+
+    first.resolve('done');
+    await firstCall;
+    expect(removeFns[0]).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a new call once the previous one has failed', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+
+    const m = createMutation<void, string>({
+      concurrency: 'drop',
+      mutationFn: sequencedMutationFn(first, second),
+    });
+
+    const firstCall = m.mutate();
+    first.reject(new Error('first failed'));
+    await expect(firstCall).rejects.toThrow('first failed');
+
+    const secondCall = m.mutate();
+    second.resolve('second-done');
+    await expect(secondCall).resolves.toBe('second-done');
+    expect(m.status()).toBe('success');
+  });
+
+  it('accepts a new call from onSuccess, once the previous one has committed', async () => {
+    const started: string[] = [];
+    let chained: Promise<string> | undefined;
+
+    const m = createMutation<string, string>({
+      concurrency: 'drop',
+      mutationFn: (input) => {
+        started.push(input);
+        return Promise.resolve(`${input}-done`);
+      },
+      onSuccess: (_output, input) => {
+        if (input === 'first') {
+          chained = m.mutate('second');
+        }
+      },
+    });
+
+    await m.mutate('first');
+    await chained;
+
+    expect(started).toEqual(['first', 'second']);
+    expect(m.value()).toBe('second-done');
+  });
+
+  it('accepts a new call right after reset() aborts the in-flight one', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const started: string[] = [];
+
+    const m = createMutation<string, string>({
+      concurrency: 'drop',
+      mutationFn: (input) => {
+        started.push(input);
+        return input === 'first' ? first.promise : second.promise;
+      },
+    });
+
+    const firstCall = m.mutate('first');
+    m.reset();
+    const secondCall = m.mutate('second');
+
+    expect(started).toEqual(['first', 'second']);
+
+    first.resolve('first-done');
+    await firstCall;
+    expect(m.status()).toBe('pending');
+
+    // 'first' settling must not release the lock now held by 'second'.
+    await expect(m.mutate('third')).rejects.toMatchObject({ name: 'AbortError', message: 'Dropped' });
+
+    second.resolve('second-done');
+    await secondCall;
+    expect(m.value()).toBe('second-done');
+    expect(started).toEqual(['first', 'second']);
+  });
+});
+
 describe('reset()', () => {
   it('resets status/value/error to their initial state', async () => {
     const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });

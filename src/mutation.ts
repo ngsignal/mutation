@@ -45,10 +45,12 @@ export function mutation<TInput, TOutput, TError = unknown>(
   let generation = 0;
   let destroyed = false;
   const activeCalls = new Map<AbortController, () => void>();
+  let dropLocked = false;
 
   // Promise-queue pattern. queueTail always settles so one failed call
   //  never blocks the ones queued after it.
   let queueTail: Promise<void> = Promise.resolve();
+
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
     const result = queueTail.then(task, task);
     queueTail = result.then(
@@ -64,6 +66,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
       removeTask();
     }
     activeCalls.clear();
+    dropLocked = false;
   }
 
   destroyRef.onDestroy(() => {
@@ -85,6 +88,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     if (destroyed || expectedGeneration !== generation) {
       return;
     }
+    dropLocked = false;
     value.set(result);
     status.set('success');
     options.onSuccess?.(result, input);
@@ -95,6 +99,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     if (destroyed || expectedGeneration !== generation) {
       return;
     }
+    dropLocked = false;
     error.set(err);
     status.set('error');
     options.onError?.(err, input);
@@ -102,10 +107,20 @@ export function mutation<TInput, TOutput, TError = unknown>(
   }
 
   function mutate(input: TInput): Promise<TOutput> {
-    const call = execute(input);
+    const call = startCall(input);
     // Marks the call as handled so a caller that ignores it does not get an unhandled rejection;
     call.catch(() => undefined);
     return call;
+  }
+
+  function startCall(input: TInput): Promise<TOutput> {
+    if (options.concurrency === 'drop') {
+      if (dropLocked) {
+        return Promise.reject(new DOMException('Dropped', 'AbortError'));
+      }
+      dropLocked = true;
+    }
+    return execute(input);
   }
 
   async function execute(input: TInput): Promise<TOutput> {

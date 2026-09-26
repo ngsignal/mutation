@@ -22,6 +22,7 @@ An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 - [Features](#features)
 - [Working with resource](#working-with-resource)
 - [API](#api)
+- [rxMutation & httpMutation](#rxmutation--httpmutation)
 - [Design choices](#design-choices)
 - [Status & Stability](#status--stability)
 - [Contributing](#contributing)
@@ -81,8 +82,7 @@ export class NewTodoComponent {
 }
 ```
  
-Using `HttpClient`? `mutationFn` takes a `Promise`, see
-[bridging an Observable](./docs/RECIPES.md#using-httpclient).
+Using Observables or `HttpClient`? See [rxMutation & httpMutation](#rxmutation--httpmutation).
  
 ## Features
  
@@ -167,7 +167,7 @@ if (createInvoice.hasValue()) {
  
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
-- [Using `HttpClient`](./docs/RECIPES.md#using-httpclient)
+- [Using Observables and `HttpClient`](./docs/RECIPES.md#using-observables-and-httpclient)
  
 ## API
  
@@ -201,6 +201,31 @@ if (createInvoice.hasValue()) {
 | `mutate`                            | `(input: TInput) => Promise<TOutput>`                 | Rejects like `mutationFn` does, for that specific call; safe to ignore (no unhandled rejection) |
 | `reset`                             | `() => void`                                          |                                                             |
  
+## rxMutation & httpMutation
+ 
+`mutationFn` expects a `Promise`. For Observables, two variants mirror Angular's own
+`rxResource()`/`httpResource()` split:
+ 
+| Angular (reads) | Mutations          | Import from                      | You provide                                                          |
+| --------------- | ------------------ | -------------------------------- | -------------------------------------------------------------------- |
+| `rxResource`    | **`rxMutation`**   | `@ngsignal/mutation/rxjs-interop` | any Observable, e.g. an existing service: `(dto) => this.users.create(dto)` |
+| `httpResource`  | **`httpMutation`** | `@ngsignal/mutation/http`         | a request description: `(dto) => ({ method: 'POST', url, body: dto })` |
+
+Like Angular's own `@angular/core/rxjs-interop`, they live in secondary entry points: the main
+`@ngsignal/mutation` entry never loads `rxjs` operators or `@angular/common/http`. They require
+`rxjs` (6.5+ or 7, like Angular 21) and, for `httpMutation`, `@angular/common` — both declared as
+optional peer dependencies.
+ 
+Both wire cancellation to `unsubscribe()`. `httpMutation()` sends the request itself through
+`HttpClient`, so it also exposes `progress`, `statusCode` and `headers` signals.
+ 
+- [Reusing an Observable-returning service](./docs/RECIPES.md#reusing-an-observable-returning-service)
+- [Describing an HTTP request](./docs/RECIPES.md#describing-an-http-request)
+- [Upload progress](./docs/RECIPES.md#upload-progress)
+- [Status code and headers](./docs/RECIPES.md#status-code-and-headers)
+ 
+</br>
+
 ## Design choices
  
 Directly inspired by the internal structure of `resource.ts` in Angular core. See

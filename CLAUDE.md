@@ -25,6 +25,7 @@ point, and it is meant to inform the Angular RFC.
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build   # all four before "done" (= CI = prepack)
 npm run check:exports   # publint + are-the-types-wrong, run when touching exports/imports
+npm run test:rxjs6      # suite on RxJS 6, after `npm install --no-save rxjs@6` (CI job rxjs-compat)
 ```
 
 ## Layout

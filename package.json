@@ -66,6 +66,7 @@
     "prepack": "npm run lint && npm run typecheck && npm test && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:rxjs6": "vitest run --config vitest.rxjs6.config.ts",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.spec.json",
     "check:exports": "publint && attw --pack . --profile esm-only"

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - Add `rxMutation()`, from `@ngsignal/mutation/rxjs-interop`: the mutation counterpart of
   `rxResource()`, for Observable-returning calls. Only the first emitted value is kept.

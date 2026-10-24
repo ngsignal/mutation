@@ -90,7 +90,8 @@ Using Observables or `HttpClient`? See [rxMutation & httpMutation](#rxmutation--
  
 Calling `mutate()` again while one is already in flight does **not** abort the previous call, a
 write may already have reached the server and be unsafe to cancel there, so both calls run to
-completion independently. Only the last call's outcome is committed to `status`/`value`/`error`.
+completion independently. Only the last call's outcome is committed to `status`/`value`/`error`,
+but each call still runs its [callbacks](#callbacks-onsuccess--onerror).
  
 ### Callbacks: onSuccess / onError
  
@@ -104,6 +105,19 @@ const createTodo = mutation<string, Todo>({
   onError: (err) => this.toast.show(String(err)),
 });
 ```
+ 
+Callbacks run once for **every** call that settles, including a call superseded by a more recent
+`mutate()`: its write happened on the server, so creating two todos quickly appends both. The
+last argument tells calls apart, for side effects that should only follow the current one:
+ 
+```ts
+onSuccess: (todo, title, { isLatest }) => {
+  this.todos.update((list) => [...list, todo]);
+  if (isLatest) this.form.reset();
+},
+```
+ 
+Calls aborted by `reset()` or by destroying the injection context run no callback.
  
 ### snapshot
  
@@ -180,9 +194,9 @@ if (createInvoice.hasValue()) {
 | Option        | Type                                                                          |
 | ------------- | ------------------------------------------------------------------------------ |
 | `mutationFn`  | `(input: TInput, abortSignal: AbortSignal) => Promise<TOutput>`                |
-| `onSuccess?`  | `(output: TOutput, input: TInput) => void`                                     |
-| `onError?`    | `(error: TError, input: TInput) => void`                                       |
-| `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput) => void` |
+| `onSuccess?`  | `(output: TOutput, input: TInput, context: MutationCallbackContext) => void`   |
+| `onError?`    | `(error: TError, input: TInput, context: MutationCallbackContext) => void`     |
+| `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput, context: MutationCallbackContext) => void` |
 | `concurrency?`| `'queue' \| 'drop'`                                                            |
 | `injector?`   | `Injector`                                                                      |
  

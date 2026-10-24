@@ -85,7 +85,7 @@ describe('request', () => {
     httpTesting.expectOne('/api/users').flush({ id: 1, name: 'Ada' });
     await call;
 
-    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada' }, 'Ada');
+    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada' }, 'Ada', { isLatest: true });
   });
 
   it('goes into error state with the HttpErrorResponse', async () => {
@@ -156,7 +156,7 @@ describe('parse', () => {
 
     await expect(call).resolves.toEqual({ id: 1, name: 'Ada', createdAt: new Date(0) });
     expect(m.value()).toEqual({ id: 1, name: 'Ada', createdAt: new Date(0) });
-    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada', createdAt: new Date(0) }, 'Ada');
+    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada', createdAt: new Date(0) }, 'Ada', { isLatest: true });
   });
 
   it('fails the call with the parse error, keeping the status code of the applied write', async () => {

@@ -9,6 +9,7 @@ import {
   PendingTasks,
 } from '@angular/core';
 import type {
+  MutationCallbackContext,
   MutationOptions,
   MutationRef,
   MutationSnapshot,
@@ -23,6 +24,7 @@ import type {
  * Implementation choices directly inspired by packages/core/src/resource/resource.ts:
  *  - raw WritableSignals for internal state
  *  - a generation counter so only the current call's outcome ever reaches the signals
+ *    (callbacks still run for every call, with `isLatest` telling them apart)
  *  - PendingTasks for SSR stability (ApplicationRef.isStable)
  *  - DestroyRef to ignore the result if the context is destroyed in flight
  *
@@ -84,26 +86,45 @@ export function mutation<TInput, TOutput, TError = unknown>(
     currentInput.set(undefined);
   }
 
-  function commitSuccess(result: TOutput, input: TInput, expectedGeneration: number): void {
-    if (destroyed || expectedGeneration !== generation) {
-      return;
+  /**
+   * The callback context of a settled call, or undefined when it must stay silent: aborted by
+   * reset() or destroy. A superseded call still reports, with `isLatest: false`.
+   */
+  function settledCallContext(
+    expectedGeneration: number,
+    abortSignal: AbortSignal,
+  ): MutationCallbackContext | undefined {
+    if (destroyed || abortSignal.aborted) {
+      return undefined;
     }
-    dropLocked = false;
-    value.set(result);
-    status.set('success');
-    options.onSuccess?.(result, input);
-    options.onSettled?.(result, undefined, input);
+    return { isLatest: expectedGeneration === generation };
   }
 
-  function commitError(err: TError, input: TInput, expectedGeneration: number): void {
-    if (destroyed || expectedGeneration !== generation) {
+  function commitSuccess(result: TOutput, input: TInput, context: MutationCallbackContext | undefined): void {
+    if (!context) {
       return;
     }
-    dropLocked = false;
-    error.set(err);
-    status.set('error');
-    options.onError?.(err, input);
-    options.onSettled?.(undefined, err, input);
+    // Only the latest call owns the signals; every call's write happened, so every call reports.
+    if (context.isLatest) {
+      dropLocked = false;
+      value.set(result);
+      status.set('success');
+    }
+    options.onSuccess?.(result, input, context);
+    options.onSettled?.(result, undefined, input, context);
+  }
+
+  function commitError(err: TError, input: TInput, context: MutationCallbackContext | undefined): void {
+    if (!context) {
+      return;
+    }
+    if (context.isLatest) {
+      dropLocked = false;
+      error.set(err);
+      status.set('error');
+    }
+    options.onError?.(err, input, context);
+    options.onSettled?.(undefined, err, input, context);
   }
 
   function mutate(input: TInput): Promise<TOutput> {
@@ -151,11 +172,11 @@ export function mutation<TInput, TOutput, TError = unknown>(
         options.concurrency === 'queue'
           ? await enqueue(callMutationFnUnlessAborted)
           : await callMutationFn();
-      commitSuccess(result, input, currentGeneration);
+      commitSuccess(result, input, settledCallContext(currentGeneration, abortController.signal));
       return result;
 
     } catch (err) {
-      commitError(err as TError, input, currentGeneration);
+      commitError(err as TError, input, settledCallContext(currentGeneration, abortController.signal));
       throw err;
 
     } finally {

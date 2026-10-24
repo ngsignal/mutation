@@ -7,6 +7,12 @@ core: raw writable signals, a generation counter to ignore responses from
 stale requests, `PendingTasks` for SSR stability, and cleanup via
 `DestroyRef` if the context is destroyed while a mutation is in flight.
 
+The generation counter only guards the signals. Callbacks run for every call that settles,
+superseded or not, because a superseded write still happened on the server: skipping its
+`onSuccess` would leave client state out of sync (two quick deletes, one row left on screen).
+They receive `{ isLatest }` for side effects that should only follow the current call. Calls
+aborted by `reset()` or destroy run no callback: the caller asked to forget them.
+
 ## `httpMutation()` vs `httpResource()`
 
 `httpMutation()` mirrors `httpResource()` on purpose: same request shape.

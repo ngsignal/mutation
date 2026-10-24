@@ -2,11 +2,25 @@ import type { Injector, Signal } from '@angular/core';
 
 export type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
 
+/** Passed to every callback: `isLatest` is false for a call superseded by a more recent `mutate()`. */
+export interface MutationCallbackContext {
+  readonly isLatest: boolean;
+}
+
+/**
+ * Callbacks run once for every call that settles, superseded or not, except calls aborted by
+ * `reset()` or destroy. Only the latest call writes the signals.
+ */
 export interface MutationOptions<TInput, TOutput, TError = unknown> {
   mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>;
-  onSuccess?: (output: TOutput, input: TInput) => void;
-  onError?: (error: TError, input: TInput) => void;
-  onSettled?: (output: TOutput | undefined, error: TError | undefined, input: TInput) => void;
+  onSuccess?: (output: TOutput, input: TInput, context: MutationCallbackContext) => void;
+  onError?: (error: TError, input: TInput, context: MutationCallbackContext) => void;
+  onSettled?: (
+    output: TOutput | undefined,
+    error: TError | undefined,
+    input: TInput,
+    context: MutationCallbackContext,
+  ) => void;
   concurrency?: 'queue' | 'drop';
   injector?: Injector;
 }

@@ -17,8 +17,8 @@ readonly createUser = mutation<string, User>({
 });
 ```
 
-Use `onSuccess` (or an `effect()` on `status()`) to react to whichever call ends up being
-current.
+`onSuccess` runs for every successful call, superseded or not, so the last reload always follows
+the last write to land.
 
 ### Optimistic updates
 

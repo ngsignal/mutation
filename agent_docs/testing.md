@@ -15,8 +15,9 @@ backend (progress, abort, response types), and a route to the server if needed. 
 
 When touching the lifecycle, cover it explicitly:
 
-- supersession: a superseded call's result must not land in the signals, and its
-  callbacks must not fire;
+- supersession: a superseded call's result must not land in the signals, but its
+  callbacks fire with `isLatest: false`;
+- a call aborted by `reset()` or destroy fires no callback;
 - `reset()` during flight and destroy during flight (the signal is aborted, the task released);
 - `onSuccess` / `onError` / `onSettled` fire exactly once, in that order;
 - pending-task release (`ApplicationRef.isStable`);

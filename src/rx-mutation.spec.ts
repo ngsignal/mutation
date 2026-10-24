@@ -62,7 +62,7 @@ describe('lifecycle', () => {
 
     await m.mutate('task');
 
-    expect(onSuccess).toHaveBeenCalledWith('task-done', 'task');
+    expect(onSuccess).toHaveBeenCalledWith('task-done', 'task', { isLatest: true });
   });});
 
 describe('cleanup', () => {

@@ -90,7 +90,7 @@ describe('lifecycle', () => {
 
     await m.mutate('task');
 
-    expect(onSuccess).toHaveBeenCalledWith('task-done', 'task');
+    expect(onSuccess).toHaveBeenCalledWith('task-done', 'task', { isLatest: true });
   });
 
   it('goes into error state if mutationFn rejects', async () => {
@@ -117,7 +117,7 @@ describe('lifecycle', () => {
 
     await m.mutate('task').catch(() => undefined);
 
-    expect(onError).toHaveBeenCalledWith(failure, 'task');
+    expect(onError).toHaveBeenCalledWith(failure, 'task', { isLatest: true });
   });
 
   it('types error() and onError() as TError instead of unknown', () => {
@@ -141,7 +141,7 @@ describe('lifecycle', () => {
 
     await m.mutate('task');
 
-    expect(onSettled).toHaveBeenCalledWith('task-done', undefined, 'task');
+    expect(onSettled).toHaveBeenCalledWith('task-done', undefined, 'task', { isLatest: true });
     expect(calls).toEqual(['onSuccess', 'onSettled']);
   });
 
@@ -158,7 +158,7 @@ describe('lifecycle', () => {
 
     await m.mutate('task').catch(() => undefined);
 
-    expect(onSettled).toHaveBeenCalledWith(undefined, failure, 'task');
+    expect(onSettled).toHaveBeenCalledWith(undefined, failure, 'task', { isLatest: true });
     expect(calls).toEqual(['onError', 'onSettled']);
   });
 });
@@ -232,7 +232,7 @@ describe('concurrent mutate() calls', () => {
     expect(m.status()).toBe('success');
   });
 
-  it('ignores the rejection of a stale call when a more recent mutation has already succeeded', async () => {
+  it('keeps the rejection of a stale call out of the signals when a more recent mutation has already succeeded', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
     const onError = vi.fn();
@@ -256,7 +256,7 @@ describe('concurrent mutate() calls', () => {
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('second');
     expect(m.error()).toBeUndefined();
-    expect(onError).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledExactlyOnceWith(new Error('too late'), undefined, { isLatest: false });
   });
 
   it('rejects a superseded call with its own real error, even though the signals ignore it', async () => {
@@ -280,7 +280,9 @@ describe('concurrent mutate() calls', () => {
 
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('second');
-    expect(onError).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ name: 'AbortError' }), undefined, {
+      isLatest: false,
+    });
   });
 
   it('reflects the most recently submitted input as soon as mutate() is called', () => {
@@ -296,27 +298,33 @@ describe('concurrent mutate() calls', () => {
     expect(m.input()).toBe('second');
   });
 
-  it('does not call onSettled for a stale call superseded by a more recent mutation', async () => {
+  it('still calls the callbacks of a stale call, with isLatest: false, without touching the signals', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
+    const onSuccess = vi.fn();
     const onSettled = vi.fn();
 
-    const m = createMutation<void, string>({
+    const m = createMutation<string, string>({
       mutationFn: sequencedMutationFn(first, second),
+      onSuccess,
       onSettled,
     });
 
-    const firstCall = m.mutate();
-    const secondCall = m.mutate();
+    const firstCall = m.mutate('a');
+    const secondCall = m.mutate('b');
 
     second.resolve('second');
     await secondCall;
-    expect(onSettled).toHaveBeenCalledTimes(1);
-    expect(onSettled).toHaveBeenCalledWith('second', undefined, undefined);
+    expect(onSuccess).toHaveBeenCalledExactlyOnceWith('second', 'b', { isLatest: true });
+    expect(onSettled).toHaveBeenCalledExactlyOnceWith('second', undefined, 'b', { isLatest: true });
 
     first.resolve('first');
     await firstCall;
-    expect(onSettled).toHaveBeenCalledTimes(1);
+    expect(onSuccess).toHaveBeenLastCalledWith('first', 'a', { isLatest: false });
+    expect(onSettled).toHaveBeenLastCalledWith('first', undefined, 'a', { isLatest: false });
+    expect(onSettled).toHaveBeenCalledTimes(2);
+    expect(m.value()).toBe('second');
+    expect(m.input()).toBe('b');
   });
 
   it('does not abort a previous mutation when a new one starts', () => {
@@ -389,8 +397,10 @@ describe("concurrency: 'queue'", () => {
 
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('second-done');
-    expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess).toHaveBeenCalledWith('second-done', undefined);
+    expect(onSuccess.mock.calls).toEqual([
+      ['first-done', undefined, { isLatest: false }],
+      ['second-done', undefined, { isLatest: true }],
+    ]);
   });
 
   it('skips mutationFn for a call that is still queued when reset() runs', async () => {
@@ -563,7 +573,7 @@ describe("concurrency: 'drop'", () => {
 
     expect(m.value()).toBe('first-done');
     expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess).toHaveBeenCalledWith('first-done', 'first');
+    expect(onSuccess).toHaveBeenCalledWith('first-done', 'first', { isLatest: true });
   });
 
   it('does not report an unhandled rejection for a dropped call the caller ignores', async () => {
@@ -716,6 +726,57 @@ describe('reset()', () => {
 
     expect(m.status()).toBe('idle');
     expect(m.value()).toBeUndefined();
+  });
+
+  it('does not call the callbacks of a call it aborted, whether it then resolves or rejects', async () => {
+    const resolved = createDeferred<string>();
+    const rejected = createDeferred<string>();
+    const onSuccess = vi.fn();
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const m = createMutation<void, string>({
+      mutationFn: sequencedMutationFn(resolved, rejected),
+      onSuccess,
+      onError,
+      onSettled,
+    });
+
+    const resolvedCall = m.mutate();
+    const rejectedCall = m.mutate();
+    m.reset();
+
+    resolved.resolve('too late');
+    rejected.reject(new DOMException('Aborted', 'AbortError'));
+    await resolvedCall;
+    await rejectedCall.catch(() => undefined);
+
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSettled).not.toHaveBeenCalled();
+  });
+
+  it('does not call the callbacks of a call still queued when it runs', async () => {
+    const first = createDeferred<string>();
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const m = createMutation<void, string>({
+      concurrency: 'queue',
+      mutationFn: sequencedMutationFn(first),
+      onError,
+      onSettled,
+    });
+
+    const runningCall = m.mutate();
+    const queuedCall = m.mutate();
+    // Let the queue actually start the first call's mutationFn before resetting.
+    await Promise.resolve();
+    m.reset();
+    first.resolve('first');
+
+    await runningCall;
+    await expect(queuedCall).rejects.toMatchObject({ name: 'AbortError' });
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSettled).not.toHaveBeenCalled();
   });
 });
 
@@ -944,6 +1005,29 @@ describe('injector option', () => {
 
     expect(m.status()).toBe('pending');
     expect(m.value()).toBeUndefined();
+  });
+
+  it('does not call the callbacks of a call in flight when the injector is destroyed', async () => {
+    const deferred = createDeferred<string>();
+    const parentInjector = TestBed.inject(EnvironmentInjector);
+    const childInjector = createEnvironmentInjector([], parentInjector);
+    const onSuccess = vi.fn();
+    const onSettled = vi.fn();
+
+    const m = mutation<void, string>({
+      mutationFn: () => deferred.promise,
+      onSuccess,
+      onSettled,
+      injector: childInjector,
+    });
+
+    const call = m.mutate();
+    childInjector.destroy();
+    deferred.resolve('too late');
+    await call;
+
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onSettled).not.toHaveBeenCalled();
   });
 
   it('rejects a mutate() call with the abort error when the injector is destroyed mid-flight', async () => {

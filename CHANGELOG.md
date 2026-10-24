@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** `onSuccess`/`onError`/`onSettled` now run for every call that settles, including
+  a call superseded by a more recent `mutate()`, instead of only the latest one.
+  Calls aborted by `reset()` or destroy still run no callback.
+- Callbacks receive a last `context` argument, `{ isLatest }` for side effects that should only 
+  follow the current call.
+
 ## 0.5.0
 
 - Add `rxMutation()`, from `@ngsignal/mutation/rxjs-interop`: the mutation counterpart of

@@ -7,10 +7,13 @@ re-check them against the code: it is the source of truth, this file only summar
 ## Lifecycle mechanisms
 
 - **Generation counter** (`generation`). Incremented by every call (`execute`), by
-  `reset()` and on destroy. `commitSuccess` / `commitError` return early when the call's
-  captured generation is stale or the context is destroyed: no signal write and no
-  `onSuccess` / `onError` / `onSettled`. The promise returned by `mutate()` still
-  settles with the call's real outcome.
+  `reset()` and on destroy. `commitSuccess` / `commitError` write the signals only when the
+  call's captured generation is still current (`isLatest`).
+- **Callbacks run for every settled call.** `settledCallContext` returns `{ isLatest }`, or
+  `undefined` when the call was aborted (by `reset()` / destroy) or the context is
+  destroyed: then no signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
+  call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
+  always settles with the call's real outcome.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
   run to completion and their outcome is ignored. Only `reset()` and destroy abort
   (`abortAllInProgress`): they abort every controller in `activeCalls`, release its

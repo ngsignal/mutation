@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - **Breaking:** `onSuccess`/`onError`/`onSettled` now run for every call that settles, including
   a call superseded by a more recent `mutate()`, instead of only the latest one.

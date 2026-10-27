@@ -176,6 +176,20 @@ success: check `isSuccess()` instead.
   reset/destroy rather than waiting for a stale call to settle.
 - **Custom injector**: pass `injector` to call `mutation()` outside of an injection context
   (e.g. factory functions).
+
+### Cancellations
+
+Every cancellation rejects `mutate()` with a `DOMException` named `'AbortError'`, so
+`error.name === 'AbortError'` catches them all. The message tells whether the write may have
+reached the server, e.g. before rolling back an optimistic update:
+
+| Cancelled by                                      | Message                           | Write sent?                    |
+| ------------------------------------------------- | --------------------------------- | ------------------------------ |
+| `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No, `mutationFn` never ran     |
+| `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No, `mutationFn` never ran     |
+| `reset()`/destroy while queued (`'queue'`)        | `'Aborted'`                       | No, `mutationFn` never ran     |
+| `reset()`/destroy while in flight                 | whatever `mutationFn` rejects with | **Maybe**: the request had left |
+
  
 ## Working with resource
  
@@ -184,6 +198,7 @@ success: check `isSuccess()` instead.
  
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
+- [Retrying writes](./docs/RECIPES.md#retrying-writes)
 - [Using Observables and `HttpClient`](./docs/RECIPES.md#using-observables-and-httpclient)
  
 ## API

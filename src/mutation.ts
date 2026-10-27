@@ -5,6 +5,7 @@ import {
   inject,
   Injector,
   DestroyRef,
+  ErrorHandler,
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
@@ -38,6 +39,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
   const injector = options.injector ?? inject(Injector);
   const destroyRef = injector.get(DestroyRef);
   const pendingTasks = injector.get(PendingTasks);
+  const errorHandler = injector.get(ErrorHandler, null);
 
   const status = signal<MutationStatus>('idle');
   const value = signal<TOutput | undefined>(undefined);
@@ -50,7 +52,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
   let dropLocked = false;
 
   // Promise-queue pattern. queueTail always settles so one failed call
-  //  never blocks the ones queued after it.
+  // never blocks the ones queued after it.
   let queueTail: Promise<void> = Promise.resolve();
 
   function enqueue<T>(task: () => Promise<T>): Promise<T> {
@@ -86,10 +88,6 @@ export function mutation<TInput, TOutput, TError = unknown>(
     currentInput.set(undefined);
   }
 
-  /**
-   * The callback context of a settled call, or undefined when it must stay silent: aborted by
-   * reset() or destroy. A superseded call still reports, with `isLatest: false`.
-   */
   function settledCallContext(
     expectedGeneration: number,
     abortSignal: AbortSignal,
@@ -104,14 +102,13 @@ export function mutation<TInput, TOutput, TError = unknown>(
     if (!context) {
       return;
     }
-    // Only the latest call owns the signals; every call's write happened, so every call reports.
     if (context.isLatest) {
       dropLocked = false;
       value.set(result);
       status.set('success');
     }
-    options.onSuccess?.(result, input, context);
-    options.onSettled?.(result, undefined, input, context);
+    runCallback(() => options.onSuccess?.(result, input, context));
+    runCallback(() => options.onSettled?.(result, undefined, input, context));
   }
 
   function commitError(err: TError, input: TInput, context: MutationCallbackContext | undefined): void {
@@ -123,8 +120,17 @@ export function mutation<TInput, TOutput, TError = unknown>(
       error.set(err);
       status.set('error');
     }
-    options.onError?.(err, input, context);
-    options.onSettled?.(undefined, err, input, context);
+    runCallback(() => options.onError?.(err, input, context));
+    runCallback(() => options.onSettled?.(undefined, err, input, context));
+  }
+
+  // Like OutputEmitterRef.emit(): a throwing callback is reported, it never rewrites the call's outcome.
+  function runCallback(callback: () => void): void {
+    try {
+      callback();
+    } catch (callbackError) {
+      errorHandler?.handleError(callbackError);
+    }
   }
 
   function mutate(input: TInput): Promise<TOutput> {
@@ -135,6 +141,9 @@ export function mutation<TInput, TOutput, TError = unknown>(
   }
 
   function startCall(input: TInput): Promise<TOutput> {
+    if (destroyed) {
+      return Promise.reject(new DOMException('Destroyed', 'AbortError'));
+    }
     if (options.concurrency === 'drop') {
       if (dropLocked) {
         return Promise.reject(new DOMException('Dropped', 'AbortError'));
@@ -158,20 +167,16 @@ export function mutation<TInput, TOutput, TError = unknown>(
     const removeTask = pendingTasks.add();
     activeCalls.set(abortController, removeTask);
 
-    const callMutationFn = () => untracked(() => options.mutationFn(input, abortController.signal));
-
-    function callMutationFnUnlessAborted(): Promise<TOutput> {
+    function callMutationFn(): Promise<TOutput> {
+      // Only a queued call can be aborted before it starts.
       if (abortController.signal.aborted) {
         return Promise.reject(new DOMException('Aborted', 'AbortError'));
       }
-      return callMutationFn();
+      return untracked(() => options.mutationFn(input, abortController.signal));
     }
 
     try {
-      const result =
-        options.concurrency === 'queue'
-          ? await enqueue(callMutationFnUnlessAborted)
-          : await callMutationFn();
+      const result = options.concurrency === 'queue' ? await enqueue(callMutationFn) : await callMutationFn();
       commitSuccess(result, input, settledCallContext(currentGeneration, abortController.signal));
       return result;
 

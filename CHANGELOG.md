@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1
 
 - Fix: an exception thrown by `onSuccess`/`onError`/`onSettled` no longer changes the call's
   outcome (a successful write used to end up in `'error'`, and `mutate()` rejected with the

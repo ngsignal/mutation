@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fix: an exception thrown by `onSuccess`/`onError`/`onSettled` no longer changes the call's
+  outcome (a successful write used to end up in `'error'`, and `mutate()` rejected with the
+  callback's exception). It is reported to Angular's `ErrorHandler` and the remaining callbacks still run.
+- Fix: `mutate()` called after the injection context is destroyed no longer calls `mutationFn`
+  and leaves `status` stuck on `'pending'`; it rejects with an `AbortError` instead.
+
 ## 0.6.0
 
 - **Breaking:** `onSuccess`/`onError`/`onSettled` now run for every call that settles, including

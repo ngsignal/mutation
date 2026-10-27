@@ -151,6 +151,9 @@ if (createInvoice.hasValue()) {
   downloadPdf(createInvoice.value());
 }
 ```
+
+For a mutation returning nothing (`TOutput` is `void`), `value()` stays undefined even after a
+success: check `isSuccess()` instead.
  
 ### Also included
  
@@ -163,7 +166,7 @@ if (createInvoice.hasValue()) {
 - **`concurrency: 'queue'`** runs `mutationFn` calls one at a time, in submission order, instead
   of letting them run concurrently; `status`/`value`/`error`/`input` still only reflect the most
   recently submitted call.
-- **`concurrency: 'drop'`** ignores `mutate()` while a call is already in flight to guards against double-submits. 
+- **`concurrency: 'drop'`** ignores `mutate()` while a call is already in flight to guard against double-submits.
   A dropped call never runs `mutationFn`, leaves the signals untouched, and its promise rejects with a
   `DOMException` whose message is `'Dropped'`.
 - **`isIdle` / `isSuccess` / `isError`**: convenience signals alongside `isPending`, one per
@@ -210,9 +213,9 @@ if (createInvoice.hasValue()) {
 | `input`                             | `Signal<TInput \| undefined>`                         | Input of the most recent `mutate()` call                    |
 | `isPending`                         | `Signal<boolean>`                                     |                                                             |
 | `isIdle` / `isSuccess` / `isError`  | `Signal<boolean>`                                     | One per `status()` value                                    |
-| `snapshot`                          | `Signal<MutationSnapshot<TOutput>>`                   | Discriminated union of `status`/`value`/`error`              |
-| `hasValue`                          | `() => boolean`                                       | Type guard narrowing `value` to `TOutput`                    |
-| `mutate`                            | `(input: TInput) => Promise<TOutput>`                 | Rejects like `mutationFn` does, for that specific call; safe to ignore (no unhandled rejection) |
+| `snapshot`                          | `Signal<MutationSnapshot<TOutput, TError>>`           | Discriminated union of `status`/`value`/`error`              |
+| `hasValue`                          | `() => this is …`                                     | Type guard narrowing `value` to `TOutput`                    |
+| `mutate`                            | `(input: TInput) => Promise<TOutput>`                 | Rejects like `mutationFn` does, for that specific call; safe to ignore (no unhandled rejection). Rejects with an `AbortError` once the injection context is destroyed, without calling `mutationFn` |
 | `reset`                             | `() => void`                                          |                                                             |
  
 ## rxMutation & httpMutation

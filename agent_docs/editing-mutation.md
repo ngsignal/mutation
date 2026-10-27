@@ -13,7 +13,11 @@ re-check them against the code: it is the source of truth, this file only summar
   `undefined` when the call was aborted (by `reset()` / destroy) or the context is
   destroyed: then no signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
   call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
-  always settles with the call's real outcome.
+  always settles with the call's real outcome. Each callback runs through `runCallback`: an
+  exception goes to `ErrorHandler`, as in `OutputEmitterRef.emit()`, and must never reach the
+  `catch` of `execute` (it would turn a successful write into an error).
+- **After destroy**, `mutate()` rejects with `DOMException('Destroyed', 'AbortError')` before
+  touching any signal or calling `mutationFn`.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
   run to completion and their outcome is ignored. Only `reset()` and destroy abort
   (`abortAllInProgress`): they abort every controller in `activeCalls`, release its

@@ -4,6 +4,7 @@ import {
   createEnvironmentInjector,
   PendingTasks,
   ApplicationRef,
+  ErrorHandler,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { expectTypeOf } from 'vitest';
@@ -160,6 +161,74 @@ describe('lifecycle', () => {
 
     expect(onSettled).toHaveBeenCalledWith(undefined, failure, 'task', { isLatest: true });
     expect(calls).toEqual(['onError', 'onSettled']);
+  });
+});
+
+describe('callback exceptions', () => {
+  function spyOnErrorHandler() {
+    return vi.spyOn(TestBed.inject(ErrorHandler), 'handleError').mockImplementation(() => undefined);
+  }
+
+  it('keeps the success when onSuccess throws, and reports the exception to ErrorHandler', async () => {
+    const handleError = spyOnErrorHandler();
+    const callbackError = new Error('onSuccess failed');
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const m = createMutation<string, string>({
+      mutationFn: (input) => Promise.resolve(`${input}-done`),
+      onSuccess: () => {
+        throw callbackError;
+      },
+      onError,
+      onSettled,
+    });
+
+    await expect(m.mutate('task')).resolves.toBe('task-done');
+
+    expect(m.status()).toBe('success');
+    expect(m.error()).toBeUndefined();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSettled).toHaveBeenCalledExactlyOnceWith('task-done', undefined, 'task', { isLatest: true });
+    expect(handleError).toHaveBeenCalledExactlyOnceWith(callbackError);
+  });
+
+  it('keeps the original error when onError throws, and reports the exception to ErrorHandler', async () => {
+    const handleError = spyOnErrorHandler();
+    const failure = new Error('boom');
+    const callbackError = new Error('onError failed');
+    const onSettled = vi.fn();
+    const m = createMutation<string, string>({
+      mutationFn: () => Promise.reject(failure),
+      onError: () => {
+        throw callbackError;
+      },
+      onSettled,
+    });
+
+    await expect(m.mutate('task')).rejects.toBe(failure);
+
+    expect(m.error()).toBe(failure);
+    expect(onSettled).toHaveBeenCalledExactlyOnceWith(undefined, failure, 'task', { isLatest: true });
+    expect(handleError).toHaveBeenCalledExactlyOnceWith(callbackError);
+  });
+
+  it('keeps the success when onSettled throws, and reports the exception to ErrorHandler', async () => {
+    const handleError = spyOnErrorHandler();
+    const callbackError = new Error('onSettled failed');
+    const onError = vi.fn();
+    const m = createMutation<void, string>({
+      mutationFn: () => Promise.resolve('ok'),
+      onError,
+      onSettled: () => {
+        throw callbackError;
+      },
+    });
+
+    await expect(m.mutate()).resolves.toBe('ok');
+
+    expect(m.status()).toBe('success');
+    expect(onError).not.toHaveBeenCalled();
+    expect(handleError).toHaveBeenCalledExactlyOnceWith(callbackError);
   });
 });
 
@@ -1050,5 +1119,18 @@ describe('injector option', () => {
     childInjector.destroy();
 
     await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('rejects a mutate() call made after the injector is destroyed, without calling mutationFn', async () => {
+    const parentInjector = TestBed.inject(EnvironmentInjector);
+    const childInjector = createEnvironmentInjector([], parentInjector);
+    const mutationFn = vi.fn(() => Promise.resolve('sent anyway'));
+    const m = mutation<void, string>({ mutationFn, injector: childInjector });
+
+    childInjector.destroy();
+
+    await expect(m.mutate()).rejects.toMatchObject({ name: 'AbortError', message: 'Destroyed' });
+    expect(mutationFn).not.toHaveBeenCalled();
+    expect(m.status()).toBe('idle');
   });
 });

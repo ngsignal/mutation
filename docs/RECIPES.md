@@ -43,6 +43,19 @@ first delete (see [stale-response guarding](../README.md#stale-response-guarding
 requests run to completion independently, and each call's own `.catch()` rolls back its own
 optimistic update if it fails.
 
+## Retrying writes
+
+There is no `retry` option: whether a failed write is safe to retry depends on your API. A `429`
+or `503` means the server refused the request, so retrying is safe. A timeout or a `502`/`504`
+may come after the write was applied, and needs an idempotency key on the server side.
+
+If you retry inside `mutationFn`, pass its `AbortSignal` to the wait between attempts, otherwise
+`reset()` and destroy won't stop the loop.
+
+With `httpMutation()`, put the idempotency key in `input` rather than generating it in
+`request()`: `request()` runs on every `mutate()`, so a key generated there changes when the user
+clicks again.
+
 <a id="using-httpclient"></a>
 
 ## Using Observables and HttpClient
@@ -117,7 +130,8 @@ readonly createUser = httpMutation({
 
 If `parse` throws, the call fails with that error: `status()` is `'error'` while `statusCode()`
 still holds the success code (e.g. `201`), because **the server has already applied the write**.
-Handle it as a contract mismatch, not as a failed write — retrying would write twice. For a
+Handle it as a contract mismatch, not as a failed write — retrying would write twice (see
+[Retrying writes](#retrying-writes)). For a
 body-less response (`204`), `parse` receives `null`.
 
 ### Non-JSON responses

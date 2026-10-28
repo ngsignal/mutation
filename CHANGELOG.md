@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2
+
+- No behavior change. Internal: concurrency modes and in-flight call tracking are extracted
+  from `mutation()` (+135 B gzipped).
+- Docs: README reworked (concurrency table, supersession diagram, cancellations), now on the
+  npm page too.
+
 ## 0.6.1
 
 - Fix: an exception thrown by `onSuccess`/`onError`/`onSettled` no longer changes the call's

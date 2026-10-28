@@ -62,7 +62,7 @@ clicks again.
 
 Pick the variant matching what you already have (see [the table](../README.md#rxmutation--httpmutation)).
 Both accept the same `onSuccess`/`onError`/`onSettled`/`concurrency`/`injector` options as
-`mutation()` — see [the main README](../README.md#return-value) for what each does.
+`mutation()` — see [the main README](../README.md#features) for what each does.
 
 ### Reusing an Observable-returning service
 

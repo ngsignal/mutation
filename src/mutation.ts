@@ -48,29 +48,12 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
   let generation = 0;
   let destroyed = false;
-  const activeCalls = new Map<AbortController, () => void>();
-  let dropLocked = false;
-
-  // Promise-queue pattern. queueTail always settles so one failed call
-  // never blocks the ones queued after it.
-  let queueTail: Promise<void> = Promise.resolve();
-
-  function enqueue<T>(task: () => Promise<T>): Promise<T> {
-    const result = queueTail.then(task, task);
-    queueTail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
-  }
+  const gate = createConcurrencyGate(options.concurrency);
+  const calls = createCallTracker(pendingTasks);
 
   function abortAllInProgress(): void {
-    for (const [controller, removeTask] of activeCalls) {
-      controller.abort();
-      removeTask();
-    }
-    activeCalls.clear();
-    dropLocked = false;
+    calls.abortAll();
+    gate.release();
   }
 
   destroyRef.onDestroy(() => {
@@ -103,7 +86,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
       return;
     }
     if (context.isLatest) {
-      dropLocked = false;
+      gate.release();
       value.set(result);
       status.set('success');
     }
@@ -116,7 +99,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
       return;
     }
     if (context.isLatest) {
-      dropLocked = false;
+      gate.release();
       error.set(err);
       status.set('error');
     }
@@ -144,11 +127,8 @@ export function mutation<TInput, TOutput, TError = unknown>(
     if (destroyed) {
       return Promise.reject(new DOMException('Destroyed', 'AbortError'));
     }
-    if (options.concurrency === 'drop') {
-      if (dropLocked) {
-        return Promise.reject(new DOMException('Dropped', 'AbortError'));
-      }
-      dropLocked = true;
+    if (!gate.admit()) {
+      return Promise.reject(new DOMException('Dropped', 'AbortError'));
     }
     return execute(input);
   }
@@ -156,37 +136,33 @@ export function mutation<TInput, TOutput, TError = unknown>(
   async function execute(input: TInput): Promise<TOutput> {
     const currentGeneration = ++generation;
 
-    const abortController = new AbortController();
-
     untracked(() => {
       status.set('pending');
       error.set(undefined);
       currentInput.set(input);
     });
 
-    const removeTask = pendingTasks.add();
-    activeCalls.set(abortController, removeTask);
+    const call = calls.start();
 
     function callMutationFn(): Promise<TOutput> {
       // Only a queued call can be aborted before it starts.
-      if (abortController.signal.aborted) {
+      if (call.abortSignal.aborted) {
         return Promise.reject(new DOMException('Aborted', 'AbortError'));
       }
-      return untracked(() => options.mutationFn(input, abortController.signal));
+      return untracked(() => options.mutationFn(input, call.abortSignal));
     }
 
     try {
-      const result = options.concurrency === 'queue' ? await enqueue(callMutationFn) : await callMutationFn();
-      commitSuccess(result, input, settledCallContext(currentGeneration, abortController.signal));
+      const result = await gate.run(callMutationFn);
+      commitSuccess(result, input, settledCallContext(currentGeneration, call.abortSignal));
       return result;
 
     } catch (err) {
-      commitError(err as TError, input, settledCallContext(currentGeneration, abortController.signal));
+      commitError(err as TError, input, settledCallContext(currentGeneration, call.abortSignal));
       throw err;
 
     } finally {
-      removeTask();
-      activeCalls.delete(abortController);
+      call.finish();
     }
   }
 
@@ -219,5 +195,77 @@ export function mutation<TInput, TOutput, TError = unknown>(
     },
     mutate,
     reset,
+  };
+}
+
+interface ConcurrencyGate {
+  admit(): boolean;
+  run<T>(task: () => Promise<T>): Promise<T>;
+  release(): void;
+}
+
+function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['concurrency']): ConcurrencyGate {
+  switch (concurrency) {
+    case 'queue':
+      return createQueueGate();
+    case 'drop':
+      return createDropGate();
+    case undefined:
+      return { admit: () => true, run: (task) => task(), release: () => undefined };
+  }
+}
+
+function createQueueGate(): ConcurrencyGate {
+  let tail: Promise<unknown> = Promise.resolve();
+  return {
+    admit: () => true,
+    run(task) {
+      const result = tail.then(task, task);
+      tail = result.catch(() => undefined);
+      return result;
+    },
+    release: () => undefined,
+  };
+}
+
+function createDropGate(): ConcurrencyGate {
+  let locked = false;
+  return {
+    admit() {
+      if (locked) {
+        return false;
+      }
+      locked = true;
+      return true;
+    },
+    run: (task) => task(),
+    release() {
+      locked = false;
+    },
+  };
+}
+
+function createCallTracker(pendingTasks: PendingTasks) {
+  const activeCalls = new Map<AbortController, () => void>();
+  return {
+    start() {
+      const controller = new AbortController();
+      const removeTask = pendingTasks.add();
+      activeCalls.set(controller, removeTask);
+      return {
+        abortSignal: controller.signal,
+        finish(): void {
+          removeTask();
+          activeCalls.delete(controller);
+        },
+      };
+    },
+    abortAll(): void {
+      for (const [controller, removeTask] of activeCalls) {
+        controller.abort();
+        removeTask();
+      }
+      activeCalls.clear();
+    },
   };
 }

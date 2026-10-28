@@ -14,18 +14,11 @@ An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 
 [Live demo on StackBlitz](https://stackblitz.com/~/github.com/ErwanRaulo/ng-mutation-demo)
 
-</div>
+[Why](#why) · [Install](#install) · [Quick start](#quick-start) · [Features](#features) ·
+[Working with resource](#working-with-resource) · [API](#api) ·
+[rxMutation & httpMutation](#rxmutation--httpmutation) · [Design choices](#design-choices)
 
-- [Why](#why)
-- [Install](#install)
-- [Quick start](#quick-start)
-- [Features](#features)
-- [Working with resource](#working-with-resource)
-- [API](#api)
-- [rxMutation & httpMutation](#rxmutation--httpmutation)
-- [Design choices](#design-choices)
-- [Status & Stability](#status--stability)
-- [Contributing](#contributing)
+</div>
 
 ## Why
  
@@ -39,7 +32,9 @@ but explicitly not for mutations:
 > [Angular API reference](https://angular.dev/api/core/resource)
  
 Today, handling a POST/PUT/DELETE means either manually overloading
-`httpResource`, or hand-rolling the write in a service.
+`httpResource`, or hand-rolling the write in a service, where a `saving` flag is easy to get
+wrong: on a double click, the first call to finish sets it back to `false` while the second one
+is still in flight.
  
 ## Install
  
@@ -85,13 +80,28 @@ export class NewTodoComponent {
 Using Observables or `HttpClient`? See [rxMutation & httpMutation](#rxmutation--httpmutation).
  
 ## Features
- 
+
 ### Stale-response guarding
  
 Calling `mutate()` again while one is already in flight does **not** abort the previous call, a
 write may already have reached the server and be unsafe to cancel there, so both calls run to
 completion independently. Only the last call's outcome is committed to `status`/`value`/`error`,
 but each call still runs its [callbacks](#callbacks-onsuccess--onerror).
+
+```mermaid
+sequenceDiagram
+  participant C as Component
+  participant M as mutation()
+  participant S as Server
+  C->>M: mutate('a')
+  M->>S: POST a
+  C->>M: mutate('b')
+  M->>S: POST b
+  S-->>M: b created
+  Note over M: value = b, status = 'success'<br/>onSuccess(b, …, { isLatest: true })
+  S-->>M: a created (late)
+  Note over M: signals untouched<br/>onSuccess(a, …, { isLatest: false })
+```
  
 ### Callbacks: onSuccess / onError
  
@@ -139,8 +149,7 @@ value across those states (see [stale-response guarding](#stale-response-guardin
  
 ### hasValue guard
  
-`value()` is undefined since nothing has been created before the first successful `mutate()`.
-`hasValue()` narrows it, so you can act on the result safely.
+`value()` is `undefined` until the first success. `hasValue()` narrows it to `TOutput`:
  
 ```ts
 const createInvoice = mutation<Order, Invoice>({
@@ -157,25 +166,33 @@ success: check `isSuccess()` instead.
  
 ### Also included
  
+- **`mutate()`** returns a promise that settles like `mutationFn` does, for that call. Ignoring
+  it (`(click)="save.mutate(x)"`) is safe: a failure never reports an unhandled rejection, and
+  still shows in `error()`.
 - **`reset()`** brings `status`/`value`/`error`/`input` back to their initial state and aborts
   any in-flight call(s).
 - **`onSettled`** runs after `onSuccess` or `onError`, whichever fired; use it for cleanup that
   must happen either way (closing a modal, releasing a UI lock).
 - **`input`** holds the input of the most recent `mutate()` call, from the moment it's called
   until the next `mutate()` or `reset()`.
-- **`concurrency: 'queue'`** runs `mutationFn` calls one at a time, in submission order, instead
-  of letting them run concurrently; `status`/`value`/`error`/`input` still only reflect the most
-  recently submitted call.
-- **`concurrency: 'drop'`** ignores `mutate()` while a call is already in flight to guard against double-submits.
-  A dropped call never runs `mutationFn`, leaves the signals untouched, and its promise rejects with a
-  `DOMException` whose message is `'Dropped'`.
-- **`isIdle` / `isSuccess` / `isError`**: convenience signals alongside `isPending`, one per
-  `status()` value.
+- **`isPending` / `isIdle` / `isSuccess` / `isError`**: one boolean signal per `status()` value.
 - **SSR support**: every in-flight mutation registers with Angular's `PendingTasks`, so
   `ApplicationRef.isStable` (and SSR rendering) waits for it, and releases it immediately on
   reset/destroy rather than waiting for a stale call to settle.
 - **Custom injector**: pass `injector` to call `mutation()` outside of an injection context
   (e.g. factory functions).
+
+### Concurrency
+
+What happens to a second `mutate()` while a call is still in flight:
+
+| `concurrency`   | Second `mutate()`                                                        | Typical use                                  |
+| --------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
+| unset (default) | Runs right away, in parallel                                             | Independent writes (adding items to a list)  |
+| `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
+| `'drop'`        | Rejected at once (`'Dropped'`), `mutationFn` never runs, signals untouched | Double-submit protection (payment, form submit) |
+
+In every mode, `status`/`value`/`error`/`input` reflect the most recently submitted call.
 
 ### Cancellations
 
@@ -189,6 +206,10 @@ reached the server, e.g. before rolling back an optimistic update:
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No, `mutationFn` never ran     |
 | `reset()`/destroy while queued (`'queue'`)        | `'Aborted'`                       | No, `mutationFn` never ran     |
 | `reset()`/destroy while in flight                 | whatever `mutationFn` rejects with | **Maybe**: the request had left |
+
+> [!WARNING]
+> Aborting never undoes a write the server already received: `reset()` only stops the client
+> from waiting for it.
 
  
 ## Working with resource
@@ -218,21 +239,6 @@ reached the server, e.g. before rolling back an optimistic update:
 | `concurrency?`| `'queue' \| 'drop'`                                                            |
 | `injector?`   | `Injector`                                                                      |
  
-### Return value
- 
-| Member                              | Type                                                  | Notes                                                       |
-| ----------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------- |
-| `status`                            | `Signal<'idle' \| 'pending' \| 'success' \| 'error'>` |                                                             |
-| `value`                             | `Signal<TOutput \| undefined>`                        | Kept across `'pending'`/`'error'`                           |
-| `error`                             | `Signal<TError \| undefined>`                         |                                                             |
-| `input`                             | `Signal<TInput \| undefined>`                         | Input of the most recent `mutate()` call                    |
-| `isPending`                         | `Signal<boolean>`                                     |                                                             |
-| `isIdle` / `isSuccess` / `isError`  | `Signal<boolean>`                                     | One per `status()` value                                    |
-| `snapshot`                          | `Signal<MutationSnapshot<TOutput, TError>>`           | Discriminated union of `status`/`value`/`error`              |
-| `hasValue`                          | `() => this is …`                                     | Type guard narrowing `value` to `TOutput`                    |
-| `mutate`                            | `(input: TInput) => Promise<TOutput>`                 | Rejects like `mutationFn` does, for that specific call; safe to ignore (no unhandled rejection). Rejects with an `AbortError` once the injection context is destroyed, without calling `mutationFn` |
-| `reset`                             | `() => void`                                          |                                                             |
- 
 ## rxMutation & httpMutation
  
 `mutationFn` expects a `Promise`. For Observables, two variants mirror Angular's own
@@ -260,8 +266,6 @@ request. `httpMutation()` sends the request itself through `HttpClient`, so it a
 - [Status code and headers](./docs/RECIPES.md#status-code-and-headers)
 - [Requests that must outlive the component](./docs/RECIPES.md#requests-that-must-outlive-the-component)
  
-<br>
-
 ## Design choices
  
 Directly inspired by the internal structure of `resource.ts` in Angular core. See

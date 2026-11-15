@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Skip versions published less than a week ago: compromised releases are usually pulled by then.
+    cooldown:
+      default-days: 7
     groups:
       angular:
         patterns:
@@ -17,6 +20,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:

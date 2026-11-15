@@ -7,6 +7,7 @@ import {
   ErrorHandler,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import fc from 'fast-check';
 import { expectTypeOf } from 'vitest';
 import { mutation } from './mutation';
 
@@ -1132,5 +1133,114 @@ describe('injector option', () => {
     await expect(m.mutate()).rejects.toMatchObject({ name: 'AbortError', message: 'Destroyed' });
     expect(mutationFn).not.toHaveBeenCalled();
     expect(m.status()).toBe('idle');
+  });
+});
+
+describe('properties', () => {
+  interface Call {
+    id: number;
+    succeeds: boolean;
+  }
+
+  const callsArb = fc
+    .array(fc.boolean(), { minLength: 1, maxLength: 8 })
+    .map((outcomes): Call[] => outcomes.map((succeeds, id) => ({ id, succeeds })));
+
+  /** A mutationFn whose calls settle in the order fast-check's scheduler picks. */
+  function scheduledMutationFn(scheduler: fc.Scheduler) {
+    const started: number[] = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+
+    async function mutationFn(call: Call): Promise<number> {
+      started.push(call.id);
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      try {
+        await scheduler.schedule(Promise.resolve());
+      } finally {
+        inFlight--;
+      }
+      if (!call.succeeds) {
+        throw new Error(`failed ${call.id}`);
+      }
+      return call.id;
+    }
+
+    return { mutationFn, started, maxInFlight: () => maxInFlight };
+  }
+
+  it('commits only the latest call, whatever order the calls settle in', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), callsArb, async (scheduler, calls) => {
+        const { mutationFn } = scheduledMutationFn(scheduler);
+        const onSettled = vi.fn();
+        const m = createMutation<Call, number>({ mutationFn, onSettled });
+
+        const promises = calls.map((call) => m.mutate(call));
+        await scheduler.waitFor(Promise.allSettled(promises));
+
+        const latest = calls[calls.length - 1];
+        expect(m.input()).toBe(latest);
+        expect(m.status()).toBe(latest.succeeds ? 'success' : 'error');
+        expect(m.value()).toBe(latest.succeeds ? latest.id : undefined);
+        expect(onSettled).toHaveBeenCalledTimes(calls.length);
+        for (const [, , input, context] of onSettled.mock.calls) {
+          expect(context.isLatest).toBe(input === latest);
+        }
+      }),
+    );
+  });
+
+  it("'queue' runs calls one at a time, in call order", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), callsArb, async (scheduler, calls) => {
+        const { mutationFn, started, maxInFlight } = scheduledMutationFn(scheduler);
+        const m = createMutation<Call, number>({ mutationFn, concurrency: 'queue' });
+
+        const promises = calls.map((call) => m.mutate(call));
+        await scheduler.waitFor(Promise.allSettled(promises));
+
+        expect(started).toEqual(calls.map((call) => call.id));
+        expect(maxInFlight()).toBe(1);
+        expect(m.status()).toBe(calls[calls.length - 1].succeeds ? 'success' : 'error');
+      }),
+    );
+  });
+
+  it("'drop' rejects every call made while one is pending and never overlaps calls", async () => {
+    const stepsArb = fc.array(fc.record({ succeeds: fc.boolean(), settleFirst: fc.boolean() }), {
+      minLength: 1,
+      maxLength: 8,
+    });
+
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), stepsArb, async (scheduler, steps) => {
+        const { mutationFn, started, maxInFlight } = scheduledMutationFn(scheduler);
+        const m = createMutation<Call, number>({ mutationFn, concurrency: 'drop' });
+        const promises: Promise<number>[] = [];
+        const droppedIds: number[] = [];
+
+        for (const [id, step] of steps.entries()) {
+          if (step.settleFirst) {
+            await scheduler.waitFor(Promise.allSettled(promises));
+          }
+          if (m.isPending()) {
+            droppedIds.push(id);
+          }
+          promises.push(m.mutate({ id, succeeds: step.succeeds }));
+        }
+        const results = await scheduler.waitFor(Promise.allSettled(promises));
+
+        expect(maxInFlight()).toBe(1);
+        expect(started).toEqual(steps.map((_, id) => id).filter((id) => !droppedIds.includes(id)));
+        for (const id of droppedIds) {
+          expect(results[id]).toMatchObject({
+            status: 'rejected',
+            reason: { name: 'AbortError', message: 'Dropped' },
+          });
+        }
+      }),
+    );
   });
 });

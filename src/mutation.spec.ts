@@ -361,10 +361,10 @@ describe('concurrent mutate() calls', () => {
 
     const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
 
-    m.mutate('first');
+    void m.mutate('first');
     expect(m.input()).toBe('first');
 
-    m.mutate('second');
+    void m.mutate('second');
     expect(m.input()).toBe('second');
   });
 
@@ -406,10 +406,10 @@ describe('concurrent mutate() calls', () => {
       },
     });
 
-    m.mutate();
+    void m.mutate();
     expect(abortSignals[0].aborted).toBe(false);
 
-    m.mutate();
+    void m.mutate();
     expect(abortSignals[0].aborted).toBe(false);
     expect(abortSignals[1].aborted).toBe(false);
   });
@@ -574,7 +574,7 @@ describe("concurrency: 'queue'", () => {
       injector: childInjector,
     });
 
-    m.mutate('first');
+    void m.mutate('first');
     const secondCall = m.mutate('second').catch(() => undefined);
 
     // Let the queue actually start the first call's mutationFn before destroying.
@@ -597,7 +597,7 @@ describe('returned promise', () => {
     try {
       const m = createMutation<void, string>({ mutationFn: () => Promise.reject(new Error('boom')) });
 
-      m.mutate();
+      void m.mutate();
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(m.status()).toBe('error');
@@ -656,8 +656,8 @@ describe("concurrency: 'drop'", () => {
         mutationFn: () => first.promise,
       });
 
-      m.mutate();
-      m.mutate();
+      void m.mutate();
+      void m.mutate();
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(unhandled).not.toHaveBeenCalled();
@@ -1011,10 +1011,10 @@ describe('pending tasks', () => {
     const deferred = createDeferred<string>();
     const m = createMutation<void, string>({ mutationFn: () => deferred.promise });
 
-    m.mutate();
+    void m.mutate();
 
     let stable = false;
-    applicationRef.whenStable().then(() => {
+    void applicationRef.whenStable().then(() => {
       stable = true;
     });
 

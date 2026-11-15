@@ -30,6 +30,9 @@ export default [
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
       'import-x/order': [
         'error',
         {

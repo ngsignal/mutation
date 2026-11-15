@@ -62,7 +62,7 @@ jobs:
       - run: npm ci
 
       - name: Install @angular/core@${{ matrix.angular-tag }}
-        run: npm install --no-save --force @angular/core@${{ matrix.angular-tag }} @angular/common@${{ matrix.angular-tag }} @angular/compiler@${{ matrix.angular-tag }} @angular/platform-browser@${{ matrix.angular-tag }}
+        run: npm install --no-save --force @angular/core@${{ matrix.angular-tag }} @angular/common@${{ matrix.angular-tag }} @angular/compiler@${{ matrix.angular-tag }} @angular/platform-browser@${{ matrix.angular-tag }} # zizmor: ignore[adhoc-packages] the compat matrix tests unlocked versions on purpose
 
       - name: Typecheck
         run: npm run typecheck
@@ -91,7 +91,7 @@ jobs:
       - run: npm ci
 
       - name: Install @angular/*@${{ matrix.angular-tag }} + rxjs@6
-        run: npm install --no-save --force @angular/core@${{ matrix.angular-tag }} @angular/common@${{ matrix.angular-tag }} @angular/compiler@${{ matrix.angular-tag }} @angular/platform-browser@${{ matrix.angular-tag }} rxjs@6
+        run: npm install --no-save --force @angular/core@${{ matrix.angular-tag }} @angular/common@${{ matrix.angular-tag }} @angular/compiler@${{ matrix.angular-tag }} @angular/platform-browser@${{ matrix.angular-tag }} rxjs@6 # zizmor: ignore[adhoc-packages] the compat matrix tests unlocked versions on purpose
 
       - name: Typecheck
         run: npm run typecheck

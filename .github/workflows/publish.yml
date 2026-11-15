@@ -26,6 +26,8 @@ jobs:
           # Node 24 bundles npm >= 11.5.1, required for trusted publishing.
           node-version: 24
           registry-url: https://registry.npmjs.org
+          # Never restore a cache here: a poisoned cache could alter the published package.
+          package-manager-cache: false
 
       - name: Ensure npm supports trusted publishing (requires >=11.5.1)
         run: |

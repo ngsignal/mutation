@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.3
+
+- No change to the published code. Publishing to npm now requires a maintainer's approval
+  (protected `npm` environment), on top of trusted publishing with provenance.
+- Internal: property-based tests of the concurrency modes (fast-check), 100% test coverage
+  enforced in CI, lint rules for floating promises, hardened GitHub Actions workflows (zizmor).
+- Docs: [roadmap to 1.0](./docs/ROADMAP.md), OpenSSF Best Practices badge.
+
 ## 0.6.2
 
 - No behavior change. Internal: concurrency modes and in-flight call tracking are extracted

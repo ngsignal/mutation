@@ -13,16 +13,17 @@ npm test
 
 - `npm run lint`
 - `npm run typecheck`
-- `npm test`
+- `npm run test:coverage`
 - `npm run build`
 
 Please make sure all four pass before opening a PR (CI runs the same checks).
+Coverage must stay at 100%: CI fails on any uncovered line or branch.
 
 ## Guidelines
 
 - Keep `mutation()` low-level and dependency-free. RxJS and `HttpClient` belong only in the
   secondary entry points (`@ngsignal/mutation/rxjs-interop`, `@ngsignal/mutation/http`).
-- New behavior should come with a test in the matching `src/*.spec.ts`.
+- New behavior and bug fixes must come with a test in the matching `src/*.spec.ts`.
 - Match the existing code style.
 - **No Angular decorators** (`@Injectable`, `@Directive`, `@Component`, `@Pipe`, `@NgModule`,
   parameter decorators, etc.) anywhere in `src/`. This package is built with plain `tsc`

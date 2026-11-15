@@ -22,7 +22,7 @@ point, and it is meant to inform the Angular RFC.
 ## Commands
 
 ```bash
-npm run lint && npm run typecheck && npm test && npm run build   # all four before "done" (= CI = prepack)
+npm run lint && npm run typecheck && npm run test:coverage && npm run build   # all four before "done" (= CI; 100% coverage required)
 npm run check:exports   # publint + are-the-types-wrong, run when touching exports/imports
 npm run test:rxjs6      # suite on RxJS 6 (CI job rxjs-compat), see agent_docs/testing.md
 ```

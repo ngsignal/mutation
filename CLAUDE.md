@@ -43,6 +43,7 @@ src/*.spec.ts           # one spec file per source file
 src/*.integration.spec.ts  # real requests to src/testing/http-test-server.ts (see agent_docs/testing.md)
 docs/ARCHITECTURE.md    # design rationale, comparison with TanStack Query
 docs/RECIPES.md         # userland patterns (resource refresh, optimistic updates, …)
+docs/ROADMAP.md         # what is planned before 1.0, and what is out of scope
 ```
 
 `src/` is the source of truth; README and docs can drift during `0.x`. Flag mismatches

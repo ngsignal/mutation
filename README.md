@@ -276,7 +276,8 @@ comparison with `@tanstack/angular-query-experimental`.
 ## Status & Stability
  
 Experimental (`0.x`): minor releases may include breaking changes, called out in the
-[CHANGELOG.md](./CHANGELOG.md). Pin an exact version to avoid surprises.
+[CHANGELOG.md](./CHANGELOG.md). Pin an exact version to avoid surprises. What is planned
+before `1.0` is in the [roadmap](./docs/ROADMAP.md).
  
 ## Contributing
  

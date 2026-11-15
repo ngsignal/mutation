@@ -9,6 +9,7 @@
 [![npm version](https://img.shields.io/npm/v/%40ngsignal%2Fmutation.svg)](https://www.npmjs.com/package/@ngsignal/mutation)
 [![license](https://img.shields.io/npm/l/%40ngsignal%2Fmutation.svg)](./LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ngsignal/mutation/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ngsignal/mutation)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16728/badge)](https://www.bestpractices.dev/projects/16728)
 
 An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 

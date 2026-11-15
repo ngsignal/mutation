@@ -19,11 +19,17 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          # Node 24 bundles npm >= 11.5.1, required for trusted publishing.
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Ensure npm supports trusted publishing (requires >=11.5.1)
-        run: npm install -g npm@11.20.0
+        run: |
+          npm_version="$(npm --version)"
+          if [ "$(printf '%s\n' 11.5.1 "$npm_version" | sort -V | head -n1)" != 11.5.1 ]; then
+            echo "npm $npm_version is too old for trusted publishing"
+            exit 1
+          fi
 
       # This job can mint an npm publish token (id-token: write): never run dependencies' install scripts here.
       - run: npm ci --ignore-scripts

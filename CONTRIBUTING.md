@@ -20,8 +20,9 @@ Please make sure all four pass before opening a PR (CI runs the same checks).
 
 ## Guidelines
 
-- Keep the primitive low-level and dependency-free, no RxJS, no HttpClient coupling.
-- New behavior should come with a test in `src/mutation.spec.ts`.
+- Keep `mutation()` low-level and dependency-free. RxJS and `HttpClient` belong only in the
+  secondary entry points (`@ngsignal/mutation/rxjs-interop`, `@ngsignal/mutation/http`).
+- New behavior should come with a test in the matching `src/*.spec.ts`.
 - Match the existing code style.
 - **No Angular decorators** (`@Injectable`, `@Directive`, `@Component`, `@Pipe`, `@NgModule`,
   parameter decorators, etc.) anywhere in `src/`. This package is built with plain `tsc`

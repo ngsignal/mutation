@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fix: with `concurrency: 'queue'`, a call still waiting in the queue when `reset()` runs or the
+  injection context is destroyed now rejects with `'Aborted'` at once, instead of only once the
+  call ahead of it settled (never, if its `mutationFn` ignored the `AbortSignal`).
+- Docs: a call made after `reset()` in `'queue'` mode still waits for an aborted call already in
+  flight, so writes stay in order.
+
 ## 0.6.3
 
 - No change to the published code. Publishing to npm now requires a maintainer's approval

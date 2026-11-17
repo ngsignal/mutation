@@ -588,6 +588,67 @@ describe("concurrency: 'queue'", () => {
 
     expect(started).toEqual(['first']);
   });
+
+  it('rejects a call still queued as soon as reset() runs, even if the call ahead ignores its AbortSignal', async () => {
+    const m = createMutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: () => new Promise<string>(() => undefined),
+    });
+
+    void m.mutate('first');
+    const secondCall = m.mutate('second');
+
+    // Let the queue actually start the first call's mutationFn before resetting.
+    await Promise.resolve();
+    m.reset();
+
+    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+  });
+
+  it('rejects a call still queued as soon as the injector is destroyed, even if the call ahead ignores its AbortSignal', async () => {
+    const parentInjector = TestBed.inject(EnvironmentInjector);
+    const childInjector = createEnvironmentInjector([], parentInjector);
+    const m = mutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: () => new Promise<string>(() => undefined),
+      injector: childInjector,
+    });
+
+    void m.mutate('first');
+    const secondCall = m.mutate('second');
+
+    // Let the queue actually start the first call's mutationFn before destroying.
+    await Promise.resolve();
+    childInjector.destroy();
+
+    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+  });
+
+  it('keeps a call made after reset() behind an in-flight call that ignores its AbortSignal', async () => {
+    const first = createDeferred<string>();
+    const started: string[] = [];
+
+    const m = createMutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: (input) => {
+        started.push(input);
+        return input === 'first' ? first.promise : Promise.resolve('after-reset-done');
+      },
+    });
+
+    void m.mutate('first');
+    // Let the queue actually start the first call's mutationFn before resetting.
+    await Promise.resolve();
+    m.reset();
+
+    const afterResetCall = m.mutate('after-reset');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(started).toEqual(['first']);
+
+    first.resolve('first-done');
+    await expect(afterResetCall).resolves.toBe('after-reset-done');
+    expect(started).toEqual(['first', 'after-reset']);
+  });
 });
 
 describe('returned promise', () => {

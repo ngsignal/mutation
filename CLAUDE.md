@@ -41,7 +41,7 @@ src/internal/           # helpers shared by the adapters, never exported from an
 src/testing/            # spec helpers, excluded from the build
 src/*.spec.ts           # one spec file per source file
 src/*.integration.spec.ts  # real requests to src/testing/http-test-server.ts (see agent_docs/testing.md)
-docs/ARCHITECTURE.md    # design rationale, comparison with TanStack Query
+docs/ARCHITECTURE.md    # design rationale, comparison with TanStack Query and NgRx Toolkit
 docs/RECIPES.md         # userland patterns (resource refresh, optimistic updates, …)
 docs/ROADMAP.md         # what is planned before 1.0, and what is out of scope
 ```

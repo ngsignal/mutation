@@ -47,3 +47,19 @@ already ships `injectMutation`, and is a mature choice if you want it. Different
 Reach for TanStack if you want retries, offline support, or cross-component cache invalidation.
 Reach for this if you want the smallest primitive that behaves like `resource()`'s write-side
 counterpart.
+
+## Compared with NgRx Toolkit
+
+[NgRx Toolkit](https://www.npmjs.com/package/@ngrx-toolkit/core) also has an `rxMutation()` and
+an `httpMutation()`, usable outside a SignalStore. Same names, different behavior, so check which
+one your IDE imports. As of version 22.0.1:
+
+- **Concurrency**: calls are queued by default. Parallel and drop modes exist on both sides, but
+  NgRx Toolkit can also cancel the previous call when a new one starts. This library doesn't on
+  purpose: a write may already have reached the server.
+- **Stale responses**: with parallel calls, the last response to arrive wins there; here, the
+  last call made does.
+- **Errors**: the promise never rejects, it resolves with a status to check. Here it rejects.
+- **Dependencies**: NgRx and RxJS are required. This library only needs Angular.
+
+Reach for NgRx Toolkit if you already use the SignalStore.

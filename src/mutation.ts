@@ -144,16 +144,11 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
     const call = calls.start();
 
-    function callMutationFn(): Promise<TOutput> {
-      // Only a queued call can be aborted before it starts.
-      if (call.abortSignal.aborted) {
-        return Promise.reject(new DOMException('Aborted', 'AbortError'));
-      }
-      return untracked(() => options.mutationFn(input, call.abortSignal));
-    }
-
     try {
-      const result = await gate.run(callMutationFn);
+      const result = await gate.run(
+        () => untracked(() => options.mutationFn(input, call.abortSignal)),
+        call.abortSignal,
+      );
       commitSuccess(result, input, settledCallContext(currentGeneration, call.abortSignal));
       return result;
 
@@ -200,7 +195,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
 interface ConcurrencyGate {
   admit(): boolean;
-  run<T>(task: () => Promise<T>): Promise<T>;
+  run<T>(task: () => Promise<T>, abortSignal: AbortSignal): Promise<T>;
   release(): void;
 }
 
@@ -216,16 +211,30 @@ function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['c
 }
 
 function createQueueGate(): ConcurrencyGate {
-  let tail: Promise<unknown> = Promise.resolve();
+  let previousCall: Promise<unknown> = Promise.resolve();
   return {
     admit: () => true,
-    run(task) {
-      const result = tail.then(task, task);
-      tail = result.catch(() => undefined);
-      return result;
+    run<T>(task: () => Promise<T>, abortSignal: AbortSignal) {
+      return new Promise<T>((resolve, reject) => {
+        // Aborted while waiting: reject now rather than when its turn comes.
+        const leaveQueue = () => reject(abortedError());
+        abortSignal.addEventListener('abort', leaveQueue, { once: true });
+
+        const call = previousCall.then(() => {
+          abortSignal.removeEventListener('abort', leaveQueue);
+          return abortSignal.aborted ? Promise.reject(abortedError()) : task();
+        });
+        // The next call waits for this one even if it left the queue: writes stay in order.
+        previousCall = call.catch(() => undefined);
+        call.then(resolve, reject);
+      });
     },
     release: () => undefined,
   };
+}
+
+function abortedError(): DOMException {
+  return new DOMException('Aborted', 'AbortError');
 }
 
 function createDropGate(): ConcurrencyGate {

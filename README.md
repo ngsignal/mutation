@@ -171,7 +171,9 @@ success: check `isSuccess()` instead.
   it (`(click)="save.mutate(x)"`) is safe: a failure never reports an unhandled rejection, and
   still shows in `error()`.
 - **`reset()`** brings `status`/`value`/`error`/`input` back to their initial state and aborts
-  any in-flight call(s).
+  any in-flight call(s). With `concurrency: 'queue'`, a call made after `reset()` still waits
+  for an aborted call already in flight to settle, so writes stay in order: honor `abortSignal`
+  in `mutationFn` (`httpMutation()` and `rxMutation()` do) so the queue frees up at once.
 - **`onSettled`** runs after `onSuccess` or `onError`, whichever fired; use it for cleanup that
   must happen either way (closing a modal, releasing a UI lock).
 - **`input`** holds the input of the most recent `mutate()` call, from the moment it's called
@@ -205,7 +207,7 @@ reached the server, e.g. before rolling back an optimistic update:
 | ------------------------------------------------- | --------------------------------- | ------------------------------ |
 | `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No, `mutationFn` never ran     |
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No, `mutationFn` never ran     |
-| `reset()`/destroy while queued (`'queue'`)        | `'Aborted'`                       | No, `mutationFn` never ran     |
+| `reset()`/destroy while queued (`'queue'`)        | `'Aborted'`, at once              | No, `mutationFn` never ran     |
 | `reset()`/destroy while in flight                 | whatever `mutationFn` rejects with | **Maybe**: the request had left |
 
 > [!WARNING]

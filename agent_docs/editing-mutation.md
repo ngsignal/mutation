@@ -43,7 +43,8 @@ starts, `run()` around `mutationFn`, `release()` when the latest call commits an
 - *unset*: all calls start immediately; the latest one wins (generation counter).
 - `'queue'` (`createQueueGate`): `mutationFn` calls are serialized through a promise tail
   that always settles, so one failure never blocks the queue. A call aborted while waiting
-  rejects with an `AbortError` without calling `mutationFn`. Only the latest submitted
+  rejects at once with an `AbortError`, without waiting for its turn, and never calls
+  `mutationFn`. Only the latest submitted
   call commits. `reset()` does not clear the tail: a call made after it still waits for an
   aborted call whose `mutationFn` ignores its `AbortSignal`, so writes stay ordered.
 - `'drop'` (`createDropGate`): while locked, `admit()` returns false and `mutate()` rejects

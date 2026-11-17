@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or design discussion
+    url: https://github.com/ngsignal/mutation/discussions
+    about: Usage questions, or a design decision such as cancellation or error handling.
+  - name: Security vulnerability
+    url: https://github.com/ngsignal/mutation/security/advisories/new
+    about: Report it privately, not in a public issue.

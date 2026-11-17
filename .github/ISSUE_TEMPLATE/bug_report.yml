@@ -1,0 +1,25 @@
+name: Bug report
+description: Something doesn't behave as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A StackBlitz link or a short snippet.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: "@ngsignal/mutation 0.6.4, @angular/core 22.0.0, rxjs 7.8.0"
+    validations:
+      required: true

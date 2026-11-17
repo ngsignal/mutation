@@ -23,3 +23,6 @@ It is a direction, not a schedule: priorities can change with feedback.
 invalidation, retries and de-duplication are left to userland: see the
 [recipes](./RECIPES.md), or reach for a full data-sync library such as TanStack Query
 (compared in [ARCHITECTURE.md](./ARCHITECTURE.md)).
+
+This list isn't final: if you think one of these belongs in the library,
+[open a discussion](https://github.com/ngsignal/mutation/discussions).

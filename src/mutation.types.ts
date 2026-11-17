@@ -12,7 +12,6 @@ export interface MutationCallbackContext {
  * `reset()` or destroy. Only the latest call writes the signals.
  */
 export interface MutationOptions<TInput, TOutput, TError = unknown> {
-  /** `abortSignal` aborts on `reset()` or destroy only, never when a newer call supersedes this one. */
   mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>;
   onSuccess?: (output: TOutput, input: TInput, context: MutationCallbackContext) => void;
   onError?: (error: TError, input: TInput, context: MutationCallbackContext) => void;
@@ -22,7 +21,6 @@ export interface MutationOptions<TInput, TOutput, TError = unknown> {
     input: TInput,
     context: MutationCallbackContext,
   ) => void;
-  /** Unset: calls run in parallel. `'queue'`: one at a time, in order. `'drop'`: rejects a call made while one is pending. */
   concurrency?: 'queue' | 'drop';
   injector?: Injector;
 }
@@ -35,7 +33,6 @@ export type MutationSnapshot<TOutput, TError = unknown> =
 
 export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TError = unknown> {
   readonly status: Signal<MutationStatus>;
-  /** Kept while a newer call is pending or after it fails: only a new success or `reset()` replaces it. */
   readonly value: Signal<TValue>;
   readonly error: Signal<TError | undefined>;
   readonly input: Signal<TInput | undefined>;
@@ -44,10 +41,7 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TErr
   readonly isSuccess: Signal<boolean>;
   readonly isError: Signal<boolean>;
   readonly snapshot: Signal<MutationSnapshot<TOutput, TError>>;
-  /** Always false for a `void` mutation: check `isSuccess()` instead. */
   hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError>;
-  /** Safe to ignore: a failure never reports an unhandled rejection. */
   mutate(input: TInput): Promise<TOutput>;
-  /** Aborts in-flight calls, but never undoes a write the server already received. */
   reset(): void;
 }

@@ -271,7 +271,7 @@ request. `httpMutation()` sends the request itself through `HttpClient`, so it a
  
 Directly inspired by the internal structure of `resource.ts` in Angular core. See
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the implementation rationale and a
-comparison with `@tanstack/angular-query-experimental`.
+comparison with `@tanstack/angular-query-experimental` and NgRx Toolkit.
  
 ## Status & Stability
  

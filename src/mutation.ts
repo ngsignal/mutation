@@ -18,17 +18,8 @@ import type {
 } from './mutation.types.js';
 
 /**
- * Low-level primitive for mutations (POST/PUT/DELETE), designed to
- * complement resource()/httpResource() which deliberately only cover
- * reads.
- *
- * Implementation choices directly inspired by packages/core/src/resource/resource.ts:
- *  - raw WritableSignals for internal state
- *  - a generation counter so only the current call's outcome ever reaches the signals
- *    (callbacks still run for every call, with `isLatest` telling them apart)
- *  - PendingTasks for SSR stability (ApplicationRef.isStable)
- *  - DestroyRef to ignore the result if the context is destroyed in flight
- *
+ * Low-level primitive for mutations (POST/PUT/PATCH/DELETE), the write-side counterpart of
+ * `resource()`, which only covers reads.
  */
 export function mutation<TInput, TOutput, TError = unknown>(
   options: MutationOptions<TInput, TOutput, TError>,

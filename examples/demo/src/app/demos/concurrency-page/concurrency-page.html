@@ -1,0 +1,22 @@
+<p class="pitch">
+  What a second <code>mutate()</code> does while a call is in flight. By default it runs in
+  parallel. <code>concurrency: 'queue'</code> waits for the previous call, so writes reach the
+  server in order. <code>concurrency: 'drop'</code> rejects it at once.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrency-page/queue-demo.ts">Source ('queue')</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrency-page/drop-demo.ts">Source ('drop')</a>
+</p>
+
+<section>
+  <h2>'queue': move an item to the top</h2>
+  <app-restartable>
+    <ng-template><app-queue-demo /></ng-template>
+  </app-restartable>
+</section>
+
+<section>
+  <h2>'drop': pay</h2>
+  <app-restartable>
+    <ng-template><app-drop-demo /></ng-template>
+  </app-restartable>
+</section>

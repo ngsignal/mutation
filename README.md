@@ -13,7 +13,7 @@
 
 An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 
-[Live demo on StackBlitz](https://stackblitz.com/~/github.com/ErwanRaulo/ng-mutation-demo)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/ngsignal/mutation/tree/main/examples/demo)
 
 [Why](#why) · [Install](#install) · [Quick start](#quick-start) · [Features](#features) ·
 [Working with resource](#working-with-resource) · [API](#api) ·

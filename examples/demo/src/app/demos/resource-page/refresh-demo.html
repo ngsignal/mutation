@@ -1,0 +1,26 @@
+@if (users.isLoading()) {
+  <p class="hint" role="status">Loading users…</p>
+}
+<ul>
+  @for (user of users.value(); track user.id) {
+    <li>{{ user.name }}</li>
+  }
+</ul>
+<form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+  <input
+    #nameInput
+    type="text"
+    aria-label="New user name"
+    placeholder="New user name (empty fails validation)"
+  />
+  <button type="submit" [disabled]="createUser.isPending()">
+    {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+  </button>
+</form>
+@if (createUser.error(); as error) {
+  <p class="error-text" role="alert">{{ error.message }}</p>
+}
+<p class="hint">
+  <code>onSuccess</code> calls <code>users.reload()</code>: the server stays the source of
+  truth, and the new user appears once the list is fetched again.
+</p>

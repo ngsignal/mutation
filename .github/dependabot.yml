@@ -16,6 +16,14 @@ updates:
         patterns:
           - "*"
 
+  # The demo only follows the library's own releases, which need no cooldown.
+  - package-ecosystem: npm
+    directory: /examples/demo
+    schedule:
+      interval: daily
+    allow:
+      - dependency-name: "@ngsignal/mutation"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -1,0 +1,13 @@
+<div class="actions">
+  <button type="button" (click)="createTwo()" [disabled]="createUser.isPending()">
+    Create "First" and "Second"
+  </button>
+  <button type="button" (click)="createUser.reset()">Reset</button>
+</div>
+<p class="hint">
+  With <code>concurrency: 'queue'</code>, "Second" waits for "First". Reset before "First"
+  settles: both reject, and "Second" never appears in the server log. Its
+  <code>mutationFn</code> never ran, so that write was never sent.
+</p>
+<app-activity-log heading="mutate()" [entries]="log.entries()" />
+<app-activity-log heading="Server" [entries]="server.requests()" />

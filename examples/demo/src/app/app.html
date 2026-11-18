@@ -1,0 +1,31 @@
+<div class="layout">
+  <aside class="sidebar">
+    <p class="brand">@ngsignal/mutation<span class="version">v{{ libraryVersion }}</span></p>
+
+    <nav>
+      <div class="nav-group">
+        <h2>mutation()</h2>
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          Getting started
+        </a>
+        <a routerLink="/manual" routerLinkActive="active">Without mutation()</a>
+        <a routerLink="/concurrent" routerLinkActive="active">Concurrent calls</a>
+        <a routerLink="/state" routerLinkActive="active">Reading state</a>
+        <a routerLink="/concurrency" routerLinkActive="active">'queue' and 'drop'</a>
+        <a routerLink="/cancellation" routerLinkActive="active">Cancellation and reset()</a>
+        <a routerLink="/resource" routerLinkActive="active">Working with resource()</a>
+      </div>
+      <div class="nav-group">
+        <h2>Adapters</h2>
+        <a routerLink="/rx" routerLinkActive="active">rxMutation()</a>
+        <a routerLink="/http" routerLinkActive="active">httpMutation()</a>
+        <a routerLink="/http-responses" routerLinkActive="active">Response bodies</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <h1 class="page-title">{{ pageTitle() }}</h1>
+    <router-outlet />
+  </main>
+</div>

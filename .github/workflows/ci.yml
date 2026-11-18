@@ -43,6 +43,41 @@ jobs:
       - name: Check package exports & types
         run: npm run check:exports
 
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            examples/demo/package-lock.json
+
+      - run: npm ci
+
+      - name: Build the library
+        run: npm run build
+
+      - name: Pack the library into the demo
+        run: npm pack --ignore-scripts --pack-destination examples/demo
+
+      - name: Install the demo
+        working-directory: examples/demo
+        run: npm ci --ignore-scripts
+
+      - name: Swap in this commit's library
+        working-directory: examples/demo
+        run: npm install --no-save --ignore-scripts ./ngsignal-mutation-*.tgz # zizmor: ignore[adhoc-packages] the demo builds against the library packed above
+
+      - name: Build the demo
+        working-directory: examples/demo
+        run: npm run build
+
   angular-compat:
     runs-on: ubuntu-latest
     strategy:

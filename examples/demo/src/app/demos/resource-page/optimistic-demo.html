@@ -1,0 +1,20 @@
+@if (users.isLoading()) {
+  <p class="hint" role="status">Loading users…</p>
+}
+<ul>
+  @for (user of users.value(); track user.id) {
+    <li>
+      {{ user.name }}
+      <button type="button" class="danger" (click)="remove(user)">Delete</button>
+    </li>
+  }
+</ul>
+@if (deleteUser.error(); as error) {
+  <p class="error-text" role="alert">{{ error.message }}</p>
+}
+<p class="hint">
+  The row disappears before the server answers. If the delete fails, as it always does for
+  "Grace Hopper", <code>.catch()</code> puts back that user only: restoring a copy of the whole
+  list would also bring back users whose delete is still running. Delete Grace, then quickly
+  Ada: Grace comes back, Ada stays deleted.
+</p>

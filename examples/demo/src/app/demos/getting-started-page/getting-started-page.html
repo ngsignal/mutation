@@ -1,0 +1,92 @@
+<p class="pitch">
+  Each write is one <code>mutation()</code>: call <code>mutate(input)</code>, read
+  <code>status</code>, <code>value</code> and <code>error</code> as signals. React to the result
+  either in callbacks (<code>createUser</code>) or by awaiting <code>mutate()</code>
+  (<code>deleteUser</code>). Compare with the <a routerLink="/manual">hand-rolled version</a>.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/getting-started-page/getting-started-page.ts">Source</a>
+</p>
+
+<section>
+  <h2>Users</h2>
+  <ul>
+    @for (user of users(); track user.id) {
+      @let deleting = deleteUser.isPending() && deleteUser.input()?.id === user.id;
+      <li>
+        {{ user.name }}
+        <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting">
+          {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+      </li>
+    }
+  </ul>
+  <p class="hint">
+    Deleting "Grace Hopper" always fails. The row label reads <code>deleteUser.input()</code>,
+    which only tracks the latest call: see <a routerLink="/concurrent">concurrent calls</a>.
+  </p>
+</section>
+
+<section>
+  <h2>Quick add</h2>
+  @if (panelOpen()) {
+    <form class="card" (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+      <input
+        #nameInput
+        type="text"
+        aria-label="New user name"
+        placeholder="New user name (empty fails validation)"
+      />
+      <button type="submit" [disabled]="createUser.isPending()">
+        {{ createUser.isPending() ? 'Adding…' : 'Add' }}
+      </button>
+    </form>
+  } @else {
+    <div class="actions">
+      <button type="button" (click)="panelOpen.set(true)">Add user</button>
+      @if (createUser.error(); as error) {
+        <span class="error-text" role="alert">
+          Could not add "{{ createUser.input() }}": {{ error.message }}
+        </span>
+      }
+    </div>
+  }
+  <p class="hint">
+    <code>onSuccess</code> adds the user, <code>onSettled</code> closes the panel either way, like
+    a modal. The error stays readable after it closes. The promise <code>mutate()</code> returns
+    can be ignored: a failure shows up in <code>error()</code>, never as an unhandled rejection.
+  </p>
+</section>
+
+<section class="state">
+  <h2>createUser</h2>
+  <dl>
+    <dt>status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+        createUser.status()
+      }}</span>
+    </dd>
+    <dt>value</dt>
+    <dd>{{ createUser.value() | json }}</dd>
+    <dt>error</dt>
+    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+  </dl>
+  <button type="button" (click)="createUser.reset()">Reset</button>
+  <p class="hint">
+    Create a user, then submit an empty name: <code>value</code> keeps the last success.
+  </p>
+</section>
+
+<section class="state">
+  <h2>deleteUser</h2>
+  <dl>
+    <dt>status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="deleteUser.status()">{{
+        deleteUser.status()
+      }}</span>
+    </dd>
+    <dt>error</dt>
+    <dd class="error-text" role="alert">{{ deleteUser.error()?.message }}</dd>
+  </dl>
+  <button type="button" (click)="deleteUser.reset()">Reset</button>
+</section>

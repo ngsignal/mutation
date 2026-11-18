@@ -1,0 +1,79 @@
+<p class="pitch">
+  <code>httpMutation()</code>, from <code>&#64;ngsignal/mutation/http</code>, is the counterpart of
+  <code>httpResource()</code>: <code>request</code> returns a request description
+  (<code>{{ '{' }} method, url, body {{ '}' }}</code>) and the library sends it through
+  <code>HttpClient</code>. That's why it also exposes <code>statusCode</code>,
+  <code>headers</code>, <code>uploadProgress</code> and <code>downloadProgress</code>. A fake
+  <code>HttpInterceptorFn</code> stands in for the server, with artificial delays.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/http-mutation-page/http-mutation-page.ts">Source</a>
+</p>
+
+<section>
+  <h2>Create user</h2>
+  <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+    <input
+      #nameInput
+      type="text"
+      aria-label="New user name"
+      placeholder="New user name (empty answers 422)"
+    />
+    <button type="submit" [disabled]="createUser.isPending()">
+      {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+    </button>
+    <button type="button" (click)="createUser.reset()">Reset</button>
+  </form>
+</section>
+
+<section class="state">
+  <h2>createUser</h2>
+  <dl>
+    <dt>status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+        createUser.status()
+      }}</span>
+    </dd>
+    <dt>statusCode</dt>
+    <dd>{{ createUser.statusCode() ?? '—' }}</dd>
+    <dt>headers.get('Location')</dt>
+    <dd>{{ createUser.headers()?.get('Location') ?? '—' }}</dd>
+    <dt>error</dt>
+    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+  </dl>
+  <p class="hint">
+    <code>statusCode</code> and <code>headers</code> come from the response, or from the
+    <code>HttpErrorResponse</code>: submit an empty name to see the 422.
+  </p>
+</section>
+
+<section>
+  <h2>Upload with progress</h2>
+  <div class="actions">
+    <input #fileInput type="file" aria-label="Avatar file" />
+    <button type="button" [disabled]="uploadAvatar.isPending()" (click)="upload(fileInput.files)">
+      {{ uploadAvatar.isPending() ? 'Uploading…' : 'Upload' }}
+    </button>
+    <button type="button" (click)="uploadAvatar.reset()">Reset</button>
+  </div>
+
+  @if (uploadAvatar.isPending() && uploadAvatar.uploadProgress(); as p) {
+    <div class="actions">
+      <progress [value]="p.loaded" [max]="p.total ?? p.loaded" aria-label="Upload progress"></progress>
+      <span>{{ p.total ? ((p.loaded / p.total) * 100 | number: '1.0-0') + '%' : p.loaded + ' bytes' }}</span>
+    </div>
+  }
+  @if (uploadAvatar.hasValue()) {
+    <p class="hint" role="status">
+      Uploaded {{ uploadAvatar.value().fileName }} ({{ uploadAvatar.value().size }} bytes).
+    </p>
+  }
+  @if (uploadAvatar.error(); as error) {
+    <p class="error-text" role="alert">{{ error.message }}</p>
+  }
+  <p class="hint">
+    The request sends the file in a <code>FormData</code> with <code>reportProgress: true</code>,
+    which feeds <code>uploadProgress</code>. Angular 22's default <code>fetch</code> backend
+    reports no upload progress: this app adds <code>withXhr()</code> to
+    <code>provideHttpClient()</code>.
+  </p>
+</section>

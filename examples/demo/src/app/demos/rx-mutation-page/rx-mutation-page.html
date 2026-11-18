@@ -1,0 +1,50 @@
+<p class="pitch">
+  <code>rxMutation()</code>, from <code>&#64;ngsignal/mutation/rxjs-interop</code>, is the
+  counterpart of <code>rxResource()</code>: <code>mutationFn</code> returns an
+  <code>Observable</code>, typically an existing service method such as
+  <code>http.post()</code>. The first emitted value resolves the call; <code>reset()</code> or
+  destroying the component unsubscribes.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/rx-mutation-page/rx-mutation-page.ts">Source</a>
+</p>
+
+<section>
+  <h2>Create user</h2>
+  <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+    <input
+      #nameInput
+      type="text"
+      aria-label="New user name"
+      placeholder="New user name (empty answers 422)"
+    />
+    <button type="submit" [disabled]="createUser.isPending()">
+      {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+    </button>
+    <button type="button" (click)="createUser.reset()">Reset</button>
+  </form>
+  <p class="hint">
+    Reset while pending: the request is unsubscribed, which cancels it. The fake backend answers
+    after an artificial 2&nbsp;s delay.
+  </p>
+</section>
+
+<section class="state">
+  <h2>createUser</h2>
+  <dl>
+    <dt>status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+        createUser.status()
+      }}</span>
+    </dd>
+    <dt>value</dt>
+    <dd>
+      {{ createUser.hasValue() ? createUser.value().name + ' (#' + createUser.value().id + ')' : '—' }}
+    </dd>
+    <dt>error</dt>
+    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+  </dl>
+  <p class="hint">
+    <code>rxMutation()</code> only sees the emitted value: for the status code, headers or upload
+    progress, use <code>httpMutation()</code>.
+  </p>
+</section>

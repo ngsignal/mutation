@@ -1,0 +1,80 @@
+<p class="pitch">
+  The <a routerLink="/">getting-started page</a> without <code>mutation()</code>: state signals, a
+  generation counter, an <code>AbortController</code> per call, <code>PendingTasks</code> and
+  <code>DestroyRef</code> cleanup, written out for each write.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/without-mutation-page/without-mutation-page.ts">Source</a>
+</p>
+
+<section>
+  <h2>Users</h2>
+  <ul>
+    @for (user of users(); track user.id) {
+      @let deleting = deleteUserIsPending() && deleteUserInput()?.id === user.id;
+      <li>
+        {{ user.name }}
+        <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting">
+          {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+      </li>
+    }
+  </ul>
+  <p class="hint">Deleting "Grace Hopper" always fails.</p>
+</section>
+
+<section>
+  <h2>Quick add</h2>
+  @if (panelOpen()) {
+    <form class="card" (submit)="$event.preventDefault(); createUser(nameInput.value)">
+      <input
+        #nameInput
+        type="text"
+        aria-label="New user name"
+        placeholder="New user name (empty fails validation)"
+      />
+      <button type="submit" [disabled]="createUserIsPending()">
+        {{ createUserIsPending() ? 'Adding…' : 'Add' }}
+      </button>
+    </form>
+  } @else {
+    <div class="actions">
+      <button type="button" (click)="panelOpen.set(true)">Add user</button>
+      @if (createUserError(); as error) {
+        <span class="error-text" role="alert">
+          Could not add "{{ createUserInput() }}": {{ error.message }}
+        </span>
+      }
+    </div>
+  }
+</section>
+
+<section class="state">
+  <h2>createUser</h2>
+  <dl>
+    <dt>status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="createUserStatus()">{{
+        createUserStatus()
+      }}</span>
+    </dd>
+    <dt>value</dt>
+    <dd>{{ createUserValue() | json }}</dd>
+    <dt>error</dt>
+    <dd class="error-text" role="alert">{{ createUserError()?.message }}</dd>
+  </dl>
+  <button type="button" (click)="resetCreateUser()">Reset</button>
+</section>
+
+<section class="state">
+  <h2>deleteUser</h2>
+  <dl>
+    <dt>status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="deleteUserStatus()">{{
+        deleteUserStatus()
+      }}</span>
+    </dd>
+    <dt>error</dt>
+    <dd class="error-text" role="alert">{{ deleteUserError()?.message }}</dd>
+  </dl>
+  <button type="button" (click)="resetDeleteUser()">Reset</button>
+</section>

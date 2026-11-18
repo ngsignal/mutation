@@ -1,0 +1,142 @@
+import { signal } from '@angular/core';
+import { createActivityLog } from './activity-log';
+
+export interface User {
+  id: string;
+  name: string;
+}
+
+export class ApiError extends Error {
+  constructor(
+    readonly code: 'invalid-name' | 'unavailable',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/** Resolves with `value` after `ms`, or rejects with an `AbortError` as soon as `abortSignal` aborts. */
+export function delay<T>(value: T, ms: number, abortSignal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      abortSignal.removeEventListener('abort', abort);
+      resolve(value);
+    }, ms);
+    if (abortSignal.aborted) {
+      abort();
+      return;
+    }
+    abortSignal.addEventListener('abort', abort, { once: true });
+  });
+}
+
+/** What a fake server received, and how each request ended, for pages to display. */
+function createRequestLog() {
+  const log = createActivityLog();
+  return {
+    entries: log.entries,
+    async track<T>(label: string, abortSignal: AbortSignal, handle: () => Promise<T>): Promise<T> {
+      log.add(`${label} received`);
+      try {
+        const response = await handle();
+        log.add(`${label} done`);
+        return response;
+      } catch (error) {
+        log.add(abortSignal.aborted ? `${label} aborted by the client` : `${label} failed`);
+        throw error;
+      }
+    },
+  };
+}
+
+/**
+ * An in-memory user API, one per page so pages don't affect each other. An empty name is
+ * rejected, and deleting "Grace Hopper" always fails.
+ */
+export function createFakeUserServer() {
+  const requests = createRequestLog();
+  const failNextCall = signal(false);
+  let users: User[] = [
+    { id: '1', name: 'Ada Lovelace' },
+    { id: '2', name: 'Grace Hopper' },
+  ];
+  let nextId = 3;
+
+  return {
+    requests: requests.entries,
+    /** When set, the next createUser fails with an `'unavailable'` error, then it resets. */
+    failNextCall,
+    initialUsers: (): User[] => [...users],
+
+    fetchUsers: (abortSignal: AbortSignal): Promise<User[]> =>
+      requests.track('fetchUsers()', abortSignal, async () => [
+        ...(await delay(users, 800, abortSignal)),
+      ]),
+
+    createUser: (name: string, abortSignal: AbortSignal): Promise<User> =>
+      requests.track(`createUser("${name}")`, abortSignal, async () => {
+        if (name.trim().length === 0) {
+          throw new ApiError('invalid-name', 'Name must not be empty');
+        }
+        const unavailable = failNextCall();
+        failNextCall.set(false);
+        const user = await delay({ id: String(nextId++), name }, 2000, abortSignal);
+        if (unavailable) {
+          throw new ApiError('unavailable', 'Service unavailable, try again');
+        }
+        users = [...users, user];
+        return user;
+      }),
+
+    deleteUser: (user: User, abortSignal: AbortSignal): Promise<void> =>
+      requests.track(`deleteUser("${user.name}")`, abortSignal, async () => {
+        await delay(undefined, 2000, abortSignal);
+        if (user.name === 'Grace Hopper') {
+          throw new Error(`Server refused to delete ${user.name}`);
+        }
+        users = users.filter((u) => u.id !== user.id);
+      }),
+  };
+}
+
+/** "Charlie" answers slower than the others, so moving it then another item races two requests. */
+export function createFakeReorderServer() {
+  const requests = createRequestLog();
+  const items = ['Alpha', 'Bravo', 'Charlie'];
+  const order = signal(items);
+
+  return {
+    requests: requests.entries,
+    items,
+    order: order.asReadonly(),
+
+    moveToTop: (item: string, abortSignal: AbortSignal): Promise<string[]> =>
+      requests.track(`moveToTop("${item}")`, abortSignal, async () => {
+        await delay(undefined, item === 'Charlie' ? 1200 : 300, abortSignal);
+        order.update((current) => [item, ...current.filter((other) => other !== item)]);
+        return order();
+      }),
+  };
+}
+
+/** Takes 1.5 s to record a charge, leaving time for a second click. */
+export function createFakePaymentServer() {
+  const requests = createRequestLog();
+  const charges = signal(0);
+
+  return {
+    requests: requests.entries,
+    charges: charges.asReadonly(),
+
+    charge: (abortSignal: AbortSignal): Promise<void> =>
+      requests.track('charge()', abortSignal, async () => {
+        await delay(undefined, 1500, abortSignal);
+        charges.update((count) => count + 1);
+      }),
+  };
+}

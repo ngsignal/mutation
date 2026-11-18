@@ -1,0 +1,356 @@
+:root {
+  color-scheme: light;
+
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-border: #e3e5ea;
+  --color-border-strong: #c7cad3;
+
+  --color-text: #1a1d24;
+  --color-text-muted: #4c5262;
+  --color-text-subtle: #656c7c;
+
+  --color-accent: #4f46e5;
+  --color-accent-strong: #4338ca;
+  --color-accent-bg: #eef0fd;
+  --color-accent-border: #d6d9fa;
+
+  --color-danger: #b42318;
+  --color-danger-strong: #912018;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #f3caca;
+
+  --color-success: #146c43;
+  --color-success-bg: #ecfdf3;
+  --color-success-border: #b9ecd1;
+
+  --color-pending: #a15c00;
+  --color-pending-bg: #fff3d6;
+  --color-pending-border: #f0d28a;
+
+  --color-idle-bg: #eef0f3;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+a:hover {
+  color: var(--color-accent-strong);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.9rem;
+}
+
+h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin: 1.1rem 0 0.6rem;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-idle-bg);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+
+section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.4rem 1.4rem;
+  margin-bottom: 1.5rem;
+}
+
+section.state,
+section.log {
+  background: var(--color-bg);
+  box-shadow: none;
+}
+
+ul,
+ol {
+  padding-left: 0;
+  list-style: none;
+  margin: 0;
+}
+
+ul li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+ul li:last-child {
+  border-bottom: none;
+}
+
+.hint {
+  color: var(--color-text-subtle);
+  font-size: 0.85rem;
+  margin: 0.75rem 0 0;
+}
+
+.pitch {
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent-border);
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius-md);
+  margin: 0 0 1.5rem;
+}
+
+.pitch code {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+/* Form controls */
+
+input[type='text'] {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.7rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 22rem;
+}
+
+input[type='text']::placeholder {
+  color: var(--color-text-subtle);
+}
+
+form,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.actions + .actions {
+  margin-top: 0.75rem;
+}
+
+.actions progress {
+  margin-top: 0;
+}
+
+button {
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.9rem;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button[type='submit'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+button[type='submit']:hover:not(:disabled) {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+  color: #fff;
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  color: var(--color-danger-strong);
+  background: var(--color-danger-bg);
+}
+
+li button {
+  flex: 0 0 auto;
+}
+
+progress {
+  width: 100%;
+  max-width: 22rem;
+  height: 0.5rem;
+  accent-color: var(--color-accent);
+  border-radius: 999px;
+  overflow: hidden;
+  border: none;
+  margin-top: 0.75rem;
+}
+
+/* Mutation state inspector */
+
+.state dl {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+
+.state dt {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.state dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.state h2 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
+}
+
+.state .hint {
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+/* Status pill: color-codes a mutation's status() for scannability */
+
+.status-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-idle-bg);
+  color: var(--color-text-muted);
+}
+
+.status-pill[data-status='pending'],
+.status-pill[data-status='loading'],
+.status-pill[data-status='reloading'] {
+  background: var(--color-pending-bg);
+  color: var(--color-pending);
+}
+
+.status-pill[data-status='success'],
+.status-pill[data-status='resolved'] {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-pill[data-status='error'] {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.error-text {
+  color: var(--color-danger) !important;
+}
+
+/* Activity log: terminal-style panel so it reads as machine output */
+
+.log {
+  padding: 0;
+  overflow: hidden;
+}
+
+.log h2 {
+  margin: 0;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.log ol {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--color-text);
+  color: #d7dbe3;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.log li {
+  padding: 0.4rem 1.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.log li:last-child {
+  border-bottom: none;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-sm);
+  width: fit-content;
+}
+
+.card span {
+  color: var(--color-success);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}

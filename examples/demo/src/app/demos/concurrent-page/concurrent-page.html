@@ -1,0 +1,78 @@
+<p class="pitch">
+  A second <code>mutate()</code> does <strong>not</strong> abort the first: a write may already
+  have reached the server, so both run to completion. Every call runs its callbacks, with
+  <code>{{ '{' }} isLatest {{ '}' }}</code>; only the latest call writes <code>status</code>,
+  <code>value</code> and <code>error</code>.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrent-page/concurrent-page.ts">Source</a>
+</p>
+
+<section>
+  <h2>Users</h2>
+  <ul>
+    @for (user of users(); track user.id) {
+      @let deleting = deleteUser.isPending() && deleteUser.input()?.id === user.id;
+      <li>
+        {{ user.name }}
+        <button
+          type="button"
+          class="danger"
+          (click)="deleteUser.mutate(user)"
+          [disabled]="deleting"
+        >
+          {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+      </li>
+    }
+  </ul>
+  <p class="hint">
+    Delete Ada, then quickly Grace (who always fails): Ada disappears through her
+    <code>onSuccess</code> with <code>isLatest: false</code>, and Grace's failure lands in
+    <code>status</code>. Only Grace's row shows "Deleting…": <code>input()</code> holds the latest
+    call.
+  </p>
+</section>
+
+<section>
+  <h2>Create user</h2>
+  <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+    <input
+      #nameInput
+      type="text"
+      aria-label="New user name"
+      placeholder="New user name (empty fails validation)"
+    />
+    <button type="submit">Create user</button>
+  </form>
+  <p class="hint">
+    The button stays enabled on purpose: submit two names quickly, both users are created.
+  </p>
+</section>
+
+<section class="state">
+  <h2>Latest call only</h2>
+  <dl>
+    <dt>createUser.status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+        createUser.status()
+      }}</span>
+    </dd>
+    <dt>createUser.input</dt>
+    <dd>{{ createUser.input() ?? '—' }}</dd>
+    <dt>deleteUser.status</dt>
+    <dd>
+      <span class="status-pill" role="status" [attr.data-status]="deleteUser.status()">{{
+        deleteUser.status()
+      }}</span>
+    </dd>
+    <dt>deleteUser.error</dt>
+    <dd class="error-text" role="alert">{{ deleteUser.error()?.message }}</dd>
+  </dl>
+</section>
+
+<app-activity-log
+  heading="Callbacks"
+  [entries]="log.entries()"
+  emptyText="Nothing yet: delete two users quickly."
+/>
+<app-activity-log heading="Server" [entries]="server.requests()" />

@@ -42,8 +42,8 @@ practice, the realistic attack surface is limited to:
 - The GitHub Actions workflows in [.github/workflows](.github/workflows) used to build,
   test, and publish releases.
 
-Reports about the demo app in [ng-mutation-demo](https://github.com/ErwanRaulo/ng-mutation-demo)
-should be filed against that repository instead.
+The demo app in [examples/demo](examples/demo) is not published to npm; report problems with
+it as regular issues.
 
 ## Supply-chain hardening already in place
 

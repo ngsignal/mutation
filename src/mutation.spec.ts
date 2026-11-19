@@ -11,6 +11,7 @@ import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
 import { expectTypeOf } from 'vitest';
 import { mutation } from './mutation';
+import type { MutationRef } from './mutation.types';
 
 /** Spies on PendingTasks.add() so each returned cleanup fn can be asserted on individually. */
 function spyOnPendingTasks() {
@@ -430,7 +431,7 @@ describe('pendingInputs()', () => {
     expectTypeOf(m.pendingInputs()).toEqualTypeOf<readonly number[]>();
   });
 
-  it('keeps a superseded call after the latest one has settled and isPending() is false', async () => {
+  it('keeps a superseded call after the latest one has settled', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
     const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
@@ -441,7 +442,6 @@ describe('pendingInputs()', () => {
 
     second.resolve('second');
     await secondCall;
-    expect(m.isPending()).toBe(false);
     expect(m.pendingInputs()).toEqual(['a']);
 
     first.resolve('first');
@@ -568,6 +568,51 @@ describe('pendingInputs()', () => {
     await firstCall;
 
     expect(m.pendingInputs()).toEqual(['b']);
+  });
+});
+
+describe('isPending()', () => {
+  it('stays true while a superseded call is in flight after the latest one succeeded', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    const firstCall = m.mutate('a');
+    const secondCall = m.mutate('b');
+    second.resolve('second');
+    await secondCall;
+
+    expect(m.status()).toBe('success');
+    expect(m.isPending()).toBe(true);
+
+    first.resolve('first');
+    await firstCall;
+
+    expect(m.isPending()).toBe(false);
+  });
+
+  it('stays true while a superseded call is in flight after the latest one failed', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    void m.mutate('a');
+    const secondCall = m.mutate('b');
+    second.reject(new Error('second failed'));
+    await secondCall.catch(() => undefined);
+
+    expect(m.status()).toBe('error');
+    expect(m.isPending()).toBe(true);
+  });
+
+  it('turns false on reset() while calls are still in flight', () => {
+    const m = createMutation<string, string>({ mutationFn: () => new Promise<string>(() => undefined) });
+
+    void m.mutate('a');
+    void m.mutate('b');
+    m.reset();
+
+    expect(m.isPending()).toBe(false);
   });
 });
 
@@ -758,7 +803,7 @@ describe("concurrency: 'queue'", () => {
     await Promise.resolve();
     m.reset();
 
-    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
   });
 
   it('rejects a call still queued as soon as the injector is destroyed, even if the call ahead ignores its AbortSignal', async () => {
@@ -777,7 +822,7 @@ describe("concurrency: 'queue'", () => {
     await Promise.resolve();
     childInjector.destroy();
 
-    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
   });
 
   it('keeps a call made after reset() behind an in-flight call that ignores its AbortSignal', async () => {
@@ -991,6 +1036,21 @@ describe('reset()', () => {
     expect(m.error()).toBeUndefined();
   });
 
+  it("aborts an in-flight call's signal with an 'Aborted' AbortError as its reason", () => {
+    let abortSignal!: AbortSignal;
+    const m = createMutation<void, string>({
+      mutationFn: (_input, signal) => {
+        abortSignal = signal;
+        return new Promise<string>(() => undefined);
+      },
+    });
+
+    void m.mutate();
+    m.reset();
+
+    expect(abortSignal.reason).toMatchObject({ name: 'AbortError', message: 'Aborted' });
+  });
+
   it('ignores the result of a mutation that was still in flight', async () => {
     const deferred = createDeferred<string>();
     let abortSignal!: AbortSignal;
@@ -1097,6 +1157,17 @@ describe('hasValue()', () => {
     if (m.hasValue()) {
       expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
     }
+  });
+});
+
+describe('MutationRef type parameters', () => {
+  it('takes TError third, in the same order as mutation(), with TValue defaulted last', () => {
+    const m = createMutation<string, number, Error>({ mutationFn: () => Promise.resolve(1) });
+
+    expectTypeOf(m).toEqualTypeOf<MutationRef<string, number, Error>>();
+    expectTypeOf<MutationRef<string, number, Error>>().toEqualTypeOf<
+      MutationRef<string, number, Error, number | undefined>
+    >();
   });
 });
 

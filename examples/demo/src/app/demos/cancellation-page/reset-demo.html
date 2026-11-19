@@ -9,8 +9,8 @@
 </div>
 <p class="hint">
   Reset while pending: no <code>onSuccess</code>, the status goes back to idle, and
-  <code>mutate()</code> rejects with whatever <code>mutationFn</code> rejects with once aborted
-  (here the fake API's <code>'Aborted'</code>). The server log shows the request was received: on
+  <code>mutate()</code> rejects with <code>'Aborted'</code>, the abort reason the fake API rejects
+  with, as <code>fetch()</code> does. The server log shows the request was received: on
   a real server, the user may have been created anyway.
 </p>
 <app-activity-log heading="Callbacks and mutate()" [entries]="log.entries()" />

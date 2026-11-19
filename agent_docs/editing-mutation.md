@@ -54,8 +54,10 @@ starts, `run()` around `mutationFn`, `release()` when the latest call commits an
 ## State
 
 Raw `WritableSignal`s `status`, `value`, `error`, `input`, exposed read-only.
-`isPending` / `isIdle` / `isSuccess` / `isError` and the discriminated `snapshot` are
-`computed`. `value` survives a later error (and stays visible while pending). Only
+`isIdle` / `isSuccess` / `isError` and the discriminated `snapshot` are `computed` from
+`status`. `isPending` is `computed` from the tracker's `pendingInputs` instead: it stays true
+while a superseded call is in flight, so it can be true alongside `'success'` or `'error'`.
+`value` survives a later error (and stays visible while pending). Only
 `reset()` or a new success replaces it.
 
 ## Review bar, in order

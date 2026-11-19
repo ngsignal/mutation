@@ -12,11 +12,12 @@ export interface RxMutationOptions<TInput, TOutput, TError = unknown>
 /**
  * `mutation()` for Observable-returning calls, the mutation counterpart of `rxResource()`. Unlike
  * `rxResource()`, only the first emitted value is kept: it resolves the call, then the Observable
- * is unsubscribed. Completing without a value rejects; `reset()` and destroy unsubscribe.
+ * is unsubscribed. Completing without a value rejects with
+ * `Error('Observable completed without emitting a value')`; `reset()` and destroy unsubscribe.
  */
 export function rxMutation<TInput, TOutput, TError = unknown>(
   options: RxMutationOptions<TInput, TOutput, TError>,
-): MutationRef<TInput, TOutput, TOutput | undefined, TError> {
+): MutationRef<TInput, TOutput, TError> {
   if (!options.injector) {
     assertInInjectionContext(rxMutation);
   }

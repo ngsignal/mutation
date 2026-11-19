@@ -25,7 +25,11 @@ export type HttpMutationRequest = Omit<HttpResourceRequest, 'method' | 'transfer
 
 export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = unknown>
   extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
-  /** Describe the request for a given input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`. */
+  /**
+   * Describe the request for a given input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`.
+   * If the request completes without an `HttpResponse` (an interceptor returning `EMPTY`), the call
+   * fails with `Error('Request completed without an HttpResponse event')`.
+   */
   request: (input: TInput) => HttpMutationRequest;
   /**
    * Transform or validate the response body before it resolves the call (e.g. a schema's `parse`).
@@ -39,15 +43,18 @@ export type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
   HttpMutationOptions<TInput, TOutput, TError, TRaw> &
   ([TRaw] extends [TOutput] ? unknown : { parse: (raw: TRaw) => TOutput });
 
-export interface HttpMutationRef<TInput, TOutput, TValue = TOutput | undefined, TError = unknown>
-  extends MutationRef<TInput, TOutput, TValue, TError> {
+export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined>
+  extends MutationRef<TInput, TOutput, TError, TValue> {
   /** Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */
   readonly uploadProgress: Signal<HttpProgressEvent | undefined>;
   /** Needs `reportProgress: true`. */
   readonly downloadProgress: Signal<HttpProgressEvent | undefined>;
+  /** From the `HttpResponse`, or the `HttpErrorResponse` when the request fails. Kept when `parse` throws. */
   readonly statusCode: Signal<number | undefined>;
+  /** From the `HttpResponse`, or the `HttpErrorResponse` when the request fails. */
   readonly headers: Signal<HttpHeaders | undefined>;
-  hasValue(): this is HttpMutationRef<TInput, TOutput, TOutput, TError>;
+  /** True once a call succeeded, even with an empty body: a `204` resolves to `null`, not `undefined`. */
+  hasValue(): this is HttpMutationRef<TInput, TOutput, TError, TOutput>;
 }
 
 function createHttpResponseState() {
@@ -134,7 +141,6 @@ function sendRequest(
   { method, url, ...requestOptions }: HttpMutationRequest,
   responseType: ResponseType,
 ) {
-  // Only the fields above are cast: every other field is still type-checked by http.request().
   const options = requestOptions as Omit<typeof requestOptions, LooselyTypedField> & HttpClientLooselyTypedFields;
   return http.request<unknown>(method, url, {
     ...options,
@@ -146,12 +152,12 @@ function sendRequest(
 
 type HttpMutationRawBodyFn<TRaw> = <TInput, TOutput = TRaw, TError = unknown>(
   options: HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw>,
-) => HttpMutationRef<TInput, TOutput, TOutput | undefined, TError>;
+) => HttpMutationRef<TInput, TOutput, TError>;
 
 export interface HttpMutationFn {
   <TInput, TOutput, TError = unknown>(
     options: HttpMutationOptions<TInput, TOutput, TError>,
-  ): HttpMutationRef<TInput, TOutput, TOutput | undefined, TError>;
+  ): HttpMutationRef<TInput, TOutput, TError>;
   /** Same as `httpMutation()`, with the response body read as a `string`. */
   text: HttpMutationRawBodyFn<string>;
   /** Same as `httpMutation()`, with the response body read as a `Blob` (e.g. a generated file). */
@@ -165,7 +171,7 @@ function makeHttpMutationFn(responseType: ResponseType) {
   // public signature narrows `parse`'s raw body type, which the body satisfies at runtime.
   return function httpMutation<TInput, TOutput, TError>(
     options: HttpMutationOptions<TInput, TOutput, TError, never>,
-  ): HttpMutationRef<TInput, TOutput, TOutput | undefined, TError> {
+  ): HttpMutationRef<TInput, TOutput, TError> {
     if (!options.injector) {
       assertInInjectionContext(httpMutation);
     }
@@ -198,7 +204,7 @@ function makeHttpMutationFn(responseType: ResponseType) {
         mutationRef.reset();
         responseState.clear();
       },
-      hasValue(): this is HttpMutationRef<TInput, TOutput, TOutput, TError> {
+      hasValue(): this is HttpMutationRef<TInput, TOutput, TError, TOutput> {
         return mutationRef.hasValue();
       },
     };

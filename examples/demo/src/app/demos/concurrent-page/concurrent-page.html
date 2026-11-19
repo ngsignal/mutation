@@ -10,7 +10,7 @@
   <h2>Users</h2>
   <ul>
     @for (user of users(); track user.id) {
-      @let deleting = deleteUser.isPending() && deleteUser.input()?.id === user.id;
+      @let deleting = deleteUser.pendingInputs().includes(user);
       <li>
         {{ user.name }}
         <button
@@ -27,8 +27,9 @@
   <p class="hint">
     Delete Ada, then quickly Grace (who always fails): Ada disappears through her
     <code>onSuccess</code> with <code>isLatest: false</code>, and Grace's failure lands in
-    <code>status</code>. Only Grace's row shows "Deleting…": <code>input()</code> holds the latest
-    call.
+    <code>status</code>. Both rows show "Deleting…" until their own call settles:
+    <code>pendingInputs()</code> lists every call in flight, while <code>input()</code> holds the
+    latest one.
   </p>
 </section>
 

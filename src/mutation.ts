@@ -23,7 +23,7 @@ import type {
  */
 export function mutation<TInput, TOutput, TError = unknown>(
   options: MutationOptions<TInput, TOutput, TError>,
-): MutationRef<TInput, TOutput, TOutput | undefined, TError> {
+): MutationRef<TInput, TOutput, TError> {
   if (!options.injector) {
     assertInInjectionContext(mutation);
   }
@@ -170,13 +170,13 @@ export function mutation<TInput, TOutput, TError = unknown>(
     value: value.asReadonly(),
     error: error.asReadonly(),
     input: currentInput.asReadonly(),
-    isPending: computed(() => status() === 'pending'),
+    isPending: computed(() => calls.pendingInputs().length > 0),
     isIdle: computed(() => status() === 'idle'),
     isSuccess: computed(() => status() === 'success'),
     isError: computed(() => status() === 'error'),
     pendingInputs: calls.pendingInputs,
     snapshot,
-    hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError> {
+    hasValue(): this is MutationRef<TInput, TOutput, TError, TOutput> {
       return value() !== undefined;
     },
     mutate,
@@ -208,12 +208,12 @@ function createQueueGate(): ConcurrencyGate {
     run<T>(task: () => Promise<T>, abortSignal: AbortSignal) {
       return new Promise<T>((resolve, reject) => {
         // Aborted while waiting: reject now rather than when its turn comes.
-        const leaveQueue = () => reject(abortedError());
+        const leaveQueue = () => reject(notStartedError());
         abortSignal.addEventListener('abort', leaveQueue, { once: true });
 
         const call = previousCall.then(() => {
           abortSignal.removeEventListener('abort', leaveQueue);
-          return abortSignal.aborted ? Promise.reject(abortedError()) : task();
+          return abortSignal.aborted ? Promise.reject(notStartedError()) : task();
         });
         // The next call waits for this one even if it left the queue: writes stay in order.
         previousCall = call.catch(() => undefined);
@@ -224,8 +224,8 @@ function createQueueGate(): ConcurrencyGate {
   };
 }
 
-function abortedError(): DOMException {
-  return new DOMException('Aborted', 'AbortError');
+function notStartedError(): DOMException {
+  return new DOMException('NotStarted', 'AbortError');
 }
 
 function createDropGate(): ConcurrencyGate {
@@ -247,7 +247,6 @@ function createDropGate(): ConcurrencyGate {
 
 function createCallTracker<TInput>(pendingTasks: PendingTasks) {
   const activeCalls = new Map<AbortController, { input: TInput; removeTask: () => void }>();
-  // A Map iterates in insertion order: the inputs stay in call order.
   const pendingInputs = signal<readonly TInput[]>([]);
   const publishInputs = () => pendingInputs.set(Array.from(activeCalls.values(), (call) => call.input));
   return {
@@ -268,7 +267,7 @@ function createCallTracker<TInput>(pendingTasks: PendingTasks) {
     },
     abortAll(): void {
       for (const [controller, { removeTask }] of activeCalls) {
-        controller.abort();
+        controller.abort(new DOMException('Aborted', 'AbortError'));
         removeTask();
       }
       activeCalls.clear();

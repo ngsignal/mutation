@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** `isPending()` is now true while any call is in flight, superseded and queued ones
+  included, like Signal Forms' `submitting()`. It used to follow the latest call only, so it
+  turned false when the latest call settled before an older one. It no longer always equals
+  `status() === 'pending'`: `status()` still follows the latest call.
+- **Breaking:** a call still queued when `reset()` runs or the injection context is destroyed now
+  rejects with `'NotStarted'` instead of `'Aborted'`, so it can't be mistaken for a call aborted
+  in flight, whose write may have reached the server.
+- **Breaking:** `reset()` and destroy abort in-flight calls with a fixed reason,
+  `DOMException('Aborted', 'AbortError')`. `rxMutation()`, `httpMutation()` and `fetch()` reject
+  with it, instead of a message that depended on the platform.
+- **Breaking (types only):** `MutationRef` and `HttpMutationRef` take `TError` third, as
+  `mutation()` does, and the `hasValue()` narrowing parameter last:
+  `MutationRef<TInput, TOutput, TError, TValue>`. Typing a field with a custom error is now
+  `MutationRef<Dto, User, HttpErrorResponse>`.
+- **Breaking (types only):** `HttpMutationRawBodyOptions` is no longer exported from
+  `@ngsignal/mutation/http`: it was an internal helper. Open an issue if you relied on it.
+
 ## 0.7.0
 
 - Feature: `pendingInputs()` lists the inputs of the calls still in flight, superseded and queued

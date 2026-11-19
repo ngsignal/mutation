@@ -10,7 +10,7 @@
   <h2>Users</h2>
   <ul>
     @for (user of users(); track user.id) {
-      @let deleting = deleteUser.isPending() && deleteUser.input()?.id === user.id;
+      @let deleting = deleteUser.pendingInputs().includes(user);
       <li>
         {{ user.name }}
         <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting">
@@ -20,8 +20,9 @@
     }
   </ul>
   <p class="hint">
-    Deleting "Grace Hopper" always fails. The row label reads <code>deleteUser.input()</code>,
-    which only tracks the latest call: see <a routerLink="/concurrent">concurrent calls</a>.
+    Deleting "Grace Hopper" always fails. The row label reads
+    <code>deleteUser.pendingInputs()</code>, the inputs of every call in flight: see
+    <a routerLink="/concurrent">concurrent calls</a>.
   </p>
 </section>
 

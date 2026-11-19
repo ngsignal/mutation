@@ -189,7 +189,7 @@ describe('cancellation', () => {
     childInjector.destroy();
     expect(isObserved(subject)).toBe(false);
 
-    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
   });
 
 });

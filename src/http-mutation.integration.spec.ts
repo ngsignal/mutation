@@ -97,7 +97,7 @@ describe.each([
     await new Promise((resolve) => setTimeout(resolve, 50));
     m.reset();
 
-    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
     await slowRequestClosed;
   });
 

@@ -10,7 +10,7 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection, signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { EMPTY, of } from 'rxjs';
 import { expectTypeOf } from 'vitest';
 import { httpMutation, type HttpMutationRequest } from './http-mutation';
 import { failWith } from './testing/rxjs';
@@ -346,6 +346,20 @@ describe('statusCode / headers', () => {
     expect(m.statusCode()).toBeUndefined();
     expect(m.headers()).toBeUndefined();
   });
+
+  it('fails the call when the request completes without an HttpResponse', async () => {
+    const injector = createEnvironmentInjector(
+      [provideHttpClient(withInterceptors([() => EMPTY]))],
+      TestBed.inject(EnvironmentInjector),
+    );
+    const m = httpMutation<string, User>({
+      request: (name) => ({ method: 'POST', url: '/api/users', body: { name } }),
+      injector,
+    });
+
+    await expect(m.mutate('Ada')).rejects.toThrow('Request completed without an HttpResponse event');
+    expect(m.status()).toBe('error');
+  });
 });
 
 describe('an exception while recording statusCode/headers', () => {
@@ -644,7 +658,7 @@ describe('reset()', () => {
 
     m.reset();
 
-    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
     expect(req.cancelled).toBe(true);
     expect(m.status()).toBe('idle');
   });
@@ -663,7 +677,7 @@ describe('cancellation', () => {
 
     childInjector.destroy();
 
-    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
     expect(req.cancelled).toBe(true);
   });
 });

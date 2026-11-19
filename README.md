@@ -17,14 +17,14 @@ An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 <a href="https://stackblitz.com/github/ngsignal/mutation/tree/demo/examples/demo"><img src="https://developer.stackblitz.com/img/open_in_stackblitz.svg" alt="Open in StackBlitz" height="32"></a>
 
 [Why](#why) · [Install](#install) · [Quick start](#quick-start) · [Features](#features) ·
-[Working with resource](#working-with-resource) · [Public API](#public-api) ·
+[Recipes](#recipes) · [Public API](#public-api) ·
 [rxMutation & httpMutation](#rxmutation--httpmutation) · [Design choices](#design-choices)
 
 </div>
 
 ## Why
  
-Angular provides `resource()` and `httpResource()` for reactive fetching,
+Angular provides `resource()` and its HTTP variant for reactive fetching,
 but explicitly not for mutations:
  
 > "resource is intended for _read_ operations, not operations which perform
@@ -33,10 +33,9 @@ but explicitly not for mutations:
 > could prematurely abort mutations."
 > [Angular API reference](https://angular.dev/api/core/resource)
  
-Today, handling a POST/PUT/DELETE means either manually overloading
-`httpResource`, or hand-rolling the write in a service, where a `saving` flag is easy to get
-wrong: on a double click, the first call to finish sets it back to `false` while the second one
-is still in flight.
+Today, handling a POST/PUT/DELETE means either bending `httpResource` to the job, or
+hand-rolling the write in a service, where a "saving" flag is easy to get wrong: on a double
+click, the first call to finish clears it while the second one is still in flight.
  
 ## Install
  
@@ -44,7 +43,7 @@ is still in flight.
 npm install @ngsignal/mutation
 ```
  
-Requires Angular `^21.0.0` or `^22.0.0` (peer dependency).
+Requires Angular 21 or 22 (peer dependency).
  
 ## Quick start
  
@@ -85,10 +84,10 @@ Using Observables or `HttpClient`? See [rxMutation & httpMutation](#rxmutation--
 
 ### Stale-response guarding
  
-Calling `mutate()` again while one is already in flight does **not** abort the previous call, a
-write may already have reached the server and be unsafe to cancel there, so both calls run to
-completion independently. Only the last call's outcome is committed to `status`/`value`/`error`,
-but each call still runs its [callbacks](#callbacks-onsuccess--onerror).
+Calling `mutate()` again while a call is in flight does **not** abort the previous one: its write
+may already have reached the server. Both calls run to completion. Only the latest call's outcome
+shows in the state signals (status, value, error, input), but each call still runs its
+[callbacks](#callbacks-onsuccess--onerror).
 
 ```mermaid
 sequenceDiagram
@@ -129,13 +128,13 @@ onSuccess: (todo, title, { isLatest }) => {
 },
 ```
  
-Calls aborted by `reset()` or by destroying the injection context run no callback.
+Calls aborted by a reset or by destroying the injection context run no callback.
  
 ### snapshot
  
-`status`/`value`/`error` are three separate signals, so TypeScript can't narrow `value()` from
-`status()` alone. `snapshot()` bundles them into one discriminated-union read for exhaustive
-`@switch`/`switch` handling:
+Status, value and error are three separate signals, so TypeScript can't narrow the value from
+the status alone. `snapshot()` reads them together as one discriminated union, ready for an
+exhaustive `@switch`:
  
 ```ts
 @let snap = createInvoice.snapshot();
@@ -146,12 +145,12 @@ Calls aborted by `reset()` or by destroying the injection context run no callbac
 }
 ```
  
-`value` stays populated on `'pending'`/`'error'` too, since `mutation()` keeps the last known
-value across those states (see [stale-response guarding](#stale-response-guarding)).
+The value is kept while pending and after an error: the last known value stays until a new
+success or a reset (see [stale-response guarding](#stale-response-guarding)).
  
 ### hasValue guard
  
-`value()` is `undefined` until the first success. `hasValue()` narrows it to `TOutput`:
+The value is undefined until the first success. `hasValue()` narrows its type:
  
 ```ts
 const createInvoice = mutation<Order, Invoice>({
@@ -163,12 +162,12 @@ if (createInvoice.hasValue()) {
 }
 ```
 
-For a mutation returning nothing (`TOutput` is `void`), `value()` stays undefined even after a
-success: check `isSuccess()` instead.
+For a mutation that returns nothing, the value stays undefined even after a success: check
+`isSuccess()` instead.
 
 ### pendingInputs
 
-`input()` only follows the latest call. `pendingInputs()` lists the inputs of
+The input signal only follows the latest call. `pendingInputs()` lists the inputs of
 every call still in flight (superseded and queued ones included), so one mutation shared by a
 list can disable each row being written:
 
@@ -178,33 +177,33 @@ list can disable each row being written:
 </button>
 ```
 
-`isPending()` is true while any call is in flight, like Signal Forms' `submitting()`. It can
-stay true after `status()` turned `'success'` or `'error'`, if a superseded call is still running.
-`reset()` and destroy empty `pendingInputs()` and turn `isPending()` false.
+`isPending()` is true while any call is in flight, like `submitting()` in Signal Forms. It can
+stay true after the status turned to success or error, if a superseded call is still running.
+A reset or destroy empties the list and turns it false.
  
 ### Also included
  
-- **`mutate()`** returns a promise that settles like `mutationFn` does, for that call. Ignoring
-  it (`(click)="save.mutate(x)"`) is safe: a failure never reports an unhandled rejection, and
-  still shows in `error()`.
-- **`reset()`** brings `status`/`value`/`error`/`input` back to their initial state and aborts
-  any in-flight call(s): see [Cancellations](#cancellations).
-- **`onSettled`** runs after `onSuccess` or `onError`, whichever fired; use it for cleanup that
-  must happen either way (closing a modal, releasing a UI lock).
-- **`input`** holds the input of the most recent `mutate()` call, from the moment it's called
-  until the next `mutate()` or `reset()`.
-- **`isIdle` / `isSuccess` / `isError`**: one boolean signal per `status()` value. `isPending`
-  is true while any call is in flight, so it can stay true after `status()` settled: see
+- **`mutate()`** returns a promise that settles with the call's outcome. Ignoring it, as in
+  `(click)="save.mutate(x)"`, is safe: a failure never reports an unhandled rejection, and
+  still shows in the error signal.
+- **`reset()`** brings the state signals back to their initial state and aborts every call in
+  flight: see [Cancellations](#cancellations).
+- **`onSettled`** runs after the success or error callback, whichever fired; use it for cleanup
+  that must happen either way (closing a modal, releasing a UI lock).
+- **`input`** holds the input of the latest call, from the moment it's made until the next call
+  or reset.
+- **`isIdle` / `isSuccess` / `isError`**: one boolean per status. `isPending` is true while any
+  call is in flight, so it can stay true after the status settled: see
   [pendingInputs](#pendinginputs).
-- **SSR support**: every in-flight mutation registers with Angular's `PendingTasks`, so
-  `ApplicationRef.isStable` (and SSR rendering) waits for it, and releases it immediately on
-  reset/destroy rather than waiting for a stale call to settle.
-- **Custom injector**: pass `injector` to call `mutation()` outside of an injection context
+- **SSR support**: every call in flight registers with Angular's `PendingTasks`, so the app
+  isn't stable (and SSR doesn't render) until it settles. A reset or destroy releases it at once
+  rather than waiting for a stale call.
+- **Custom injector**: pass `injector` to create a mutation outside an injection context
   (e.g. factory functions).
 
 ### Concurrency
 
-What happens to a second `mutate()` while a call is still in flight:
+What happens to a second call while one is still in flight:
 
 | `concurrency`   | Second `mutate()`                                                        | Typical use                                  |
 | --------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
@@ -212,16 +211,16 @@ What happens to a second `mutate()` while a call is still in flight:
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
 | `'drop'`        | Rejected at once (`'Dropped'`), `mutationFn` never runs, signals untouched | Double-submit protection (payment, form submit) |
 
-In every mode, `status`/`value`/`error`/`input` reflect the most recently submitted call.
+In every mode, the state signals reflect the most recent call.
 
-With `'queue'`, a call made after `reset()` still waits for an aborted call already in flight to
-settle, so writes stay in order: honor `abortSignal` in `mutationFn` (`httpMutation()` and
-`rxMutation()` do) so the queue frees up at once.
+In queue mode, a call made after a reset still waits for an aborted call already in flight to
+settle, so writes stay in order. Pass the abort signal on to your request (the RxJS and HTTP
+variants do) so the queue frees up at once.
 
 ### Cancellations
 
-Every cancellation rejects `mutate()` with a `DOMException` named `'AbortError'`, so
-`error.name === 'AbortError'` catches them all. The message tells whether the write may have
+Every cancellation rejects the call with an `AbortError`, so `error.name === 'AbortError'`
+catches them all. The message tells whether the write may have
 reached the server, e.g. before rolling back an optimistic update:
 
 | Cancelled by                                      | Message                           | Write sent?                    |
@@ -231,30 +230,31 @@ reached the server, e.g. before rolling back an optimistic update:
 | `reset()`/destroy while queued (`'queue'`)        | `'NotStarted'`, at once           | No, `mutationFn` never ran     |
 | `reset()`/destroy while in flight                 | `'Aborted'`\*                     | **Maybe**: the request had left |
 
-\* `'Aborted'` is the `AbortSignal`'s reason: `rxMutation()`, `httpMutation()` and `fetch()`
-reject with it. A `mutationFn` that ignores its `AbortSignal` or rejects with its own error
-decides the message itself.
+\* The abort signal's reason: the RxJS and HTTP variants, and `fetch()`, reject with it. A
+`mutationFn` that ignores the signal or rejects with its own error decides the message.
 
 > [!WARNING]
-> Aborting never undoes a write the server already received: `reset()` only stops the client
+> Aborting never undoes a write the server already received: a reset only stops the client
 > from waiting for it.
 
  
-## Working with resource
+## Recipes
  
-`mutation()` has no cache and won't touch a `resource()`/`httpResource()` for you. See
-[docs/RECIPES.md](./docs/RECIPES.md):
+The library stays a primitive: no cache, no retry, and it won't update your resources for you.
+The [recipes](./docs/RECIPES.md) show the usual patterns:
  
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
+- Observables and `HttpClient`: [rxMutation & httpMutation](#rxmutation--httpmutation)
  
 ## Public API
  
 `mutation<TInput, TOutput, TError = unknown>(options)`
  
-`TError` types `error()`/`onError`/`onSettled`; omit it and they stay `unknown`. It is an
-assertion, not a check: they receive whatever `mutationFn` rejects with, an `AbortError` included.
+`TError` types the error signal and the error callbacks; omit it and they stay `unknown`. It is
+an assertion, not a check: they receive whatever `mutationFn` rejects with, an abort error
+included.
  
 ### Options
  
@@ -287,22 +287,21 @@ assertion, not a check: they receive whatever `mutationFn` rejects with, an `Abo
  
 ## rxMutation & httpMutation
  
-`mutationFn` expects a `Promise`. For Observables, two variants mirror Angular's own
-`rxResource()`/`httpResource()` split:
+`mutationFn` returns a promise. For Observables, two variants mirror Angular's split between
+its RxJS and HTTP resources:
  
 | Angular (reads) | Mutations          | Import from                      | You provide                                                          |
 | --------------- | ------------------ | -------------------------------- | -------------------------------------------------------------------- |
 | `rxResource`    | **`rxMutation`**   | `@ngsignal/mutation/rxjs-interop` | any Observable, e.g. an existing service: `(dto) => this.users.create(dto)` |
 | `httpResource`  | **`httpMutation`** | `@ngsignal/mutation/http`         | a request description: `(dto) => ({ method: 'POST', url, body: dto })` |
 
-Like Angular's own `@angular/core/rxjs-interop`, they live in secondary entry points: the main
-`@ngsignal/mutation` entry never loads `rxjs` operators or `@angular/common/http`. They require
-`rxjs` (6.5+ or 7, like Angular 21) and, for `httpMutation`, `@angular/common` — both declared as
-optional peer dependencies.
+Like Angular's own RxJS interop, they live in secondary entry points, so the main entry never
+loads RxJS or Angular's HTTP client. They need RxJS (6.5+ or 7, like Angular 21) and, for the
+HTTP variant, `@angular/common`: both are optional peer dependencies.
  
-`reset()` and destroying the injection context unsubscribe, which aborts an `HttpClient`
-request. `httpMutation()` sends the request itself through `HttpClient`, so it also exposes
-`uploadProgress`, `downloadProgress`, `statusCode` and `headers` signals.
+A reset or destroying the injection context unsubscribes, which aborts an `HttpClient` request.
+`httpMutation()` sends the request itself, so it also exposes upload and download progress, the
+status code and the headers as signals.
  
 - [Reusing an Observable-returning service](./docs/RECIPES.md#reusing-an-observable-returning-service)
 - [Describing an HTTP request](./docs/RECIPES.md#describing-an-http-request)
@@ -314,15 +313,15 @@ request. `httpMutation()` sends the request itself through `HttpClient`, so it a
  
 ## Design choices
  
-Directly inspired by the internal structure of `resource.ts` in Angular core. See
+Directly inspired by the internals of Angular's `resource()`. See
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the implementation rationale and a
-comparison with `@tanstack/angular-query-experimental` and NgRx Toolkit.
+comparison with TanStack Query and NgRx Toolkit.
  
 ## Status & Stability
  
-Experimental (`0.x`): minor releases may include breaking changes, called out in the
+Experimental (0.x): minor releases may include breaking changes, called out in the
 [CHANGELOG.md](./CHANGELOG.md). Pin an exact version to avoid surprises. What is planned
-before `1.0` is in the [roadmap](./docs/ROADMAP.md).
+before 1.0 is in the [roadmap](./docs/ROADMAP.md).
  
 ## Contributing
  

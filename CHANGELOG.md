@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - Feature: `pendingInputs()` lists the inputs of the calls still in flight, superseded and queued
   ones included, for a per-row spinner on a shared mutation or a "still saving" check.

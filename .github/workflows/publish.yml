@@ -72,4 +72,4 @@ jobs:
       contents: write
       pages: write
       id-token: write
-    uses: ./.github/workflows/demo-release.yml
+    uses: $/.github/workflows/demo-release.yml

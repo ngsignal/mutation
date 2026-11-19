@@ -1,0 +1,92 @@
+<p class="hint">
+  Each column is its own seat map with its own fake server. A lock takes
+  {{ mutationServer.delaySeconds }} s (an artificial delay): click several seats in a row, in
+  either column. Seat {{ mutationServer.takenSeat }} is already taken: the server refuses it.
+</p>
+
+<div class="compare" style="--compare-rows: 4">
+  <section class="state">
+    <h3>Hand-written</h3>
+    <div class="seat-map">
+      @for (seat of handWrittenServer.seats; track seat) {
+        @let state =
+          handWrittenLocked().includes(seat)
+            ? 'locked'
+            : lockingSeats().includes(seat)
+              ? 'locking'
+              : handWrittenRefused().includes(seat)
+                ? 'refused'
+                : 'free';
+        <button
+          type="button"
+          class="seat"
+          [attr.data-state]="state"
+          [disabled]="state === 'locking' || state === 'locked'"
+          (click)="lockHandWritten(seat)"
+        >
+          <span class="seat-number">Seat {{ seat }}</span>
+          <span class="seat-state">
+            @if (state === 'locking') {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ state === 'locking' ? 'Locking…' : state === 'locked' ? 'Locked' : state === 'refused' ? 'Refused, retry' : 'Free' }}
+          </span>
+        </button>
+      }
+    </div>
+    <dl>
+      <dt>lockingSeats()</dt>
+      <dd role="status">{{ lockingSeats().join(', ') || '—' }}</dd>
+      <dt>Safe to leave the page</dt>
+      <dd>{{ lockingSeats().length === 0 ? 'yes' : 'no' }}</dd>
+    </dl>
+    <app-activity-log heading="Server" [entries]="handWrittenServer.requests()" />
+  </section>
+
+  <section class="state">
+    <h3>rxMutation()</h3>
+    <div class="seat-map">
+      @for (seat of mutationServer.seats; track seat) {
+        @let state =
+          mutationLocked().includes(seat)
+            ? 'locked'
+            : lockSeat.pendingInputs().includes(seat)
+              ? 'locking'
+              : mutationRefused().includes(seat)
+                ? 'refused'
+                : 'free';
+        <button
+          type="button"
+          class="seat"
+          [attr.data-state]="state"
+          [disabled]="state === 'locking' || state === 'locked'"
+          (click)="lockSeat.mutate(seat)"
+        >
+          <span class="seat-number">Seat {{ seat }}</span>
+          <span class="seat-state">
+            @if (state === 'locking') {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ state === 'locking' ? 'Locking…' : state === 'locked' ? 'Locked' : state === 'refused' ? 'Refused, retry' : 'Free' }}
+          </span>
+        </button>
+      }
+    </div>
+    <dl>
+      <dt>pendingInputs()</dt>
+      <dd role="status">{{ lockSeat.pendingInputs().join(', ') || '—' }}</dd>
+      <dt>Safe to leave the page</dt>
+      <dd>{{ lockSeat.pendingInputs().length === 0 ? 'yes' : 'no' }}</dd>
+    </dl>
+    <app-activity-log heading="Server" [entries]="mutationServer.requests()" />
+  </section>
+</div>
+
+<p class="hint">
+  Both seat maps behave the same. By hand, the list of seats in flight is updated in three places:
+  before the call, on success and on error; a branch that forgets it leaves a seat "Locking…"
+  forever. With <code>rxMutation()</code>, <code>pendingInputs()</code> lists the inputs of the
+  calls still in flight: a seat leaves it when its call settles, whatever the outcome, and
+  <code>reset()</code> or destroy empty it. <code>input()</code> and <code>isPending()</code> only
+  follow the latest call, so they can't tell which seats are still locking.
+</p>

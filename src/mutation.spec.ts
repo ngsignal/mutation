@@ -430,7 +430,7 @@ describe('pendingInputs()', () => {
     expectTypeOf(m.pendingInputs()).toEqualTypeOf<readonly number[]>();
   });
 
-  it('keeps a superseded call after the latest one has settled and isPending() is false', async () => {
+  it('keeps a superseded call after the latest one has settled', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
     const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
@@ -441,7 +441,6 @@ describe('pendingInputs()', () => {
 
     second.resolve('second');
     await secondCall;
-    expect(m.isPending()).toBe(false);
     expect(m.pendingInputs()).toEqual(['a']);
 
     first.resolve('first');
@@ -568,6 +567,51 @@ describe('pendingInputs()', () => {
     await firstCall;
 
     expect(m.pendingInputs()).toEqual(['b']);
+  });
+});
+
+describe('isPending()', () => {
+  it('stays true while a superseded call is in flight after the latest one succeeded', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    const firstCall = m.mutate('a');
+    const secondCall = m.mutate('b');
+    second.resolve('second');
+    await secondCall;
+
+    expect(m.status()).toBe('success');
+    expect(m.isPending()).toBe(true);
+
+    first.resolve('first');
+    await firstCall;
+
+    expect(m.isPending()).toBe(false);
+  });
+
+  it('stays true while a superseded call is in flight after the latest one failed', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    void m.mutate('a');
+    const secondCall = m.mutate('b');
+    second.reject(new Error('second failed'));
+    await secondCall.catch(() => undefined);
+
+    expect(m.status()).toBe('error');
+    expect(m.isPending()).toBe(true);
+  });
+
+  it('turns false on reset() while calls are still in flight', () => {
+    const m = createMutation<string, string>({ mutationFn: () => new Promise<string>(() => undefined) });
+
+    void m.mutate('a');
+    void m.mutate('b');
+    m.reset();
+
+    expect(m.isPending()).toBe(false);
   });
 });
 

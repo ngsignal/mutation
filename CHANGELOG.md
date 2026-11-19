@@ -6,6 +6,12 @@
   included, like Signal Forms' `submitting()`. It used to follow the latest call only, so it
   turned false when the latest call settled before an older one. It no longer always equals
   `status() === 'pending'`: `status()` still follows the latest call.
+- **Breaking:** a call still queued when `reset()` runs or the injection context is destroyed now
+  rejects with `'NotStarted'` instead of `'Aborted'`, so it can't be mistaken for a call aborted
+  in flight, whose write may have reached the server.
+- **Breaking:** `reset()` and destroy abort in-flight calls with a fixed reason,
+  `DOMException('Aborted', 'AbortError')`. `rxMutation()`, `httpMutation()` and `fetch()` reject
+  with it, instead of a message that depended on the platform.
 
 ## 0.7.0
 

@@ -227,8 +227,12 @@ reached the server, e.g. before rolling back an optimistic update:
 | ------------------------------------------------- | --------------------------------- | ------------------------------ |
 | `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No, `mutationFn` never ran     |
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No, `mutationFn` never ran     |
-| `reset()`/destroy while queued (`'queue'`)        | `'Aborted'`, at once              | No, `mutationFn` never ran     |
-| `reset()`/destroy while in flight                 | whatever `mutationFn` rejects with | **Maybe**: the request had left |
+| `reset()`/destroy while queued (`'queue'`)        | `'NotStarted'`, at once           | No, `mutationFn` never ran     |
+| `reset()`/destroy while in flight                 | `'Aborted'`\*                     | **Maybe**: the request had left |
+
+\* `'Aborted'` is the `AbortSignal`'s reason: `rxMutation()`, `httpMutation()` and `fetch()`
+reject with it. A `mutationFn` that ignores its `AbortSignal` or rejects with its own error
+decides the message itself.
 
 > [!WARNING]
 > Aborting never undoes a write the server already received: `reset()` only stops the client

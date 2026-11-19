@@ -17,12 +17,12 @@ export class ApiError extends Error {
   }
 }
 
-/** Resolves with `value` after `ms`, or rejects with an `AbortError` as soon as `abortSignal` aborts. */
+/** Resolves with `value` after `ms`, or rejects with the abort reason as soon as `abortSignal` aborts, like `fetch()`. */
 export function delay<T>(value: T, ms: number, abortSignal: AbortSignal): Promise<T> {
   return new Promise((resolve, reject) => {
     const abort = () => {
       clearTimeout(timer);
-      reject(new DOMException('Aborted', 'AbortError'));
+      reject(abortSignal.reason);
     };
     const timer = setTimeout(() => {
       abortSignal.removeEventListener('abort', abort);

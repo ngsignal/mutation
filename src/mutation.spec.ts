@@ -802,7 +802,7 @@ describe("concurrency: 'queue'", () => {
     await Promise.resolve();
     m.reset();
 
-    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
   });
 
   it('rejects a call still queued as soon as the injector is destroyed, even if the call ahead ignores its AbortSignal', async () => {
@@ -821,7 +821,7 @@ describe("concurrency: 'queue'", () => {
     await Promise.resolve();
     childInjector.destroy();
 
-    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
   });
 
   it('keeps a call made after reset() behind an in-flight call that ignores its AbortSignal', async () => {
@@ -1033,6 +1033,21 @@ describe('reset()', () => {
     expect(m.status()).toBe('idle');
     expect(m.value()).toBeUndefined();
     expect(m.error()).toBeUndefined();
+  });
+
+  it("aborts an in-flight call's signal with an 'Aborted' AbortError as its reason", () => {
+    let abortSignal!: AbortSignal;
+    const m = createMutation<void, string>({
+      mutationFn: (_input, signal) => {
+        abortSignal = signal;
+        return new Promise<string>(() => undefined);
+      },
+    });
+
+    void m.mutate();
+    m.reset();
+
+    expect(abortSignal.reason).toMatchObject({ name: 'AbortError', message: 'Aborted' });
   });
 
   it('ignores the result of a mutation that was still in flight', async () => {

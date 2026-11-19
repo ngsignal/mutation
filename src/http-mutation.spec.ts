@@ -644,7 +644,7 @@ describe('reset()', () => {
 
     m.reset();
 
-    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
     expect(req.cancelled).toBe(true);
     expect(m.status()).toBe('idle');
   });
@@ -663,7 +663,7 @@ describe('cancellation', () => {
 
     childInjector.destroy();
 
-    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
     expect(req.cancelled).toBe(true);
   });
 });

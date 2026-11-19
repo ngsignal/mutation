@@ -208,12 +208,12 @@ function createQueueGate(): ConcurrencyGate {
     run<T>(task: () => Promise<T>, abortSignal: AbortSignal) {
       return new Promise<T>((resolve, reject) => {
         // Aborted while waiting: reject now rather than when its turn comes.
-        const leaveQueue = () => reject(abortedError());
+        const leaveQueue = () => reject(notStartedError());
         abortSignal.addEventListener('abort', leaveQueue, { once: true });
 
         const call = previousCall.then(() => {
           abortSignal.removeEventListener('abort', leaveQueue);
-          return abortSignal.aborted ? Promise.reject(abortedError()) : task();
+          return abortSignal.aborted ? Promise.reject(notStartedError()) : task();
         });
         // The next call waits for this one even if it left the queue: writes stay in order.
         previousCall = call.catch(() => undefined);
@@ -224,8 +224,9 @@ function createQueueGate(): ConcurrencyGate {
   };
 }
 
-function abortedError(): DOMException {
-  return new DOMException('Aborted', 'AbortError');
+// Never sent, unlike a call aborted in flight ('Aborted'), whose request may already have left.
+function notStartedError(): DOMException {
+  return new DOMException('NotStarted', 'AbortError');
 }
 
 function createDropGate(): ConcurrencyGate {
@@ -268,7 +269,8 @@ function createCallTracker<TInput>(pendingTasks: PendingTasks) {
     },
     abortAll(): void {
       for (const [controller, { removeTask }] of activeCalls) {
-        controller.abort();
+        // A fixed reason: fetch(), rxMutation() and httpMutation() reject with it on every platform.
+        controller.abort(new DOMException('Aborted', 'AbortError'));
         removeTask();
       }
       activeCalls.clear();

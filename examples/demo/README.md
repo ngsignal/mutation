@@ -6,7 +6,9 @@ with a delay ([fake-api.ts](src/app/shared/fake-api.ts),
 [fake-http-backend.ts](src/app/shared/fake-http-backend.ts)), so pending states and racing
 requests are easy to try.
 
-[Open it on StackBlitz](https://stackblitz.com/github/ngsignal/mutation/tree/main/examples/demo)
+[Open it live](https://ngsignal.github.io/mutation/) or
+[edit it on StackBlitz](https://stackblitz.com/github/ngsignal/mutation/tree/demo/examples/demo).
+Both show the latest release.
 
 ## Running it
 

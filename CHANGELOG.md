@@ -16,6 +16,8 @@
   `mutation()` does, and the `hasValue()` narrowing parameter last:
   `MutationRef<TInput, TOutput, TError, TValue>`. Typing a field with a custom error is now
   `MutationRef<Dto, User, HttpErrorResponse>`.
+- **Breaking (types only):** `HttpMutationRawBodyOptions` is no longer exported from
+  `@ngsignal/mutation/http`: it was an internal helper. Open an issue if you relied on it.
 
 ## 0.7.0
 

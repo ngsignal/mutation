@@ -1,21 +1,29 @@
 name: Demo release
 
 # Publishes the demo of a release tag: the site on GitHub Pages and the `demo` branch StackBlitz opens.
-# Called by Publish once the package is on npm; run it by hand on a tag to redo one.
+# Called by Publish once the package is on npm; run it by hand from main to (re)deploy a released tag.
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Released tag to deploy, e.g. v0.7.0
+        required: true
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
 
 jobs:
   pages-build:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(inputs.tag || github.ref_name, 'v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -68,13 +76,14 @@ jobs:
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   stackblitz-branch:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(inputs.tag || github.ref_name, 'v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -87,7 +96,7 @@ jobs:
       - name: Pin the demo to the released version
         working-directory: examples/demo
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             npm install --package-lock-only --ignore-scripts --prefer-online --save-exact "@ngsignal/mutation@$version" && exit 0
             echo "Attempt $attempt: @ngsignal/mutation@$version not installable yet"
@@ -102,5 +111,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git diff --quiet || git commit -am "chore(demo): use @ngsignal/mutation ${GITHUB_REF_NAME#v}"
+          git diff --quiet || git commit -am "chore(demo): use @ngsignal/mutation ${TAG#v}"
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/demo

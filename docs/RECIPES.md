@@ -26,22 +26,20 @@ the last write to land.
 (`mutate()` always rejects like `mutationFn` does, for that specific call):
 
 ```ts
-readonly deleteUser = mutation<string, void>({
-  mutationFn: (id, signal) => this.api.deleteUser(id, signal),
+readonly deleteUser = mutation<User, void>({
+  mutationFn: (user, signal) => this.api.deleteUser(user.id, signal),
 });
 
-removeUser(id: string) {
-  const previous = this.usersResource.value();
-  this.usersResource.update((users) => users.filter((u) => u.id !== id));
+removeUser(user: User) {
+  this.usersResource.update((users) => users.filter((u) => u.id !== user.id));
 
-  this.deleteUser.mutate(id).catch(() => this.usersResource.set(previous));
+  this.deleteUser.mutate(user).catch(() => this.usersResource.update((users) => [...users, user]));
 }
 ```
 
-`deleteUser` is one shared instance: calling `removeUser` twice in a row no longer cancels the
-first delete (see [stale-response guarding](../README.md#stale-response-guarding)), both DELETE
-requests run to completion independently, and each call's own `.catch()` rolls back its own
-optimistic update if it fails.
+Roll back the failed item, not a snapshot of the list: deletes can overlap (see
+[stale-response guarding](../README.md#stale-response-guarding)), and a snapshot would also bring
+back users whose delete succeeds. The restored user comes back at the end of the list.
 
 ## Retrying writes
 

@@ -110,16 +110,16 @@ Run side effects (cache updates, navigation, toasts) right where the mutation is
 addition to `await mutate(...)` at the call site.
  
 ```ts
-const createTodo = mutation<string, Todo>({
-  mutationFn: (title, signal) => api.createTodo(title, signal),
+readonly createTodo = mutation<string, Todo>({
+  mutationFn: (title, abortSignal) => this.api.createTodo(title, abortSignal),
   onSuccess: (todo) => this.todos.update((list) => [...list, todo]),
   onError: (err) => this.toast.show(String(err)),
 });
 ```
  
-Callbacks run once for **every** call that settles, including a call superseded by a more recent
-`mutate()`: its write happened on the server, so creating two todos quickly appends both. The
-last argument tells calls apart, for side effects that should only follow the current one:
+Since every call runs its callbacks ([see above](#stale-response-guarding)), creating two todos
+quickly appends both. `isLatest` tells calls apart, for side effects that should only follow the
+current one:
  
 ```ts
 onSuccess: (todo, title, { isLatest }) => {
@@ -154,7 +154,7 @@ value across those states (see [stale-response guarding](#stale-response-guardin
  
 ```ts
 const createInvoice = mutation<Order, Invoice>({
-  mutationFn: (order, signal) => api.createInvoice(order, signal),
+  mutationFn: (order, abortSignal) => api.createInvoice(order, abortSignal),
 });
  
 if (createInvoice.hasValue()) {
@@ -164,6 +164,21 @@ if (createInvoice.hasValue()) {
 
 For a mutation returning nothing (`TOutput` is `void`), `value()` stays undefined even after a
 success: check `isSuccess()` instead.
+
+### pendingInputs
+
+`input()` and `isPending()` only follow the latest call. `pendingInputs()` lists the inputs of
+every call still in flight (superseded and queued ones included), so one mutation shared by a
+list can disable each row being written:
+
+```html
+<button (click)="deleteRow.mutate(row.id)" [disabled]="deleteRow.pendingInputs().includes(row.id)">
+  Delete
+</button>
+```
+
+`pendingInputs().length > 0` tells whether any write is still running; `reset()` and destroy
+empty it.
  
 ### Also included
  
@@ -171,19 +186,12 @@ success: check `isSuccess()` instead.
   it (`(click)="save.mutate(x)"`) is safe: a failure never reports an unhandled rejection, and
   still shows in `error()`.
 - **`reset()`** brings `status`/`value`/`error`/`input` back to their initial state and aborts
-  any in-flight call(s). With `concurrency: 'queue'`, a call made after `reset()` still waits
-  for an aborted call already in flight to settle, so writes stay in order: honor `abortSignal`
-  in `mutationFn` (`httpMutation()` and `rxMutation()` do) so the queue frees up at once.
+  any in-flight call(s): see [Cancellations](#cancellations).
 - **`onSettled`** runs after `onSuccess` or `onError`, whichever fired; use it for cleanup that
   must happen either way (closing a modal, releasing a UI lock).
 - **`input`** holds the input of the most recent `mutate()` call, from the moment it's called
   until the next `mutate()` or `reset()`.
 - **`isPending` / `isIdle` / `isSuccess` / `isError`**: one boolean signal per `status()` value.
-- **`pendingInputs`** lists the inputs of the calls still in flight, in call order, superseded and
-  queued ones included. `input()` and `isPending()` only track the latest call: with one shared
-  `deleteRow` mutation, `deleteRow.pendingInputs().includes(row.id)` shows a spinner on every
-  row being deleted, and `pendingInputs().length > 0` tells whether any write is still running.
-  `reset()` and destroy empty it.
 - **SSR support**: every in-flight mutation registers with Angular's `PendingTasks`, so
   `ApplicationRef.isStable` (and SSR rendering) waits for it, and releases it immediately on
   reset/destroy rather than waiting for a stale call to settle.
@@ -201,6 +209,10 @@ What happens to a second `mutate()` while a call is still in flight:
 | `'drop'`        | Rejected at once (`'Dropped'`), `mutationFn` never runs, signals untouched | Double-submit protection (payment, form submit) |
 
 In every mode, `status`/`value`/`error`/`input` reflect the most recently submitted call.
+
+With `'queue'`, a call made after `reset()` still waits for an aborted call already in flight to
+settle, so writes stay in order: honor `abortSignal` in `mutationFn` (`httpMutation()` and
+`rxMutation()` do) so the queue frees up at once.
 
 ### Cancellations
 
@@ -228,7 +240,6 @@ reached the server, e.g. before rolling back an optimistic update:
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
-- [Using Observables and `HttpClient`](./docs/RECIPES.md#using-observables-and-httpclient)
  
 ## API
  

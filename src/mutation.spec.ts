@@ -5,6 +5,7 @@ import {
   PendingTasks,
   ApplicationRef,
   ErrorHandler,
+  computed,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
@@ -412,6 +413,161 @@ describe('concurrent mutate() calls', () => {
     void m.mutate();
     expect(abortSignals[0].aborted).toBe(false);
     expect(abortSignals[1].aborted).toBe(false);
+  });
+
+});
+
+describe('pendingInputs()', () => {
+  it('is empty before the first mutate() call', () => {
+    const m = createMutation<string, string>({ mutationFn: () => Promise.resolve('ok') });
+
+    expect(m.pendingInputs()).toEqual([]);
+  });
+
+  it('types its items as TInput', () => {
+    const m = createMutation<number, string>({ mutationFn: () => Promise.resolve('ok') });
+
+    expectTypeOf(m.pendingInputs()).toEqualTypeOf<readonly number[]>();
+  });
+
+  it('keeps a superseded call after the latest one has settled and isPending() is false', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    const firstCall = m.mutate('a');
+    const secondCall = m.mutate('b');
+    expect(m.pendingInputs()).toEqual(['a', 'b']);
+
+    second.resolve('second');
+    await secondCall;
+    expect(m.isPending()).toBe(false);
+    expect(m.pendingInputs()).toEqual(['a']);
+
+    first.resolve('first');
+    await firstCall;
+    expect(m.pendingInputs()).toEqual([]);
+  });
+
+  it('removes a call that settles before the others and keeps the rest in call order', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const third = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second, third) });
+
+    void m.mutate('a');
+    const secondCall = m.mutate('b');
+    void m.mutate('c');
+
+    second.resolve('second');
+    await secondCall;
+
+    expect(m.pendingInputs()).toEqual(['a', 'c']);
+  });
+
+  it('removes a call once it fails', async () => {
+    const deferred = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: () => deferred.promise });
+
+    const call = m.mutate('a');
+    expect(m.pendingInputs()).toEqual(['a']);
+
+    deferred.reject(new Error('boom'));
+    await expect(call).rejects.toThrow('boom');
+    expect(m.pendingInputs()).toEqual([]);
+  });
+
+  it('keeps an input called twice until both of its calls have settled', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    const firstCall = m.mutate('a');
+    void m.mutate('a');
+    expect(m.pendingInputs()).toEqual(['a', 'a']);
+
+    first.resolve('first');
+    await firstCall;
+    expect(m.pendingInputs()).toEqual(['a']);
+  });
+
+  it('removes a call whose mutationFn throws synchronously', async () => {
+    const m = createMutation<string, string>({
+      mutationFn: () => {
+        throw new Error('sync');
+      },
+    });
+
+    await expect(m.mutate('a')).rejects.toThrow('sync');
+    expect(m.pendingInputs()).toEqual([]);
+  });
+
+  it('lists a call made from a computed', () => {
+    const m = createMutation<string, string>({ mutationFn: () => new Promise<string>(() => {}) });
+    const startsCall = computed(() => m.mutate('a'));
+
+    void startsCall();
+
+    expect(m.pendingInputs()).toEqual(['a']);
+  });
+
+  it("includes calls still waiting in the queue with concurrency: 'queue'", () => {
+    const m = createMutation<string, string>({
+      mutationFn: () => new Promise<string>(() => {}),
+      concurrency: 'queue',
+    });
+
+    void m.mutate('a');
+    void m.mutate('b');
+
+    expect(m.pendingInputs()).toEqual(['a', 'b']);
+  });
+
+  it("leaves out a call dropped with concurrency: 'drop'", async () => {
+    const m = createMutation<string, string>({
+      mutationFn: () => new Promise<string>(() => {}),
+      concurrency: 'drop',
+    });
+
+    void m.mutate('a');
+    await expect(m.mutate('b')).rejects.toMatchObject({ name: 'AbortError' });
+
+    expect(m.pendingInputs()).toEqual(['a']);
+  });
+
+  it('is emptied by reset(), even if a mutationFn ignores its AbortSignal', () => {
+    const m = createMutation<string, string>({ mutationFn: () => new Promise<string>(() => {}) });
+
+    void m.mutate('a');
+    void m.mutate('b');
+    m.reset();
+
+    expect(m.pendingInputs()).toEqual([]);
+  });
+
+  it('is emptied when the injector is destroyed', () => {
+    const injector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const m = mutation<string, string>({ mutationFn: () => new Promise<string>(() => {}), injector });
+
+    void m.mutate('a');
+    injector.destroy();
+
+    expect(m.pendingInputs()).toEqual([]);
+  });
+
+  it('does not touch the list when a call aborted by reset() settles later', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
+
+    const firstCall = m.mutate('a');
+    m.reset();
+    void m.mutate('b');
+
+    first.resolve('first');
+    await firstCall;
+
+    expect(m.pendingInputs()).toEqual(['b']);
   });
 });
 

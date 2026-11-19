@@ -43,6 +43,8 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TErr
   readonly isIdle: Signal<boolean>;
   readonly isSuccess: Signal<boolean>;
   readonly isError: Signal<boolean>;
+  /** Inputs of the calls still in flight, in call order, superseded and queued ones included: `input()` only tracks the latest call. */
+  readonly pendingInputs: Signal<readonly TInput[]>;
   readonly snapshot: Signal<MutationSnapshot<TOutput, TError>>;
   /** Always false for a `void` mutation: check `isSuccess()` instead. */
   hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError>;

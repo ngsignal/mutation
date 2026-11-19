@@ -179,6 +179,11 @@ success: check `isSuccess()` instead.
 - **`input`** holds the input of the most recent `mutate()` call, from the moment it's called
   until the next `mutate()` or `reset()`.
 - **`isPending` / `isIdle` / `isSuccess` / `isError`**: one boolean signal per `status()` value.
+- **`pendingInputs`** lists the inputs of the calls still in flight, in call order, superseded and
+  queued ones included. `input()` and `isPending()` only track the latest call: with one shared
+  `deleteRow` mutation, `deleteRow.pendingInputs().includes(row.id)` shows a spinner on every
+  row being deleted, and `pendingInputs().length > 0` tells whether any write is still running.
+  `reset()` and destroy empty it.
 - **SSR support**: every in-flight mutation registers with Angular's `PendingTasks`, so
   `ApplicationRef.isStable` (and SSR rendering) waits for it, and releases it immediately on
   reset/destroy rather than waiting for a stale call to settle.

@@ -40,7 +40,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
   let generation = 0;
   let destroyed = false;
   const gate = createConcurrencyGate(options.concurrency);
-  const calls = createCallTracker(pendingTasks);
+  const calls = createCallTracker<TInput>(pendingTasks);
 
   function abortAllInProgress(): void {
     calls.abortAll();
@@ -127,13 +127,12 @@ export function mutation<TInput, TOutput, TError = unknown>(
   async function execute(input: TInput): Promise<TOutput> {
     const currentGeneration = ++generation;
 
-    untracked(() => {
+    const call = untracked(() => {
       status.set('pending');
       error.set(undefined);
       currentInput.set(input);
+      return calls.start(input);
     });
-
-    const call = calls.start();
 
     try {
       const result = await gate.run(
@@ -175,6 +174,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     isIdle: computed(() => status() === 'idle'),
     isSuccess: computed(() => status() === 'success'),
     isError: computed(() => status() === 'error'),
+    pendingInputs: calls.pendingInputs,
     snapshot,
     hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError> {
       return value() !== undefined;
@@ -245,27 +245,34 @@ function createDropGate(): ConcurrencyGate {
   };
 }
 
-function createCallTracker(pendingTasks: PendingTasks) {
-  const activeCalls = new Map<AbortController, () => void>();
+function createCallTracker<TInput>(pendingTasks: PendingTasks) {
+  const activeCalls = new Map<AbortController, { input: TInput; removeTask: () => void }>();
+  // A Map iterates in insertion order: the inputs stay in call order.
+  const pendingInputs = signal<readonly TInput[]>([]);
+  const publishInputs = () => pendingInputs.set(Array.from(activeCalls.values(), (call) => call.input));
   return {
-    start() {
+    pendingInputs: pendingInputs.asReadonly(),
+    start(input: TInput) {
       const controller = new AbortController();
       const removeTask = pendingTasks.add();
-      activeCalls.set(controller, removeTask);
+      activeCalls.set(controller, { input, removeTask });
+      publishInputs();
       return {
         abortSignal: controller.signal,
         finish(): void {
           removeTask();
           activeCalls.delete(controller);
+          publishInputs();
         },
       };
     },
     abortAll(): void {
-      for (const [controller, removeTask] of activeCalls) {
+      for (const [controller, { removeTask }] of activeCalls) {
         controller.abort();
         removeTask();
       }
       activeCalls.clear();
+      pendingInputs.set([]);
     },
   };
 }

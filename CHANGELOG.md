@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Feature: `pendingInputs()` lists the inputs of the calls still in flight, superseded and queued
+  ones included, for a per-row spinner on a shared mutation or a "still saving" check.
+  `input()` and `isPending()` only track the latest call. Also on `rxMutation()` and
+  `httpMutation()`.
 - Fix: with `concurrency: 'queue'`, a call still waiting in the queue when `reset()` runs or the
   injection context is destroyed now rejects with `'Aborted'` at once, instead of only once the
   call ahead of it settled (never, if its `mutationFn` ignored the `AbortSignal`).

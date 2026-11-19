@@ -1,0 +1,106 @@
+name: Demo release
+
+# Publishes the demo of a release tag: the site on GitHub Pages and the `demo` branch StackBlitz opens.
+# Called by Publish once the package is on npm; run it by hand on a tag to redo one.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pages-build:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          # Never restore a cache here: a poisoned cache could alter the deployed site.
+          package-manager-cache: false
+
+      - run: npm ci --ignore-scripts
+
+      - name: Build the library
+        run: npm run build
+
+      - name: Pack the library into the demo
+        run: npm pack --ignore-scripts --pack-destination examples/demo
+
+      - name: Install the demo
+        working-directory: examples/demo
+        run: npm ci --ignore-scripts
+
+      - name: Swap in the tag's library
+        working-directory: examples/demo
+        run: npm install --no-save --ignore-scripts ./ngsignal-mutation-*.tgz # zizmor: ignore[adhoc-packages] the demo builds against the library packed above
+
+      - name: Build the demo
+        working-directory: examples/demo
+        run: |
+          npm run build -- --base-href "/${GITHUB_REPOSITORY#*/}/"
+          # Pages serves 404.html for unknown paths: let the router handle deep links.
+          cp dist/ngsignal-mutation-demo/browser/index.html dist/ngsignal-mutation-demo/browser/404.html
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: examples/demo/dist/ngsignal-mutation-demo/browser
+
+  pages-deploy:
+    needs: pages-build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  stackblitz-branch:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # StackBlitz installs the demo's package.json from npm: pin it to the tag's version, which
+      # can take a few minutes to show up on the registry after `npm publish`.
+      - name: Pin the demo to the released version
+        working-directory: examples/demo
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            npm install --package-lock-only --ignore-scripts --prefer-online --save-exact "@ngsignal/mutation@$version" && exit 0
+            echo "Attempt $attempt: @ngsignal/mutation@$version not installable yet"
+            sleep 30
+          done
+          exit 1
+
+      # Rebuilt from the tag at each release, so the push replaces the previous branch.
+      - name: Push the demo branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || git commit -am "chore(demo): use @ngsignal/mutation ${GITHUB_REF_NAME#v}"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/demo

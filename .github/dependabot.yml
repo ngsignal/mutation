@@ -16,7 +16,8 @@ updates:
         patterns:
           - "*"
 
-  # The demo only follows the library's own releases, which need no cooldown.
+  # Keeps the demo on main on the latest release for local runs (the deployed demo is pinned by
+  # the Demo release workflow). It only follows the library's own releases, which need no cooldown.
   - package-ecosystem: npm
     directory: /examples/demo
     schedule:

@@ -65,3 +65,11 @@ jobs:
 
       - name: Publish
         run: npm publish
+
+  demo:
+    needs: publish
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/demo-release.yml

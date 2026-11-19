@@ -10,10 +10,11 @@ Educational first: the library API must stay visible, never hidden behind archit
   - `rxMutation` (`@ngsignal/mutation/rxjs-interop`), `httpMutation` (`@ngsignal/mutation/http`)
   - docs `README.md`, `docs/RECIPES.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md`
 - Version running: `@ngsignal/mutation` from npm, pinned in `package.json` and bumped by
-  Dependabot after each release (StackBlitz installs that one). CI builds the demo against the
-  library of the current commit instead, so a library change that breaks a page fails CI.
-  A page that uses an API not released yet passes CI but breaks StackBlitz: land it after the
-  release, with the Dependabot bump. The `.d.ts` files in `node_modules/@ngsignal/mutation/dist` are the ground truth.
+  Dependabot after each release. CI builds the demo against the library of the current commit
+  instead, so a library change that breaks a page fails CI, and a page can use an API in the PR
+  that adds it. Each release tag deploys its demo (`.github/workflows/demo-release.yml`): to
+  GitHub Pages, built with the tag's library, and to the `demo` branch StackBlitz opens, pinned
+  to the released version. The `.d.ts` files in `node_modules/@ngsignal/mutation/dist` are the ground truth.
 - One demo = `src/app/demos/<name>-page/` (`.ts` + `.html`), registered in
   `src/app/app.routes.ts` and in the sidebar in `src/app/app.html`.
 - Fake backends: `src/app/shared/fake-api.ts` (delayed promises, one fake server per demo so

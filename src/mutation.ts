@@ -170,7 +170,6 @@ export function mutation<TInput, TOutput, TError = unknown>(
     value: value.asReadonly(),
     error: error.asReadonly(),
     input: currentInput.asReadonly(),
-    // Not `status() === 'pending'`: a superseded call still in flight keeps it true.
     isPending: computed(() => calls.pendingInputs().length > 0),
     isIdle: computed(() => status() === 'idle'),
     isSuccess: computed(() => status() === 'success'),

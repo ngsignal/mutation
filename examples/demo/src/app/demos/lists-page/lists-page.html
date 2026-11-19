@@ -1,0 +1,15 @@
+<p class="pitch">
+  One mutation shared by every item of a list, called once per item.
+  <code>pendingInputs()</code> lists the inputs of the calls still in flight: a spinner on each item
+  being written, and <code>pendingInputs().length</code> for the progress of a bulk action made of
+  one <code>mutate()</code> per item. A bulk endpoint that takes an array is a single call: its
+  whole array is one entry.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/lists-page/seat-map-demo.ts">Source</a>
+</p>
+
+<section>
+  <h2>Lock seats</h2>
+  <app-restartable>
+    <ng-template><app-seat-map-demo /></ng-template>
+  </app-restartable>
+</section>

@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { Observable } from 'rxjs';
 import { createActivityLog } from './activity-log';
 
 export interface User {
@@ -138,5 +139,71 @@ export function createFakePaymentServer() {
         await delay(undefined, 1500, abortSignal);
         charges.update((count) => count + 1);
       }),
+  };
+}
+
+/** Exposes a fake call the way `HttpClient` does: a cold Observable, aborted on unsubscribe. */
+function asObservable<T>(call: (abortSignal: AbortSignal) => Promise<T>): Observable<T> {
+  return new Observable<T>((subscriber) => {
+    const controller = new AbortController();
+    call(controller.signal).then(
+      (value) => {
+        subscriber.next(value);
+        subscriber.complete();
+      },
+      (error: unknown) => subscriber.error(error),
+    );
+    return () => controller.abort();
+  });
+}
+
+export interface Profile {
+  name: string;
+}
+
+/** Saves a display name in 1.5 s; an empty name is rejected. Observable-based, like `HttpClient`. */
+export function createFakeProfileServer() {
+  const requests = createRequestLog();
+
+  return {
+    requests: requests.entries,
+
+    saveProfile: (name: string): Observable<Profile> =>
+      asObservable((abortSignal) =>
+        requests.track(`saveProfile("${name}")`, abortSignal, async () => {
+          if (name.trim().length === 0) {
+            throw new ApiError('invalid-name', 'Name must not be empty');
+          }
+          return delay({ name }, 1500, abortSignal);
+        }),
+      ),
+  };
+}
+
+/**
+ * Takes 4 s to lock a seat, long enough to start several locks at once; seat 6 is always
+ * refused. Observable-based, like `HttpClient`.
+ */
+export function createFakeSeatServer() {
+  const requests = createRequestLog();
+  const delayMs = 4000;
+  const takenSeat = 6;
+
+  return {
+    requests: requests.entries,
+    seats: [1, 2, 3, 4, 5, 6],
+    takenSeat,
+    delaySeconds: delayMs / 1000,
+
+    lockSeat: (seat: number): Observable<number> =>
+      asObservable((abortSignal) =>
+        requests.track(`lockSeat(${seat})`, abortSignal, async () => {
+          await delay(undefined, delayMs, abortSignal);
+          if (seat === takenSeat) {
+            throw new Error(`Seat ${seat} is already taken`);
+          }
+          return seat;
+        }),
+      ),
   };
 }

@@ -37,11 +37,9 @@ removeUser(user: User) {
 }
 ```
 
-Roll back the failed item only, not a snapshot of the whole list. Two quick deletes both run to
-completion (see [stale-response guarding](../README.md#stale-response-guarding)): if the first
-one fails while the second is still in flight, restoring the list as it was before the first
-would bring back the second user too, although their delete succeeds. The restored user comes
-back at the end of the list: sort it if order matters.
+Roll back the failed item, not a snapshot of the list: deletes can overlap (see
+[stale-response guarding](../README.md#stale-response-guarding)), and a snapshot would also bring
+back users whose delete succeeds. The restored user comes back at the end of the list.
 
 ## Retrying writes
 

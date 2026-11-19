@@ -192,7 +192,9 @@ stay true after `status()` turned `'success'` or `'error'`, if a superseded call
   must happen either way (closing a modal, releasing a UI lock).
 - **`input`** holds the input of the most recent `mutate()` call, from the moment it's called
   until the next `mutate()` or `reset()`.
-- **`isPending` / `isIdle` / `isSuccess` / `isError`**: one boolean signal per `status()` value.
+- **`isIdle` / `isSuccess` / `isError`**: one boolean signal per `status()` value. `isPending`
+  is true while any call is in flight, so it can stay true after `status()` settled: see
+  [pendingInputs](#pendinginputs).
 - **SSR support**: every in-flight mutation registers with Angular's `PendingTasks`, so
   `ApplicationRef.isStable` (and SSR rendering) waits for it, and releases it immediately on
   reset/destroy rather than waiting for a stale call to settle.

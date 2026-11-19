@@ -167,7 +167,7 @@ success: check `isSuccess()` instead.
 
 ### pendingInputs
 
-`input()` and `isPending()` only follow the latest call. `pendingInputs()` lists the inputs of
+`input()` only follows the latest call. `pendingInputs()` lists the inputs of
 every call still in flight (superseded and queued ones included), so one mutation shared by a
 list can disable each row being written:
 
@@ -177,8 +177,9 @@ list can disable each row being written:
 </button>
 ```
 
-`pendingInputs().length > 0` tells whether any write is still running; `reset()` and destroy
-empty it.
+`isPending()` is true while any call is in flight, like Signal Forms' `submitting()`. It can
+stay true after `status()` turned `'success'` or `'error'`, if a superseded call is still running.
+`reset()` and destroy empty `pendingInputs()` and turn `isPending()` false.
  
 ### Also included
  

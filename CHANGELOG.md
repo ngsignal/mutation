@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** `isPending()` is now true while any call is in flight, superseded and queued ones
+  included, like Signal Forms' `submitting()`. It used to follow the latest call only, so it
+  turned false when the latest call settled before an older one. It no longer always equals
+  `status() === 'pending'`: `status()` still follows the latest call.
+
 ## 0.7.0
 
 - Feature: `pendingInputs()` lists the inputs of the calls still in flight, superseded and queued

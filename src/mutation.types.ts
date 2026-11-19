@@ -39,6 +39,7 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TErr
   readonly value: Signal<TValue>;
   readonly error: Signal<TError | undefined>;
   readonly input: Signal<TInput | undefined>;
+  /** True while any call is in flight, superseded and queued ones included, unlike `status()`, which follows the latest call. */
   readonly isPending: Signal<boolean>;
   readonly isIdle: Signal<boolean>;
   readonly isSuccess: Signal<boolean>;

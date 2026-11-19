@@ -16,7 +16,7 @@ export interface RxMutationOptions<TInput, TOutput, TError = unknown>
  */
 export function rxMutation<TInput, TOutput, TError = unknown>(
   options: RxMutationOptions<TInput, TOutput, TError>,
-): MutationRef<TInput, TOutput, TOutput | undefined, TError> {
+): MutationRef<TInput, TOutput, TError> {
   if (!options.injector) {
     assertInInjectionContext(rxMutation);
   }

@@ -11,6 +11,7 @@ import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
 import { expectTypeOf } from 'vitest';
 import { mutation } from './mutation';
+import type { MutationRef } from './mutation.types';
 
 /** Spies on PendingTasks.add() so each returned cleanup fn can be asserted on individually. */
 function spyOnPendingTasks() {
@@ -1156,6 +1157,17 @@ describe('hasValue()', () => {
     if (m.hasValue()) {
       expectTypeOf(m.error).returns.toEqualTypeOf<Error | undefined>();
     }
+  });
+});
+
+describe('MutationRef type parameters', () => {
+  it('takes TError third, in the same order as mutation(), with TValue defaulted last', () => {
+    const m = createMutation<string, number, Error>({ mutationFn: () => Promise.resolve(1) });
+
+    expectTypeOf(m).toEqualTypeOf<MutationRef<string, number, Error>>();
+    expectTypeOf<MutationRef<string, number, Error>>().toEqualTypeOf<
+      MutationRef<string, number, Error, number | undefined>
+    >();
   });
 });
 

@@ -12,6 +12,10 @@
 - **Breaking:** `reset()` and destroy abort in-flight calls with a fixed reason,
   `DOMException('Aborted', 'AbortError')`. `rxMutation()`, `httpMutation()` and `fetch()` reject
   with it, instead of a message that depended on the platform.
+- **Breaking (types only):** `MutationRef` and `HttpMutationRef` take `TError` third, as
+  `mutation()` does, and the `hasValue()` narrowing parameter last:
+  `MutationRef<TInput, TOutput, TError, TValue>`. Typing a field with a custom error is now
+  `MutationRef<Dto, User, HttpErrorResponse>`.
 
 ## 0.7.0
 

@@ -23,7 +23,7 @@ import type {
  */
 export function mutation<TInput, TOutput, TError = unknown>(
   options: MutationOptions<TInput, TOutput, TError>,
-): MutationRef<TInput, TOutput, TOutput | undefined, TError> {
+): MutationRef<TInput, TOutput, TError> {
   if (!options.injector) {
     assertInInjectionContext(mutation);
   }
@@ -176,7 +176,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
     isError: computed(() => status() === 'error'),
     pendingInputs: calls.pendingInputs,
     snapshot,
-    hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError> {
+    hasValue(): this is MutationRef<TInput, TOutput, TError, TOutput> {
       return value() !== undefined;
     },
     mutate,

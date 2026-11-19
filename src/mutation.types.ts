@@ -33,7 +33,7 @@ export type MutationSnapshot<TOutput, TError = unknown> =
   | Readonly<{ status: 'success'; value: TOutput; error: undefined }>
   | Readonly<{ status: 'error'; value: TOutput | undefined; error: TError }>;
 
-export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TError = unknown> {
+export interface MutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined> {
   readonly status: Signal<MutationStatus>;
   /** Kept while a newer call is pending or after it fails: only a new success or `reset()` replaces it. */
   readonly value: Signal<TValue>;
@@ -48,7 +48,7 @@ export interface MutationRef<TInput, TOutput, TValue = TOutput | undefined, TErr
   readonly pendingInputs: Signal<readonly TInput[]>;
   readonly snapshot: Signal<MutationSnapshot<TOutput, TError>>;
   /** Always false for a `void` mutation: check `isSuccess()` instead. */
-  hasValue(): this is MutationRef<TInput, TOutput, TOutput, TError>;
+  hasValue(): this is MutationRef<TInput, TOutput, TError, TOutput>;
   /** Safe to ignore: a failure never reports an unhandled rejection. */
   mutate(input: TInput): Promise<TOutput>;
   /** Aborts in-flight calls, but never undoes a write the server already received. */

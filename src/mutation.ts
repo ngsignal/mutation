@@ -224,7 +224,6 @@ function createQueueGate(): ConcurrencyGate {
   };
 }
 
-// Never sent, unlike a call aborted in flight ('Aborted'), whose request may already have left.
 function notStartedError(): DOMException {
   return new DOMException('NotStarted', 'AbortError');
 }
@@ -248,7 +247,6 @@ function createDropGate(): ConcurrencyGate {
 
 function createCallTracker<TInput>(pendingTasks: PendingTasks) {
   const activeCalls = new Map<AbortController, { input: TInput; removeTask: () => void }>();
-  // A Map iterates in insertion order: the inputs stay in call order.
   const pendingInputs = signal<readonly TInput[]>([]);
   const publishInputs = () => pendingInputs.set(Array.from(activeCalls.values(), (call) => call.input));
   return {
@@ -269,7 +267,6 @@ function createCallTracker<TInput>(pendingTasks: PendingTasks) {
     },
     abortAll(): void {
       for (const [controller, { removeTask }] of activeCalls) {
-        // A fixed reason: fetch(), rxMutation() and httpMutation() reject with it on every platform.
         controller.abort(new DOMException('Aborted', 'AbortError'));
         removeTask();
       }

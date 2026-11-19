@@ -25,7 +25,11 @@ export type HttpMutationRequest = Omit<HttpResourceRequest, 'method' | 'transfer
 
 export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = unknown>
   extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
-  /** Describe the request for a given input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`. */
+  /**
+   * Describe the request for a given input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`.
+   * If the request completes without an `HttpResponse` (an interceptor returning `EMPTY`), the call
+   * fails with `Error('Request completed without an HttpResponse event')`.
+   */
   request: (input: TInput) => HttpMutationRequest;
   /**
    * Transform or validate the response body before it resolves the call (e.g. a schema's `parse`).
@@ -45,8 +49,11 @@ export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOu
   readonly uploadProgress: Signal<HttpProgressEvent | undefined>;
   /** Needs `reportProgress: true`. */
   readonly downloadProgress: Signal<HttpProgressEvent | undefined>;
+  /** From the `HttpResponse`, or the `HttpErrorResponse` when the request fails. Kept when `parse` throws. */
   readonly statusCode: Signal<number | undefined>;
+  /** From the `HttpResponse`, or the `HttpErrorResponse` when the request fails. */
   readonly headers: Signal<HttpHeaders | undefined>;
+  /** True once a call succeeded, even with an empty body: a `204` resolves to `null`, not `undefined`. */
   hasValue(): this is HttpMutationRef<TInput, TOutput, TError, TOutput>;
 }
 
@@ -134,7 +141,6 @@ function sendRequest(
   { method, url, ...requestOptions }: HttpMutationRequest,
   responseType: ResponseType,
 ) {
-  // Only the fields above are cast: every other field is still type-checked by http.request().
   const options = requestOptions as Omit<typeof requestOptions, LooselyTypedField> & HttpClientLooselyTypedFields;
   return http.request<unknown>(method, url, {
     ...options,

@@ -16,7 +16,7 @@ An Angular low-level Signal-based primitive for mutations (POST/PUT/DELETE).
 [Live demo](https://ngsignal.github.io/mutation/) · [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/ngsignal/mutation/tree/demo/examples/demo)
 
 [Why](#why) · [Install](#install) · [Quick start](#quick-start) · [Features](#features) ·
-[Working with resource](#working-with-resource) · [API](#api) ·
+[Working with resource](#working-with-resource) · [Public API](#public-api) ·
 [rxMutation & httpMutation](#rxmutation--httpmutation) · [Design choices](#design-choices)
 
 </div>
@@ -248,11 +248,12 @@ decides the message itself.
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
  
-## API
+## Public API
  
 `mutation<TInput, TOutput, TError = unknown>(options)`
  
-`TError` types `error()`/`onError`/`onSettled`; omit it and they stay `unknown`.
+`TError` types `error()`/`onError`/`onSettled`; omit it and they stay `unknown`. It is an
+assertion, not a check: they receive whatever `mutationFn` rejects with, an `AbortError` included.
  
 ### Options
  
@@ -264,6 +265,24 @@ decides the message itself.
 | `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput, context: MutationCallbackContext) => void` |
 | `concurrency?`| `'queue' \| 'drop'`                                                            |
 | `injector?`   | `Injector`                                                                      |
+
+### Returned `MutationRef<TInput, TOutput, TError>`
+
+| Member            | Type                                | Follows                                    |
+| ----------------- | ----------------------------------- | ------------------------------------------ |
+| `status`          | `Signal<'idle' \| 'pending' \| 'success' \| 'error'>` | the latest call               |
+| `value`           | `Signal<TOutput \| undefined>`      | the latest success, until `reset()`        |
+| `error`           | `Signal<TError \| undefined>`       | the latest call                            |
+| `input`           | `Signal<TInput \| undefined>`       | the latest call                            |
+| `isIdle` / `isSuccess` / `isError` | `Signal<boolean>`  | `status()`                                 |
+| `isPending`       | `Signal<boolean>`                   | every call in flight                       |
+| `pendingInputs`   | `Signal<readonly TInput[]>`         | every call in flight                       |
+| `snapshot`        | `Signal<MutationSnapshot<TOutput, TError>>` | the latest call                    |
+| `hasValue()`      | type guard: `value()` is `TOutput`  | `value()`                                  |
+| `mutate(input)`   | `Promise<TOutput>`                  | this call                                  |
+| `reset()`         | `void`                              | aborts every call in flight                |
+
+`MutationRef` is meant to be used, not implemented: a minor version may add members.
  
 ## rxMutation & httpMutation
  

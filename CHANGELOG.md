@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 
 - **Breaking:** `isPending()` is now true while any call is in flight, superseded and queued ones
   included, like Signal Forms' `submitting()`. It used to follow the latest call only, so it
@@ -18,6 +18,9 @@
   `MutationRef<Dto, User, HttpErrorResponse>`.
 - **Breaking (types only):** `HttpMutationRawBodyOptions` is no longer exported from
   `@ngsignal/mutation/http`: it was an internal helper. Open an issue if you relied on it.
+- Docs: every `MutationRef` member is documented (TSDoc and the README's Public API table),
+  and the README links to the recipes.
+- Internal: built with TypeScript 6.0. The emitted code is unchanged.
 
 ## 0.7.0
 

@@ -7,6 +7,10 @@ updates:
     # Skip versions published less than a week ago: compromised releases are usually pulled by then.
     cooldown:
       default-days: 7
+    # TypeScript 7 waits for Angular's compiler and typescript-eslint, which both require < 6.1.
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       angular:
         patterns:

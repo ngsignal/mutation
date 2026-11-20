@@ -11,9 +11,13 @@ import {
 import { filter, map, startWith, tap } from 'rxjs';
 import { version as libraryVersion } from '@ngsignal/mutation/package.json';
 
+/** The API a demo is about: its page and menu link take that API's color, as on the social preview. */
+type Api = 'mutation' | 'rx' | 'http';
+
 interface NavLink {
   path: string;
   label: string;
+  api?: Api;
 }
 
 /** The menu, in reading order: the previous and next links at the bottom of a page follow it. */
@@ -21,13 +25,13 @@ const NAV_GROUPS: readonly { heading: string; links: readonly NavLink[] }[] = [
   {
     heading: 'mutation()',
     links: [
-      { path: '/', label: 'Getting started' },
-      { path: '/manual', label: 'Without mutation()' },
-      { path: '/concurrent', label: 'Concurrent calls' },
-      { path: '/state', label: 'Reading state' },
-      { path: '/concurrency', label: "'queue' and 'drop'" },
-      { path: '/cancellation', label: 'Cancellation and reset()' },
-      { path: '/resource', label: 'Working with resource()' },
+      { path: '/', label: 'Getting started', api: 'mutation' },
+      { path: '/manual', label: 'Without mutation()', api: 'mutation' },
+      { path: '/concurrent', label: 'Concurrent calls', api: 'mutation' },
+      { path: '/state', label: 'Reading state', api: 'mutation' },
+      { path: '/concurrency', label: "'queue' and 'drop'", api: 'mutation' },
+      { path: '/cancellation', label: 'Cancellation and reset()', api: 'mutation' },
+      { path: '/resource', label: 'Working with resource()', api: 'mutation' },
     ],
   },
   {
@@ -40,9 +44,9 @@ const NAV_GROUPS: readonly { heading: string; links: readonly NavLink[] }[] = [
   {
     heading: 'Adapters',
     links: [
-      { path: '/rx', label: 'rxMutation()' },
-      { path: '/http', label: 'httpMutation()' },
-      { path: '/http-responses', label: 'Response bodies' },
+      { path: '/rx', label: 'rxMutation()', api: 'rx' },
+      { path: '/http', label: 'httpMutation()', api: 'http' },
+      { path: '/http-responses', label: 'Response bodies', api: 'http' },
     ],
   },
 ];
@@ -88,6 +92,7 @@ export class App {
   private readonly pageIndex = computed(() =>
     NAV_LINKS.findIndex((link) => link.path === this.navigation().path),
   );
+  protected readonly pageApi = computed(() => NAV_LINKS[this.pageIndex()]?.api);
   protected readonly previousPage = computed(() => NAV_LINKS[this.pageIndex() - 1]);
   protected readonly nextPage = computed(() => {
     const index = this.pageIndex();

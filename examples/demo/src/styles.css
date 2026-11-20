@@ -1,19 +1,31 @@
 :root {
   color-scheme: light;
 
-  --color-bg: #f6f7f9;
+  /* The logo's gradient, pink to violet */
+  --brand-pink: #ff2d68;
+  --brand-magenta: #ab2599;
+  --brand-violet: #4823dd;
+  --brand-gradient: linear-gradient(
+    135deg,
+    var(--brand-pink),
+    var(--brand-magenta) 52%,
+    var(--brand-violet)
+  );
+
+  --color-bg: #f8f6fc;
   --color-surface: #ffffff;
-  --color-border: #e3e5ea;
-  --color-border-strong: #c7cad3;
+  --color-border: #e7e2f0;
+  --color-border-strong: #cbc3da;
 
-  --color-text: #1a1d24;
-  --color-text-muted: #4c5262;
-  --color-text-subtle: #656c7c;
+  --color-text: #1c1530;
+  --color-text-muted: #4e4662;
+  --color-text-subtle: #675f7d;
 
-  --color-accent: #4f46e5;
-  --color-accent-strong: #4338ca;
-  --color-accent-bg: #eef0fd;
-  --color-accent-border: #d6d9fa;
+  /* The violet end of the logo, kept apart from the three API colors below */
+  --color-accent: #5b3fd6;
+  --color-accent-strong: #4a2fbf;
+  --color-accent-bg: #f1eefd;
+  --color-accent-border: #dcd5f8;
 
   --color-danger: #b42318;
   --color-danger-strong: #912018;
@@ -35,6 +47,31 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
 
   --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/*
+ * Each API has the color of its chip on the social preview (pink, magenta, cyan), darkened to stay
+ * readable on a light background. Set on a page, it becomes that page's accent.
+ */
+[data-api='mutation'] {
+  --color-accent: #c81e5a;
+  --color-accent-strong: #a3164a;
+  --color-accent-bg: #fdeef3;
+  --color-accent-border: #f6cfdc;
+}
+
+[data-api='rx'] {
+  --color-accent: #a335c4;
+  --color-accent-strong: #85299f;
+  --color-accent-bg: #f8eefc;
+  --color-accent-border: #e9d2f3;
+}
+
+[data-api='http'] {
+  --color-accent: #0e7490;
+  --color-accent-strong: #0b5f76;
+  --color-accent-bg: #e9f7fa;
+  --color-accent-border: #c2e6ee;
 }
 
 *,
@@ -174,7 +211,7 @@ ul li:last-child {
 }
 
 .pitch code {
-  background: rgba(79, 70, 229, 0.1);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 /* Form controls */

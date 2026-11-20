@@ -1,8 +1,12 @@
-<div class="layout">
+<div class="layout" [attr.data-api]="pageApi()">
   <header class="sidebar">
     <div class="top-bar">
       <p class="brand">
-        @ngsignal/mutation<span class="version">v{{ libraryVersion }}</span>
+        <img class="logo" src="favicon.svg" alt="" width="32" height="32" />
+        <span class="brand-text">
+          <span class="brand-name"><span class="scope">@ngsignal/</span>mutation</span>
+          <span class="version">v{{ libraryVersion }}</span>
+        </span>
       </p>
       <button
         type="button"
@@ -22,6 +26,7 @@
           @for (link of group.links; track link.path) {
             <a
               [routerLink]="link.path"
+              [attr.data-api]="link.api"
               routerLinkActive="active"
               [routerLinkActiveOptions]="{ exact: true }"
               ariaCurrentWhenActive="page"

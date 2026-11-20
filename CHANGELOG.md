@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation
+  from `submit()`. The README now says that `isPending()` means `pendingInputs().length > 0` and
+  that progress needs `reportProgress: true`.
+
 ## 0.8.0
 
 - **Breaking:** `isPending()` is now true while any call is in flight, superseded and queued ones

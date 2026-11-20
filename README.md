@@ -177,9 +177,9 @@ list can disable each row being written:
 </button>
 ```
 
-`isPending()` is true while any call is in flight, like `submitting()` in Signal Forms. It can
-stay true after the status turned to success or error, if a superseded call is still running.
-A reset or destroy empties the list and turns it false.
+`isPending()` is shorthand for `pendingInputs().length > 0`, like `submitting()` in Signal Forms.
+It stays true after a success or error while a superseded call is still running. A reset or
+destroy turns it false.
  
 ### Also included
  
@@ -246,6 +246,7 @@ The [recipes](./docs/RECIPES.md) show the usual patterns:
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
+- [Submitting a Signal Form](./docs/RECIPES.md#submitting-a-signal-form)
 - Observables and `HttpClient`: [rxMutation & httpMutation](#rxmutation--httpmutation)
  
 ## Public API
@@ -300,8 +301,9 @@ loads RxJS or Angular's HTTP client. They need RxJS (6.5+ or 7, like Angular 21)
 HTTP variant, `@angular/common`: both are optional peer dependencies.
  
 A reset or destroying the injection context unsubscribes, which aborts an `HttpClient` request.
-`httpMutation()` sends the request itself, so it also exposes upload and download progress, the
-status code and the headers as signals.
+`httpMutation()` sends the request itself, so it also exposes the status code and headers as
+signals, plus upload and download progress when the request sets `reportProgress: true`. Upload
+progress needs the XHR backend: see [Upload progress](./docs/RECIPES.md#upload-progress).
  
 - [Reusing an Observable-returning service](./docs/RECIPES.md#reusing-an-observable-returning-service)
 - [Describing an HTTP request](./docs/RECIPES.md#describing-an-http-request)

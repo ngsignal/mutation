@@ -54,6 +54,63 @@ With `httpMutation()`, put the idempotency key in `input` rather than generating
 `request()`: `request()` runs on every `mutate()`, so a key generated there changes when the user
 clicks again.
 
+## Submitting a Signal Form
+
+`submit()` calls its action only when the form is valid, ignores a second submit while one runs,
+and shows the errors the action returns on their fields. Call the mutation inside that action:
+
+```ts
+readonly model = signal<SignUp>({ email: '', password: '' });
+readonly signUpForm = form(this.model, (path) => {
+  required(path.email);
+  required(path.password);
+});
+
+readonly signUp = mutation<SignUp, User>({
+  mutationFn: (dto, signal) => this.api.signUp(dto, signal),
+});
+
+save() {
+  void submit(this.signUpForm, async (f) => {
+    try {
+      await this.signUp.mutate(f().value());
+      return undefined;
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'email-taken') {
+        return { kind: 'server', fieldTree: f.email, message: 'This email is already used' };
+      }
+      return { kind: 'server', message: 'Sign-up failed, try again' };
+    }
+  });
+}
+```
+
+```html
+<form (submit)="$event.preventDefault(); save()">
+  <input type="email" [formField]="signUpForm.email" />
+  @for (error of signUpForm.email().errors(); track error) {
+    <p>{{ error.message }}</p>
+  }
+  <input type="password" [formField]="signUpForm.password" />
+  @for (error of signUpForm().errors(); track error) {
+    <p>{{ error.message }}</p>
+  }
+  <button type="submit" [disabled]="signUpForm().submitting()">Sign up</button>
+</form>
+```
+
+The form owns the submission: `submitting()` disables the button, and each returned error shows
+on the field it names, or on the form if it names none. The mutation owns the write: it aborts
+on destroy, holds SSR until it settles, and exposes the result and the error to the rest of the
+page.
+
+Return errors, don't throw them: the return value is how the form learns what failed. The form
+already blocks a second submit, so `concurrency: 'drop'` only matters if the mutation is also
+called from elsewhere.
+
+Signal Forms are stable since Angular 22. On Angular 21 they are experimental and the API may
+differ.
+
 <a id="using-httpclient"></a>
 
 ## Using Observables and HttpClient

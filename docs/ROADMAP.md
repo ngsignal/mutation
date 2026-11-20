@@ -12,7 +12,8 @@ It is a direction, not a schedule: priorities can change with feedback.
 - **API design.** Refine the API and its semantics (concurrency, cancellation, errors) based on
   real-world use. Breaking changes are allowed in `0.x` minors and are always called out in the
   [CHANGELOG](../CHANGELOG.md).
-- **TypeScript 7.** Move the build and the tests to TypeScript 7.
+- **TypeScript 7.** Move the build and the tests from TypeScript 6.0 to 7, once Angular's
+  compiler and typescript-eslint support it.
 - **Community-driven features.** New features are driven by user feedback.
   [Open an issue](https://github.com/ngsignal/mutation/issues) or a
   [discussion](https://github.com/ngsignal/mutation/discussions) to propose one.

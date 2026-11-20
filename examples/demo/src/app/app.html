@@ -1,36 +1,55 @@
 <div class="layout">
-  <aside class="sidebar">
-    <p class="brand">@ngsignal/mutation<span class="version">v{{ libraryVersion }}</span></p>
+  <header class="sidebar">
+    <div class="top-bar">
+      <p class="brand">
+        @ngsignal/mutation<span class="version">v{{ libraryVersion }}</span>
+      </p>
+      <button
+        type="button"
+        class="menu-button"
+        aria-controls="site-nav"
+        [attr.aria-expanded]="menuOpen()"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        {{ menuOpen() ? 'Close' : 'Menu' }}
+      </button>
+    </div>
 
-    <nav>
-      <div class="nav-group">
-        <h2>mutation()</h2>
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Getting started
-        </a>
-        <a routerLink="/manual" routerLinkActive="active">Without mutation()</a>
-        <a routerLink="/concurrent" routerLinkActive="active">Concurrent calls</a>
-        <a routerLink="/state" routerLinkActive="active">Reading state</a>
-        <a routerLink="/concurrency" routerLinkActive="active">'queue' and 'drop'</a>
-        <a routerLink="/cancellation" routerLinkActive="active">Cancellation and reset()</a>
-        <a routerLink="/resource" routerLinkActive="active">Working with resource()</a>
-      </div>
-      <div class="nav-group">
-        <h2>Use cases</h2>
-        <a routerLink="/form-submit" routerLinkActive="active">Form submit</a>
-        <a routerLink="/lists" routerLinkActive="active">Lists and bulk actions</a>
-      </div>
-      <div class="nav-group">
-        <h2>Adapters</h2>
-        <a routerLink="/rx" routerLinkActive="active">rxMutation()</a>
-        <a routerLink="/http" routerLinkActive="active">httpMutation()</a>
-        <a routerLink="/http-responses" routerLinkActive="active">Response bodies</a>
-      </div>
+    <nav id="site-nav" [class.open]="menuOpen()">
+      @for (group of navGroups; track group.heading) {
+        <div class="nav-group">
+          <h2>{{ group.heading }}</h2>
+          @for (link of group.links; track link.path) {
+            <a
+              [routerLink]="link.path"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              ariaCurrentWhenActive="page"
+              >{{ link.label }}</a
+            >
+          }
+        </div>
+      }
     </nav>
-  </aside>
+  </header>
 
   <main>
     <h1 class="page-title">{{ pageTitle() }}</h1>
     <router-outlet />
+
+    @if (previousPage() || nextPage()) {
+      <nav class="pager" aria-label="Previous and next demos">
+        @if (previousPage(); as page) {
+          <a class="pager-previous" [routerLink]="page.path">
+            <span class="pager-direction">Previous</span>{{ page.label }}
+          </a>
+        }
+        @if (nextPage(); as page) {
+          <a class="pager-next" [routerLink]="page.path">
+            <span class="pager-direction">Next</span>{{ page.label }}
+          </a>
+        }
+      </nav>
+    }
   </main>
 </div>

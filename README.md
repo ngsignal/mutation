@@ -247,6 +247,7 @@ The [recipes](./docs/RECIPES.md) show the usual patterns:
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
 - [Submitting a Signal Form](./docs/RECIPES.md#submitting-a-signal-form)
+- [Testing a component](./docs/RECIPES.md#testing-a-component)
 - Observables and `HttpClient`: [rxMutation & httpMutation](#rxmutation--httpmutation)
  
 ## Public API

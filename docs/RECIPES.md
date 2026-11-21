@@ -113,6 +113,35 @@ differ.
 
 <a id="using-httpclient"></a>
 
+## Testing a component
+
+Every call in flight registers with Angular's `PendingTasks`, so `fixture.whenStable()` waits
+for it to settle and for the view to update. No fake timers, no polling:
+
+```ts
+it('shows the created todo', async () => {
+  const fixture = TestBed.createComponent(NewTodoComponent);
+  await fixture.whenStable();
+
+  fixture.nativeElement.querySelector('button').click();
+  await fixture.whenStable();
+
+  expect(fixture.nativeElement.textContent).toContain('Milk');
+});
+```
+
+With `httpMutation()` and `HttpTestingController`, flush the request **before** awaiting
+`whenStable()`: the pending request keeps the app unstable, so awaiting first never resolves.
+
+```ts
+fixture.nativeElement.querySelector('button').click();
+TestBed.inject(HttpTestingController).expectOne('/api/users').flush({ name: 'Ada' });
+await fixture.whenStable();
+```
+
+To test a mutation without a component, create it with `TestBed.runInInjectionContext()` and
+await `mutate()`.
+
 ## Using Observables and HttpClient
 
 Pick the variant matching what you already have (see [the table](../README.md#rxmutation--httpmutation)).

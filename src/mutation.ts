@@ -9,12 +9,11 @@ import {
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
+import { IDLE, failed, started, succeeded, type MutationState } from './mutation-state.js';
 import type {
   MutationCallbackContext,
   MutationOptions,
   MutationRef,
-  MutationSnapshot,
-  MutationStatus,
 } from './mutation.types.js';
 
 /**
@@ -34,10 +33,12 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
   const named = (member: string) =>
     options.debugName === undefined ? undefined : { debugName: `${options.debugName}.${member}` };
-  const status = signal<MutationStatus>('idle', named('status'));
-  const value = signal<TOutput | undefined>(undefined, named('value'));
-  const error = signal<TError | undefined>(undefined, named('error'));
-  const currentInput = signal<TInput | undefined>(undefined, named('input'));
+  const state = signal<MutationState<TInput, TOutput, TError>>(IDLE, named('state'));
+  const snapshot = computed(() => state().snapshot, named('snapshot'));
+  const status = computed(() => snapshot().status, named('status'));
+  const value = computed(() => snapshot().value, named('value'));
+  const error = computed(() => snapshot().error, named('error'));
+  const currentInput = computed(() => state().input, named('input'));
 
   let destroyed = false;
   const gate = createConcurrencyGate(options.concurrency);
@@ -50,10 +51,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
   function reset(): void {
     calls.abortAll();
-    status.set('idle');
-    value.set(undefined);
-    error.set(undefined);
-    currentInput.set(undefined);
+    state.set(IDLE);
   }
 
   function settledCallContext(call: Call<TInput>): MutationCallbackContext | undefined {
@@ -66,8 +64,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
       return;
     }
     if (context.isLatest) {
-      value.set(result);
-      status.set('success');
+      state.update((current) => succeeded(current, result));
     }
     runCallback(() => options.onSuccess?.(result, call.input, context));
     runCallback(() => options.onSettled?.(result, undefined, call.input, context));
@@ -79,8 +76,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
       return;
     }
     if (context.isLatest) {
-      error.set(err);
-      status.set('error');
+      state.update((current) => failed(current, err));
     }
     runCallback(() => options.onError?.(err, call.input, context));
     runCallback(() => options.onSettled?.(undefined, err, call.input, context));
@@ -114,9 +110,7 @@ export function mutation<TInput, TOutput, TError = unknown>(
 
   async function execute(input: TInput): Promise<TOutput> {
     const call = untracked(() => {
-      status.set('pending');
-      error.set(undefined);
-      currentInput.set(input);
+      state.update((current) => started(current, input));
       return calls.start(input);
     });
 
@@ -137,25 +131,11 @@ export function mutation<TInput, TOutput, TError = unknown>(
     }
   }
 
-  const snapshot = computed<MutationSnapshot<TOutput, TError>>(() => {
-    const currentStatus = status();
-    switch (currentStatus) {
-      case 'idle':
-        return { status: currentStatus, value: undefined, error: undefined };
-      case 'pending':
-        return { status: currentStatus, value: value(), error: undefined };
-      case 'success':
-        return { status: currentStatus, value: value() as TOutput, error: undefined };
-      case 'error':
-        return { status: currentStatus, value: value(), error: error() as TError };
-    }
-  });
-
   return {
-    status: status.asReadonly(),
-    value: value.asReadonly(),
-    error: error.asReadonly(),
-    input: currentInput.asReadonly(),
+    status,
+    value,
+    error,
+    input: currentInput,
     isPending: computed(() => calls.pendingInputs().length > 0),
     isIdle: computed(() => status() === 'idle'),
     isSuccess: computed(() => status() === 'success'),

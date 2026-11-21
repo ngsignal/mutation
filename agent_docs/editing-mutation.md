@@ -57,9 +57,11 @@ branches on the mode and never unlocks a gate.
 
 ## State
 
-Raw `WritableSignal`s `status`, `value`, `error`, `input`, exposed read-only.
-`isIdle` / `isSuccess` / `isError` and the discriminated `snapshot` are `computed` from
-`status`. `isPending` is `computed` from the tracker's `pendingInputs` instead: it stays true
+One `WritableSignal`, `state`: `{ snapshot, input }`. It changes only through the pure
+transitions `started` / `succeeded` / `failed` and `IDLE` on `reset()` (`mutation-state.ts`), one write each, so
+`status`, `value` and `error` can never disagree. `started` keeps the same `snapshot` when
+already pending, so a second call doesn't notify `snapshot()` readers. `snapshot`, `status`,
+`value`, `error`, `input` and `isIdle` / `isSuccess` / `isError` are `computed` from it. `isPending` is `computed` from the tracker's `pendingInputs` instead: it stays true
 while a superseded call is in flight, so it can be true alongside `'success'` or `'error'`.
 `value` survives a later error (and stays visible while pending). Only
 `reset()` or a new success replaces it.

@@ -3,7 +3,7 @@
 ## Design choices
 
 Directly inspired by the internal structure of `resource.ts` in Angular
-core: raw writable signals, tracking of the latest call to ignore responses from
+core: one writable state signal, tracking of the latest call to ignore responses from
 stale requests, `PendingTasks` for SSR stability, and cleanup via
 `DestroyRef` if the context is destroyed while a mutation is in flight.
 

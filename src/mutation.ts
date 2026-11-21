@@ -44,20 +44,15 @@ export function mutation<TInput, TOutput, TError = unknown>(
   const gate = createConcurrencyGate(options.concurrency);
   const calls = createCallTracker<TInput>(pendingTasks, named('pendingInputs'));
 
-  function abortAllInProgress(): void {
-    calls.abortAll();
-    gate.release();
-  }
-
   destroyRef.onDestroy(() => {
     destroyed = true;
     generation++;
-    abortAllInProgress();
+    calls.abortAll();
   });
 
   function reset(): void {
     generation++;
-    abortAllInProgress();
+    calls.abortAll();
     status.set('idle');
     value.set(undefined);
     error.set(undefined);
@@ -79,7 +74,6 @@ export function mutation<TInput, TOutput, TError = unknown>(
       return;
     }
     if (context.isLatest) {
-      gate.release();
       value.set(result);
       status.set('success');
     }
@@ -92,7 +86,6 @@ export function mutation<TInput, TOutput, TError = unknown>(
       return;
     }
     if (context.isLatest) {
-      gate.release();
       error.set(err);
       status.set('error');
     }
@@ -186,10 +179,10 @@ export function mutation<TInput, TOutput, TError = unknown>(
   };
 }
 
+/** A concurrency mode: it frees what it holds by itself, when the call settles or aborts. */
 interface ConcurrencyGate {
   admit(): boolean;
   run<T>(task: () => Promise<T>, abortSignal: AbortSignal): Promise<T>;
-  release(): void;
 }
 
 function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['concurrency']): ConcurrencyGate {
@@ -200,7 +193,7 @@ function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['c
       return createDropGate();
     case 'parallel':
     case undefined:
-      return { admit: () => true, run: (task) => task(), release: () => undefined };
+      return { admit: () => true, run: (task) => task() };
   }
 }
 
@@ -223,7 +216,6 @@ function createQueueGate(): ConcurrencyGate {
         call.then(resolve, reject);
       });
     },
-    release: () => undefined,
   };
 }
 
@@ -233,6 +225,7 @@ function notStartedError(): DOMException {
 
 function createDropGate(): ConcurrencyGate {
   let locked = false;
+  let holder: AbortSignal | undefined;
   return {
     admit() {
       if (locked) {
@@ -241,11 +234,28 @@ function createDropGate(): ConcurrencyGate {
       locked = true;
       return true;
     },
-    run: (task) => task(),
-    release() {
-      locked = false;
+    run(task, abortSignal) {
+      holder = abortSignal;
+      // An aborted call that settles later must not unlock a newer call: only the holder can.
+      const unlock = () => {
+        abortSignal.removeEventListener('abort', unlock);
+        if (holder === abortSignal) {
+          holder = undefined;
+          locked = false;
+        }
+      };
+      abortSignal.addEventListener('abort', unlock);
+      return callAsPromise(task).finally(unlock);
     },
   };
+}
+
+function callAsPromise<T>(task: () => Promise<T>): Promise<T> {
+  try {
+    return task();
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOptions?: { debugName: string }) {

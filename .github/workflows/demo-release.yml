@@ -14,7 +14,6 @@ on:
       demo-ref:
         description: Branch whose demo to deploy instead of the tag's, e.g. main (empty for the tag's own demo)
         required: false
-        default: ''
 
 env:
   TAG: ${{ inputs.tag || github.ref_name }}

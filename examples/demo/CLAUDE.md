@@ -14,7 +14,9 @@ Educational first: the library API must stay visible, never hidden behind archit
   instead, so a library change that breaks a page fails CI, and a page can use an API in the PR
   that adds it. Each release tag deploys its demo (`.github/workflows/demo-release.yml`): to
   GitHub Pages, built with the tag's library, and to the `demo` branch StackBlitz opens, pinned
-  to the released version. The `.d.ts` files in `node_modules/@ngsignal/mutation/dist` are the ground truth.
+  to the released version. To ship a demo-only change without a release, run that workflow by
+  hand with `demo-ref: main`: it deploys main's demo, still built with the tag's library.
+  The `.d.ts` files in `node_modules/@ngsignal/mutation/dist` are the ground truth.
 - One demo = `src/app/demos/<name>-page/` (`.ts` + `.html`), registered in
   `src/app/app.routes.ts` and in the sidebar in `src/app/app.html`.
 - Fake backends: `src/app/shared/fake-api.ts` (delayed promises, one fake server per demo so

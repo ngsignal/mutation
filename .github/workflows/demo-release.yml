@@ -2,6 +2,8 @@ name: Demo release
 
 # Publishes the demo of a release tag: the site on GitHub Pages and the `demo` branch StackBlitz opens.
 # Called by Publish once the package is on npm; run it by hand from main to (re)deploy a released tag.
+# Run by hand with `demo-ref`, it ships the demo of that branch instead, still built with the tag's
+# library: a demo-only change goes live without a release. A page using an API the tag lacks fails the build.
 on:
   workflow_call:
   workflow_dispatch:
@@ -9,9 +11,14 @@ on:
       tag:
         description: Released tag to deploy, e.g. v0.7.0
         required: true
+      demo-ref:
+        description: Branch whose demo to deploy instead of the tag's, e.g. main (empty for the tag's own demo)
+        required: false
+        default: ''
 
 env:
   TAG: ${{ inputs.tag || github.ref_name }}
+  DEMO_REF: ${{ inputs.demo-ref }}
 
 permissions:
   contents: read
@@ -25,6 +32,15 @@ jobs:
         with:
           ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
+
+      # Before anything is built, so the library still comes from the tag.
+      - name: Swap in the branch's demo
+        if: inputs.demo-ref
+        run: |
+          git check-ref-format --branch "$DEMO_REF" > /dev/null
+          git fetch --no-tags --depth=1 origin "refs/heads/$DEMO_REF"
+          git rm -r -q examples/demo
+          git checkout FETCH_HEAD -- examples/demo
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -86,6 +102,14 @@ jobs:
           ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
 
+      - name: Swap in the branch's demo
+        if: inputs.demo-ref
+        run: |
+          git check-ref-format --branch "$DEMO_REF" > /dev/null
+          git fetch --no-tags --depth=1 origin "refs/heads/$DEMO_REF"
+          git rm -r -q examples/demo
+          git checkout FETCH_HEAD -- examples/demo
+
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -106,11 +130,14 @@ jobs:
           exit 1
 
       # Rebuilt from the tag at each release, so the push replaces the previous branch.
+      # `git diff HEAD` also sees the staged demo swap, which a bare `git diff` would miss.
       - name: Push the demo branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git diff --quiet || git commit -am "chore(demo): use @ngsignal/mutation ${TAG#v}"
+          message="chore(demo): use @ngsignal/mutation ${TAG#v}"
+          if [ -n "$DEMO_REF" ]; then message="$message with the demo of $DEMO_REF"; fi
+          git diff --quiet HEAD || git commit -qam "$message"
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/demo

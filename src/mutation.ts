@@ -198,6 +198,7 @@ function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['c
       return createQueueGate();
     case 'drop':
       return createDropGate();
+    case 'parallel':
     case undefined:
       return { admit: () => true, run: (task) => task(), release: () => undefined };
   }

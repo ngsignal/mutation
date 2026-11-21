@@ -5,6 +5,8 @@
 - Feature: a `debugName` option names the state signals in Angular DevTools: `debugName: 'save'`
   gives `save.status`, `save.value`, `save.error`, `save.input` and `save.pendingInputs`. Also on
   `rxMutation()` and `httpMutation()`.
+- Feature: `concurrency: 'parallel'` names the default mode, for code that wants to state it.
+  Leaving `concurrency` unset still means `'parallel'`.
 - Docs: a [testing recipe](./docs/RECIPES.md#testing-a-component): `fixture.whenStable()` waits
   for the calls in flight, and with `HttpTestingController` the request must be flushed first.
 - Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation

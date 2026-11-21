@@ -39,19 +39,16 @@ export function mutation<TInput, TOutput, TError = unknown>(
   const error = signal<TError | undefined>(undefined, named('error'));
   const currentInput = signal<TInput | undefined>(undefined, named('input'));
 
-  let generation = 0;
   let destroyed = false;
   const gate = createConcurrencyGate(options.concurrency);
   const calls = createCallTracker<TInput>(pendingTasks, named('pendingInputs'));
 
   destroyRef.onDestroy(() => {
     destroyed = true;
-    generation++;
     calls.abortAll();
   });
 
   function reset(): void {
-    generation++;
     calls.abortAll();
     status.set('idle');
     value.set(undefined);
@@ -59,17 +56,12 @@ export function mutation<TInput, TOutput, TError = unknown>(
     currentInput.set(undefined);
   }
 
-  function settledCallContext(
-    expectedGeneration: number,
-    abortSignal: AbortSignal,
-  ): MutationCallbackContext | undefined {
-    if (destroyed || abortSignal.aborted) {
-      return undefined;
-    }
-    return { isLatest: expectedGeneration === generation };
+  function settledCallContext(call: Call<TInput>): MutationCallbackContext | undefined {
+    return call.abortSignal.aborted ? undefined : { isLatest: calls.isLatest(call) };
   }
 
-  function commitSuccess(result: TOutput, input: TInput, context: MutationCallbackContext | undefined): void {
+  function commitSuccess(call: Call<TInput>, result: TOutput): void {
+    const context = settledCallContext(call);
     if (!context) {
       return;
     }
@@ -77,11 +69,12 @@ export function mutation<TInput, TOutput, TError = unknown>(
       value.set(result);
       status.set('success');
     }
-    runCallback(() => options.onSuccess?.(result, input, context));
-    runCallback(() => options.onSettled?.(result, undefined, input, context));
+    runCallback(() => options.onSuccess?.(result, call.input, context));
+    runCallback(() => options.onSettled?.(result, undefined, call.input, context));
   }
 
-  function commitError(err: TError, input: TInput, context: MutationCallbackContext | undefined): void {
+  function commitError(call: Call<TInput>, err: TError): void {
+    const context = settledCallContext(call);
     if (!context) {
       return;
     }
@@ -89,8 +82,8 @@ export function mutation<TInput, TOutput, TError = unknown>(
       error.set(err);
       status.set('error');
     }
-    runCallback(() => options.onError?.(err, input, context));
-    runCallback(() => options.onSettled?.(undefined, err, input, context));
+    runCallback(() => options.onError?.(err, call.input, context));
+    runCallback(() => options.onSettled?.(undefined, err, call.input, context));
   }
 
   // Like OutputEmitterRef.emit(): a throwing callback is reported, it never rewrites the call's outcome.
@@ -120,8 +113,6 @@ export function mutation<TInput, TOutput, TError = unknown>(
   }
 
   async function execute(input: TInput): Promise<TOutput> {
-    const currentGeneration = ++generation;
-
     const call = untracked(() => {
       status.set('pending');
       error.set(undefined);
@@ -134,11 +125,11 @@ export function mutation<TInput, TOutput, TError = unknown>(
         () => untracked(() => options.mutationFn(input, call.abortSignal)),
         call.abortSignal,
       );
-      commitSuccess(result, input, settledCallContext(currentGeneration, call.abortSignal));
+      commitSuccess(call, result);
       return result;
 
     } catch (err) {
-      commitError(err as TError, input, settledCallContext(currentGeneration, call.abortSignal));
+      commitError(call, err as TError);
       throw err;
 
     } finally {
@@ -258,32 +249,46 @@ function callAsPromise<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
+/** A `mutate()` admitted by the concurrency gate. */
+interface Call<TInput> {
+  readonly input: TInput;
+  readonly abortSignal: AbortSignal;
+  finish(): void;
+}
+
+/** A newer call, `reset()` or destroy makes a call no longer the latest; only `reset()` and destroy abort it. */
 function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOptions?: { debugName: string }) {
-  const activeCalls = new Map<AbortController, { input: TInput; removeTask: () => void }>();
+  const activeCalls = new Map<Call<TInput>, { controller: AbortController; removeTask: () => void }>();
+  let latest: Call<TInput> | undefined;
   const pendingInputs = signal<readonly TInput[]>([], signalOptions);
-  const publishInputs = () => pendingInputs.set(Array.from(activeCalls.values(), (call) => call.input));
+  const publishInputs = () => pendingInputs.set(Array.from(activeCalls.keys(), (call) => call.input));
   return {
     pendingInputs: pendingInputs.asReadonly(),
-    start(input: TInput) {
+    start(input: TInput): Call<TInput> {
       const controller = new AbortController();
       const removeTask = pendingTasks.add();
-      activeCalls.set(controller, { input, removeTask });
-      publishInputs();
-      return {
+      const call: Call<TInput> = {
+        input,
         abortSignal: controller.signal,
         finish(): void {
           removeTask();
-          activeCalls.delete(controller);
+          activeCalls.delete(call);
           publishInputs();
         },
       };
+      activeCalls.set(call, { controller, removeTask });
+      latest = call;
+      publishInputs();
+      return call;
     },
+    isLatest: (call: Call<TInput>) => call === latest,
     abortAll(): void {
-      for (const [controller, { removeTask }] of activeCalls) {
+      for (const { controller, removeTask } of activeCalls.values()) {
         controller.abort(new DOMException('Aborted', 'AbortError'));
         removeTask();
       }
       activeCalls.clear();
+      latest = undefined;
       pendingInputs.set([]);
     },
   };

@@ -6,12 +6,13 @@ re-check them against the code: it is the source of truth, this file only summar
 
 ## Lifecycle mechanisms
 
-- **Generation counter** (`generation`). Incremented by every call (`execute`), by
-  `reset()` and on destroy. `commitSuccess` / `commitError` write the signals only when the
-  call's captured generation is still current (`isLatest`).
+- **Latest call** (`Call`, `createCallTracker`). Each admitted `mutate()` is a `Call` object
+  (input, `AbortSignal`, `finish()`). The tracker remembers the latest one started;
+  `reset()` and destroy forget it. `commitSuccess` / `commitError` write the signals only
+  when the call is still the latest (`calls.isLatest(call)`).
 - **Callbacks run for every settled call.** `settledCallContext` returns `{ isLatest }`, or
-  `undefined` when the call was aborted (by `reset()` / destroy) or the context is
-  destroyed: then no signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
+  `undefined` when the call was aborted (by `reset()` / destroy, which abort every call
+  in flight): then no signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
   call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
   always settles with the call's real outcome. Each callback runs through `runCallback`: an
   exception goes to `ErrorHandler`, as in `OutputEmitterRef.emit()`, and must never reach the
@@ -41,7 +42,7 @@ starts, `run()` around `mutationFn`. A gate frees what it holds by itself, from 
 the call settles or its `AbortSignal` aborts (`reset()` / destroy). `mutation()` never
 branches on the mode and never unlocks a gate.
 
-- `'parallel'` or *unset* (the default): all calls start immediately; the latest one wins (generation counter).
+- `'parallel'` or *unset* (the default): all calls start immediately; the latest one wins (`calls.isLatest()`).
 - `'queue'` (`createQueueGate`): `mutationFn` calls are serialized through a promise tail
   that always settles, so one failure never blocks the queue. A call aborted while waiting
   rejects at once with an `AbortError`, without waiting for its turn, and never calls

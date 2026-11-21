@@ -967,6 +967,20 @@ describe("concurrency: 'drop'", () => {
     expect(m.status()).toBe('success');
   });
 
+  it('unlocks after a mutationFn that throws synchronously', async () => {
+    const m = createMutation<string, string>({
+      concurrency: 'drop',
+      mutationFn: (input) => {
+        if (input === 'bad') throw new Error('sync');
+        return Promise.resolve(input);
+      },
+    });
+
+    await expect(m.mutate('bad')).rejects.toThrow('sync');
+    expect(m.status()).toBe('error');
+    await expect(m.mutate('good')).resolves.toBe('good');
+  });
+
   it('accepts a new call from onSuccess, once the previous one has committed', async () => {
     const started: string[] = [];
     let chained: Promise<string> | undefined;

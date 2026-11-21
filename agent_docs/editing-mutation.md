@@ -37,8 +37,9 @@ re-check them against the code: it is the source of truth, this file only summar
 ## Concurrency modes (`options.concurrency`)
 
 Each mode is a `ConcurrencyGate` (`createConcurrencyGate`): `admit()` before a call
-starts, `run()` around `mutationFn`, `release()` when the latest call commits and on
-`reset()` / destroy. `mutation()` itself never branches on the mode.
+starts, `run()` around `mutationFn`. A gate frees what it holds by itself, from `run()`, when
+the call settles or its `AbortSignal` aborts (`reset()` / destroy). `mutation()` never
+branches on the mode and never unlocks a gate.
 
 - *unset*: all calls start immediately; the latest one wins (generation counter).
 - `'queue'` (`createQueueGate`): `mutationFn` calls are serialized through a promise tail
@@ -49,7 +50,9 @@ starts, `run()` around `mutationFn`, `release()` when the latest call commits an
   aborted call whose `mutationFn` ignores its `AbortSignal`, so writes stay ordered.
 - `'drop'` (`createDropGate`): while locked, `admit()` returns false and `mutate()` rejects
   immediately with `DOMException('Dropped', 'AbortError')`, with no state change.
-  `release()` unlocks it.
+  `run()` unlocks it when the call settles, before `mutation()` commits (so a callback can
+  call `mutate()` again), or as soon as it aborts. Only the call holding the lock can unlock
+  it: an aborted call that settles later leaves a newer call's lock alone.
 
 ## State
 

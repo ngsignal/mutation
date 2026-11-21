@@ -617,6 +617,24 @@ describe('isPending()', () => {
   });
 });
 
+describe("concurrency: 'parallel'", () => {
+  it('runs every call at once, like the default, and the latest one wins', async () => {
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const mutationFn = vi.fn(sequencedMutationFn(first, second));
+    const m = createMutation<void, string>({ mutationFn, concurrency: 'parallel' });
+
+    const firstCall = m.mutate();
+    const secondCall = m.mutate();
+    expect(mutationFn).toHaveBeenCalledTimes(2);
+
+    second.resolve('second');
+    first.resolve('first');
+    await Promise.all([firstCall, secondCall]);
+    expect(m.value()).toBe('second');
+  });
+});
+
 describe("concurrency: 'queue'", () => {
   it('does not start the next mutationFn call until the previous one has settled', async () => {
     const first = createDeferred<string>();

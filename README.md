@@ -207,7 +207,7 @@ What happens to a second call while one is still in flight:
 
 | `concurrency`   | Second `mutate()`                                                        | Typical use                                  |
 | --------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
-| unset (default) | Runs right away, in parallel                                             | Independent writes (adding items to a list)  |
+| `'parallel'` (default) | Runs right away, in parallel                                      | Independent writes (adding items to a list)  |
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
 | `'drop'`        | Rejected at once (`'Dropped'`), `mutationFn` never runs, signals untouched | Double-submit protection (payment, form submit) |
 

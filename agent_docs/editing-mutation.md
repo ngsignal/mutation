@@ -40,7 +40,7 @@ Each mode is a `ConcurrencyGate` (`createConcurrencyGate`): `admit()` before a c
 starts, `run()` around `mutationFn`, `release()` when the latest call commits and on
 `reset()` / destroy. `mutation()` itself never branches on the mode.
 
-- *unset*: all calls start immediately; the latest one wins (generation counter).
+- `'parallel'` or *unset* (the default): all calls start immediately; the latest one wins (generation counter).
 - `'queue'` (`createQueueGate`): `mutationFn` calls are serialized through a promise tail
   that always settles, so one failure never blocks the queue. A call aborted while waiting
   rejects at once with an `AbortError`, without waiting for its turn, and never calls

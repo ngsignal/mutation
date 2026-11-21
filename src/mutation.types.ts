@@ -26,8 +26,8 @@ export interface MutationOptions<TInput, TOutput, TError = unknown> {
     input: TInput,
     context: MutationCallbackContext,
   ) => void;
-  /** Unset: calls run in parallel. `'queue'`: one at a time, in order. `'drop'`: rejects a call made while one is pending. */
-  concurrency?: 'queue' | 'drop';
+  /** `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in order. `'drop'`: rejects a call made while one is pending. */
+  concurrency?: 'parallel' | 'queue' | 'drop';
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
   /** Names the state signals in Angular DevTools: `'save'` gives `save.status`, `save.value`, … */

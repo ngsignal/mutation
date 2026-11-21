@@ -30,6 +30,8 @@ export interface MutationOptions<TInput, TOutput, TError = unknown> {
   concurrency?: 'queue' | 'drop';
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
+  /** Names the state signals in Angular DevTools: `'save'` gives `save.status`, `save.value`, … */
+  debugName?: string;
 }
 
 /** `status`, `value` and `error` read together, narrowed by `status`. Like `ResourceSnapshot`, it has no input: read `input()`. */

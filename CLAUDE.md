@@ -34,8 +34,10 @@ src/index.ts            # main entry `@ngsignal/mutation`: mutation() and its ty
 src/rxjs-interop.ts     # entry `@ngsignal/mutation/rxjs-interop`: rxMutation()
 src/http.ts             # entry `@ngsignal/mutation/http`: httpMutation()
 src/mutation.ts         # the primitive
-src/mutation.types.ts   # public types, shipped as .d.ts: changing them is an API change
+src/concurrency.ts      # mutation()'s concurrency modes (ConcurrencyGate), not exported
+src/call-tracker.ts     # mutation()'s calls in flight and latest call, not exported
 src/mutation-state.ts   # mutation()'s state and its pure transitions, not exported
+src/mutation.types.ts   # public types, shipped as .d.ts: changing them is an API change
 src/rx-mutation.ts      # rxMutation() and its public types
 src/http-mutation.ts    # httpMutation() and its public types
 src/internal/           # helpers shared by the adapters, never exported from an entry point
@@ -98,6 +100,6 @@ Any change to options, returned signals, exported types or semantics:
 
 ## Read when relevant
 
-- `agent_docs/editing-mutation.md` before touching `src/mutation.ts`: lifecycle
+- `agent_docs/editing-mutation.md` before touching `src/mutation.ts`, `src/concurrency.ts` or `src/call-tracker.ts`: lifecycle
   invariants and what to argue in a review
 - `agent_docs/testing.md` before writing or changing tests

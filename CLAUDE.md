@@ -35,6 +35,7 @@ src/rxjs-interop.ts     # entry `@ngsignal/mutation/rxjs-interop`: rxMutation()
 src/http.ts             # entry `@ngsignal/mutation/http`: httpMutation()
 src/mutation.ts         # the primitive
 src/mutation.types.ts   # public types, shipped as .d.ts: changing them is an API change
+src/mutation-state.ts   # mutation()'s state and its pure transitions, not exported
 src/rx-mutation.ts      # rxMutation() and its public types
 src/http-mutation.ts    # httpMutation() and its public types
 src/internal/           # helpers shared by the adapters, never exported from an entry point

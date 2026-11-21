@@ -58,7 +58,7 @@ branches on the mode and never unlocks a gate.
 ## State
 
 One `WritableSignal`, `state`: `{ snapshot, input }`. It changes only through the pure
-transitions `started` / `succeeded` / `failed` and `IDLE` on `reset()`, one write each, so
+transitions `started` / `succeeded` / `failed` and `IDLE` on `reset()` (`mutation-state.ts`), one write each, so
 `status`, `value` and `error` can never disagree. `started` keeps the same `snapshot` when
 already pending, so a second call doesn't notify `snapshot()` readers. `snapshot`, `status`,
 `value`, `error`, `input` and `isIdle` / `isSuccess` / `isError` are `computed` from it. `isPending` is `computed` from the tracker's `pendingInputs` instead: it stays true

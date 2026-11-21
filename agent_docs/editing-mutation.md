@@ -1,12 +1,15 @@
 # Editing `src/mutation.ts`
 
+Also covers `src/concurrency.ts` (the concurrency modes) and `src/call-tracker.ts` (the calls
+in flight), split out of it.
+
 `mutation()` is modelled on Angular core's `resource.ts`. The bugs that matter here are
 ordering bugs, not logic bugs. Argue every edit in terms of the mechanisms below, and
 re-check them against the code: it is the source of truth, this file only summarizes it.
 
 ## Lifecycle mechanisms
 
-- **Latest call** (`Call`, `createCallTracker`). Each admitted `mutate()` is a `Call` object
+- **Latest call** (`Call`, `createCallTracker` in `call-tracker.ts`). Each admitted `mutate()` is a `Call` object
   (input, `AbortSignal`, `finish()`). The tracker remembers the latest one started;
   `reset()` and destroy forget it. `commitSuccess` / `commitError` write the signals only
   when the call is still the latest (`calls.isLatest(call)`).
@@ -21,7 +24,7 @@ re-check them against the code: it is the source of truth, this file only summar
   touching any signal or calling `mutationFn`.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
   run to completion and their outcome is ignored. Only `reset()` and destroy abort
-  (`abortAllInProgress` → `createCallTracker`'s `abortAll`): they abort every in-flight
+  (`createCallTracker`'s `abortAll`): they abort every in-flight
   call's controller, release its pending task and forget it. Don't call supersession
   "cancellation".
 - **`PendingTasks`.** Each call adds a task (`calls.start()`), released by `call.finish()`
@@ -37,7 +40,7 @@ re-check them against the code: it is the source of truth, this file only summar
 
 ## Concurrency modes (`options.concurrency`)
 
-Each mode is a `ConcurrencyGate` (`createConcurrencyGate`): `admit()` before a call
+Each mode is a `ConcurrencyGate` (`createConcurrencyGate` in `concurrency.ts`): `admit()` before a call
 starts, `run()` around `mutationFn`. A gate frees what it holds by itself, from `run()`, when
 the call settles or its `AbortSignal` aborts (`reset()` / destroy). `mutation()` never
 branches on the mode and never unlocks a gate.

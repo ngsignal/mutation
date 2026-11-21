@@ -9,6 +9,8 @@ import {
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
+import { createCallTracker, type Call } from './call-tracker.js';
+import { createConcurrencyGate } from './concurrency.js';
 import type {
   MutationCallbackContext,
   MutationOptions,
@@ -167,129 +169,5 @@ export function mutation<TInput, TOutput, TError = unknown>(
     },
     mutate,
     reset,
-  };
-}
-
-/** A concurrency mode: it frees what it holds by itself, when the call settles or aborts. */
-interface ConcurrencyGate {
-  admit(): boolean;
-  run<T>(task: () => Promise<T>, abortSignal: AbortSignal): Promise<T>;
-}
-
-function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['concurrency']): ConcurrencyGate {
-  switch (concurrency) {
-    case 'queue':
-      return createQueueGate();
-    case 'drop':
-      return createDropGate();
-    case 'parallel':
-    case undefined:
-      return { admit: () => true, run: (task) => task() };
-  }
-}
-
-function createQueueGate(): ConcurrencyGate {
-  let previousCall: Promise<unknown> = Promise.resolve();
-  return {
-    admit: () => true,
-    run<T>(task: () => Promise<T>, abortSignal: AbortSignal) {
-      return new Promise<T>((resolve, reject) => {
-        // Aborted while waiting: reject now rather than when its turn comes.
-        const leaveQueue = () => reject(notStartedError());
-        abortSignal.addEventListener('abort', leaveQueue, { once: true });
-
-        const call = previousCall.then(() => {
-          abortSignal.removeEventListener('abort', leaveQueue);
-          return abortSignal.aborted ? Promise.reject(notStartedError()) : task();
-        });
-        // The next call waits for this one even if it left the queue: writes stay in order.
-        previousCall = call.catch(() => undefined);
-        call.then(resolve, reject);
-      });
-    },
-  };
-}
-
-function notStartedError(): DOMException {
-  return new DOMException('NotStarted', 'AbortError');
-}
-
-function createDropGate(): ConcurrencyGate {
-  let locked = false;
-  let holder: AbortSignal | undefined;
-  return {
-    admit() {
-      if (locked) {
-        return false;
-      }
-      locked = true;
-      return true;
-    },
-    run(task, abortSignal) {
-      holder = abortSignal;
-      // An aborted call that settles later must not unlock a newer call: only the holder can.
-      const unlock = () => {
-        abortSignal.removeEventListener('abort', unlock);
-        if (holder === abortSignal) {
-          holder = undefined;
-          locked = false;
-        }
-      };
-      abortSignal.addEventListener('abort', unlock);
-      return callAsPromise(task).finally(unlock);
-    },
-  };
-}
-
-function callAsPromise<T>(task: () => Promise<T>): Promise<T> {
-  try {
-    return task();
-  } catch (error) {
-    return Promise.reject(error);
-  }
-}
-
-/** A `mutate()` admitted by the concurrency gate. */
-interface Call<TInput> {
-  readonly input: TInput;
-  readonly abortSignal: AbortSignal;
-  finish(): void;
-}
-
-/** A newer call, `reset()` or destroy makes a call no longer the latest; only `reset()` and destroy abort it. */
-function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOptions?: { debugName: string }) {
-  const activeCalls = new Map<Call<TInput>, { controller: AbortController; removeTask: () => void }>();
-  let latest: Call<TInput> | undefined;
-  const pendingInputs = signal<readonly TInput[]>([], signalOptions);
-  const publishInputs = () => pendingInputs.set(Array.from(activeCalls.keys(), (call) => call.input));
-  return {
-    pendingInputs: pendingInputs.asReadonly(),
-    start(input: TInput): Call<TInput> {
-      const controller = new AbortController();
-      const removeTask = pendingTasks.add();
-      const call: Call<TInput> = {
-        input,
-        abortSignal: controller.signal,
-        finish(): void {
-          removeTask();
-          activeCalls.delete(call);
-          publishInputs();
-        },
-      };
-      activeCalls.set(call, { controller, removeTask });
-      latest = call;
-      publishInputs();
-      return call;
-    },
-    isLatest: (call: Call<TInput>) => call === latest,
-    abortAll(): void {
-      for (const { controller, removeTask } of activeCalls.values()) {
-        controller.abort(new DOMException('Aborted', 'AbortError'));
-        removeTask();
-      }
-      activeCalls.clear();
-      latest = undefined;
-      pendingInputs.set([]);
-    },
   };
 }

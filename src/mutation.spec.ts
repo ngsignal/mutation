@@ -7,6 +7,7 @@ import {
   ErrorHandler,
   computed,
 } from '@angular/core';
+import { SIGNAL } from '@angular/core/primitives/signals';
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
 import { expectTypeOf } from 'vitest';
@@ -1530,5 +1531,29 @@ describe('properties', () => {
         }
       }),
     );
+  });
+});
+
+describe('debugName', () => {
+  const debugNameOf = (signal: object) => (signal as { [SIGNAL]: { debugName?: string } })[SIGNAL].debugName;
+
+  it('names the state signals for Angular DevTools', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation<string, string>({ mutationFn: async (input) => input, debugName: 'save' }),
+    );
+
+    expect([m.status, m.value, m.error, m.input, m.pendingInputs].map(debugNameOf)).toEqual([
+      'save.status',
+      'save.value',
+      'save.error',
+      'save.input',
+      'save.pendingInputs',
+    ]);
+  });
+
+  it('leaves them unnamed without a debugName', () => {
+    const m = TestBed.runInInjectionContext(() => mutation<string, string>({ mutationFn: async (input) => input }));
+
+    expect(debugNameOf(m.status)).toBeUndefined();
   });
 });

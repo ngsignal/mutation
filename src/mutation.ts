@@ -32,15 +32,17 @@ export function mutation<TInput, TOutput, TError = unknown>(
   const pendingTasks = injector.get(PendingTasks);
   const errorHandler = injector.get(ErrorHandler, null);
 
-  const status = signal<MutationStatus>('idle');
-  const value = signal<TOutput | undefined>(undefined);
-  const error = signal<TError | undefined>(undefined);
-  const currentInput = signal<TInput | undefined>(undefined);
+  const named = (member: string) =>
+    options.debugName === undefined ? undefined : { debugName: `${options.debugName}.${member}` };
+  const status = signal<MutationStatus>('idle', named('status'));
+  const value = signal<TOutput | undefined>(undefined, named('value'));
+  const error = signal<TError | undefined>(undefined, named('error'));
+  const currentInput = signal<TInput | undefined>(undefined, named('input'));
 
   let generation = 0;
   let destroyed = false;
   const gate = createConcurrencyGate(options.concurrency);
-  const calls = createCallTracker<TInput>(pendingTasks);
+  const calls = createCallTracker<TInput>(pendingTasks, named('pendingInputs'));
 
   function abortAllInProgress(): void {
     calls.abortAll();
@@ -245,9 +247,9 @@ function createDropGate(): ConcurrencyGate {
   };
 }
 
-function createCallTracker<TInput>(pendingTasks: PendingTasks) {
+function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOptions?: { debugName: string }) {
   const activeCalls = new Map<AbortController, { input: TInput; removeTask: () => void }>();
-  const pendingInputs = signal<readonly TInput[]>([]);
+  const pendingInputs = signal<readonly TInput[]>([], signalOptions);
   const publishInputs = () => pendingInputs.set(Array.from(activeCalls.values(), (call) => call.input));
   return {
     pendingInputs: pendingInputs.asReadonly(),

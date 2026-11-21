@@ -267,6 +267,7 @@ included.
 | `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput, context: MutationCallbackContext) => void` |
 | `concurrency?`| `'queue' \| 'drop'`                                                            |
 | `injector?`   | `Injector`                                                                      |
+| `debugName?`  | `string`: names the state signals in Angular DevTools (`'save'` → `save.status`) |
 
 ### Returned `MutationRef<TInput, TOutput, TError>`
 

@@ -37,6 +37,7 @@ src/mutation.ts         # the primitive
 src/concurrency.ts      # mutation()'s concurrency modes (ConcurrencyGate), not exported
 src/call-tracker.ts     # mutation()'s calls in flight and latest call, not exported
 src/mutation-state.ts   # mutation()'s state and its pure transitions, not exported
+src/abort-error.ts      # abortError(): the AbortError reasons, not exported
 src/mutation.types.ts   # public types, shipped as .d.ts: changing them is an API change
 src/rx-mutation.ts      # rxMutation() and its public types
 src/http-mutation.ts    # httpMutation() and its public types

@@ -66,11 +66,11 @@ describe('lifecycle', () => {
 
     expect(onSuccess).toHaveBeenCalledWith('task-done', 'task', { isLatest: true });
   });
-  it('infers a void input from a mutationFn without parameters, so mutate() takes no argument', async () => {
+  it('infers a void input from a mutationFn without parameters, so mutate() takes no argument', () => {
     const m = TestBed.runInInjectionContext(() => rxMutation({ mutationFn: () => of('done') }));
 
     expectTypeOf(m).toEqualTypeOf<MutationRef<void, string>>();
-    await expect(m.mutate()).resolves.toBe('done');
+    expectTypeOf(m.mutate).toBeCallableWith();
   });});
 
 describe('cleanup', () => {

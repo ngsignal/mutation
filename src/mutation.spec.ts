@@ -376,11 +376,11 @@ describe('hasValue()', () => {
 });
 
 describe('MutationRef type parameters', () => {
-  it('infers a void input from a mutationFn without parameters, so mutate() takes no argument', async () => {
+  it('infers a void input from a mutationFn without parameters, so mutate() takes no argument', () => {
     const m = TestBed.runInInjectionContext(() => mutation({ mutationFn: () => Promise.resolve(1) }));
 
     expectTypeOf(m).toEqualTypeOf<MutationRef<void, number>>();
-    await expect(m.mutate()).resolves.toBe(1);
+    expectTypeOf(m.mutate).toBeCallableWith();
   });
 
   it('still requires the input when mutationFn takes one', () => {

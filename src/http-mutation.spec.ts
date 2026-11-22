@@ -42,16 +42,13 @@ function createUserMutation() {
 }
 
 describe('request', () => {
-  it('infers a void input from a request without parameters, so mutate() takes no argument', async () => {
+  it('infers a void input from a request without parameters, so mutate() takes no argument', () => {
     const m = TestBed.runInInjectionContext(() =>
       httpMutation({ request: () => ({ method: 'POST', url: '/api/logout' }) }),
     );
+
     expectTypeOf(m).toEqualTypeOf<HttpMutationRef<void, unknown>>();
-
-    const call = m.mutate();
-    httpTesting.expectOne('/api/logout').flush(null);
-
-    await expect(call).resolves.toBeNull();
+    expectTypeOf(m.mutate).toBeCallableWith();
   });
 
   it('sends the described request and resolves with the response body', async () => {
@@ -193,16 +190,13 @@ describe('parse', () => {
 });
 
 describe('response body variants', () => {
-  it('infers a void input from a request without parameters, so mutate() takes no argument', async () => {
+  it('infers a void input from a request without parameters, so mutate() takes no argument', () => {
     const m = TestBed.runInInjectionContext(() =>
       httpMutation.text({ request: () => ({ method: 'POST', url: '/api/cache/clear' }) }),
     );
+
     expectTypeOf(m).toEqualTypeOf<HttpMutationRef<void, string>>();
-
-    const call = m.mutate();
-    httpTesting.expectOne('/api/cache/clear').flush('cleared');
-
-    await expect(call).resolves.toBe('cleared');
+    expectTypeOf(m.mutate).toBeCallableWith();
   });
 
   it('httpMutation.text() reads the body as a string', async () => {

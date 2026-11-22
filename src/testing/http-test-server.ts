@@ -4,6 +4,8 @@ import type { AddressInfo } from 'node:net';
 export interface HttpTestServer {
   /** e.g. `http://127.0.0.1:54321`, on a free port. */
   readonly baseUrl: string;
+  /** Resolves once the server receives the next `POST /slow` request. */
+  nextSlowRequestReceived(): Promise<void>;
   /** Resolves once the client closes the next `POST /slow` request, which never gets an answer. */
   nextSlowRequestClosed(): Promise<void>;
   close(): void;
@@ -21,9 +23,10 @@ export interface HttpTestServer {
  * | `POST /invalid`   | `422`, `{ message: 'invalid' }`                        |
  * | `POST /upload`    | `200`, `{ received: <body length> }`                   |
  * | `POST /pdf`       | `200`, `%PDF-1.7` as `application/pdf`                 |
- * | `POST /slow`      | never answers: see `nextSlowRequestClosed()`           |
+ * | `POST /slow`      | never answers: see `nextSlowRequest…()`                |
  */
 export async function startHttpTestServer(): Promise<HttpTestServer> {
+  const slowRequestReceivedListeners: Array<() => void> = [];
   const slowRequestClosedListeners: Array<() => void> = [];
 
   function route(method: string | undefined, url: string | undefined, body: string, res: ServerResponse): void {
@@ -45,6 +48,7 @@ export async function startHttpTestServer(): Promise<HttpTestServer> {
         res.end('%PDF-1.7');
         return;
       case 'POST /slow':
+        slowRequestReceivedListeners.shift()?.();
         res.on('close', () => slowRequestClosedListeners.shift()?.());
         return;
       default:
@@ -69,6 +73,7 @@ export async function startHttpTestServer(): Promise<HttpTestServer> {
 
   return {
     baseUrl: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+    nextSlowRequestReceived: () => new Promise((resolve) => slowRequestReceivedListeners.push(resolve)),
     nextSlowRequestClosed: () => new Promise((resolve) => slowRequestClosedListeners.push(resolve)),
     close() {
       server.closeAllConnections();

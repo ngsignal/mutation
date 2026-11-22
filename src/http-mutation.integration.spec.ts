@@ -90,11 +90,12 @@ describe.each([
   });
 
   it('aborts the request on the network on reset()', async () => {
+    const slowRequestReceived = server.nextSlowRequestReceived();
     const slowRequestClosed = server.nextSlowRequestClosed();
     const m = httpMutation<void, User>({ request: () => ({ method: 'POST', url: `${server.baseUrl}/slow` }), injector });
 
     const call = m.mutate();
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await slowRequestReceived;
     m.reset();
 
     await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });

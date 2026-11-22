@@ -266,7 +266,7 @@ included.
 | `onSuccess?`  | `(output: TOutput, input: TInput, context: MutationCallbackContext) => void`   |
 | `onError?`    | `(error: TError, input: TInput, context: MutationCallbackContext) => void`     |
 | `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput, context: MutationCallbackContext) => void` |
-| `concurrency?`| `'queue' \| 'drop'`                                                            |
+| `concurrency?`| `'parallel' \| 'queue' \| 'drop'` (default `'parallel'`)                       |
 | `injector?`   | `Injector`                                                                      |
 | `debugName?`  | `string`: names the state signals in Angular DevTools (`'save'` → `save.status`) |
 

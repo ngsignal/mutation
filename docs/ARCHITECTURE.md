@@ -33,8 +33,8 @@ aborted by `reset()` or destroy run no callback: the caller asked to forget them
 
 ## Why not TanStack Query?
 
-[`@tanstack/angular-query-experimental`](https://www.npmjs.com/package/@tanstack/angular-query-experimental)
-already ships `injectMutation`, and is a mature choice if you want it. Different tradeoffs:
+[`@tanstack/angular-query`](https://www.npmjs.com/package/@tanstack/angular-query) already ships
+`injectMutation`, and is a mature choice if you want it. Different tradeoffs:
 
 - **Scope**: it's a full cache/data-sync layer (queries, infinite queries, devtools,
   persistence) built on `@tanstack/query-core`, where mutations are one feature among many.

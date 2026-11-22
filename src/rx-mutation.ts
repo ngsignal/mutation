@@ -15,7 +15,7 @@ export interface RxMutationOptions<TInput, TOutput, TError = unknown>
  * is unsubscribed. Completing without a value rejects with
  * `Error('Observable completed without emitting a value')`; `reset()` and destroy unsubscribe.
  */
-export function rxMutation<TInput, TOutput, TError = unknown>(
+export function rxMutation<TInput = void, TOutput = unknown, TError = unknown>(
   options: RxMutationOptions<TInput, TOutput, TError>,
 ): MutationRef<TInput, TOutput, TError> {
   if (!options.injector) {

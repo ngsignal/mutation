@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Feature (types only): `TInput` defaults to `void` in `mutation()`, `rxMutation()` and
+  `httpMutation()`, so a `mutationFn` or `request` without parameters gives a `mutate()` that
+  takes no argument. It used to infer `unknown`, and `mutate()` required one. `TOutput` now
+  defaults to `unknown`, as TypeScript requires after a defaulted parameter: it is still inferred
+  from `mutationFn` or `parse`.
 - Feature: a `debugName` option names the state signals in Angular DevTools: `debugName: 'save'`
   gives `save.status`, `save.value`, `save.error`, `save.input` and `save.pendingInputs`. Also on
   `rxMutation()` and `httpMutation()`.

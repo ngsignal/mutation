@@ -287,6 +287,9 @@ included.
 | `reset()`         | `void`                              | aborts every call in flight                |
 
 `MutationRef` is meant to be used, not implemented: a minor version may add members.
+
+`TInput` defaults to `void`: a `mutationFn` (or `request`) without parameters gives a
+`mutate()` that takes no argument.
  
 ## rxMutation & httpMutation
  

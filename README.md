@@ -246,7 +246,9 @@ The [recipes](./docs/RECIPES.md) show the usual patterns:
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
-- [Submitting a Signal Form](./docs/RECIPES.md#submitting-a-signal-form)
+- [Submitting a Signal Form](./docs/RECIPES.md#submitting-a-signal-form), with
+  [server validation errors (422)](./docs/RECIPES.md#server-validation-errors-422)
+- [Sharing a mutation from a service](./docs/RECIPES.md#sharing-a-mutation-from-a-service)
 - [Testing a component](./docs/RECIPES.md#testing-a-component)
 - Observables and `HttpClient`: [rxMutation & httpMutation](#rxmutation--httpmutation)
  

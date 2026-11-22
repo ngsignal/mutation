@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: recipes for [server validation errors (422)](./docs/RECIPES.md#server-validation-errors-422)
+  in a Signal Form, and for [sharing a mutation from a service](./docs/RECIPES.md#sharing-a-mutation-from-a-service)
+  with a read-only type.
 - Feature: a `debugName` option names the state signals in Angular DevTools: `debugName: 'save'`
   gives `save.status`, `save.value`, `save.error`, `save.input` and `save.pendingInputs`. Also on
   `rxMutation()` and `httpMutation()`.

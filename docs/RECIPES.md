@@ -111,6 +111,81 @@ called from elsewhere.
 Signal Forms are stable since Angular 22. On Angular 21 they are experimental and the API may
 differ.
 
+### Server validation errors (422)
+
+When the server validates the payload, map its errors onto the fields in the same action. With
+`httpMutation()`, the response body of a failed request is in `HttpErrorResponse.error`, typed
+`any`: check its shape before using it.
+
+```ts
+interface ValidationProblem {
+  status: 422;
+  errors: { field: string; message: string }[];
+}
+
+/** The 422 body, or undefined for any other error. Swap in your schema library's parse if you use one. */
+function validationProblem(error: unknown): ValidationProblem | undefined {
+  return error instanceof HttpErrorResponse && error.status === 422 && Array.isArray(error.error?.errors)
+    ? (error.error as ValidationProblem)
+    : undefined;
+}
+
+readonly signUp = httpMutation<SignUp, User, HttpErrorResponse>({
+  request: (dto) => ({ method: 'POST', url: '/api/sign-up', body: dto }),
+});
+
+save() {
+  void submit(this.signUpForm, async (f) => {
+    try {
+      await this.signUp.mutate(f().value());
+      return undefined;
+    } catch (error) {
+      const problem = validationProblem(error);
+      if (problem) {
+        const fields: Record<string, FieldTree<string>> = { email: f.email, password: f.password };
+        return problem.errors.map(({ field, message }) => ({ kind: 'server', fieldTree: fields[field], message }));
+      }
+      return { kind: 'server', message: 'Sign-up failed, try again' };
+    }
+  });
+}
+```
+
+An error naming a field the form doesn't have gets `fieldTree: undefined`, so it shows on the
+form instead. A `422` means the server refused the write, so the user can fix the fields and
+submit again. Don't confuse it with a `parse` failure after a `2xx`, where the write was applied
+(see [Validating the response](#validating-the-response)).
+
+## Sharing a mutation from a service
+
+A service can own a mutation and let components read its state without calling it. Expose it
+through a type without the methods:
+
+```ts
+export type MutationState<TInput, TOutput, TError = unknown> = Omit<
+  MutationRef<TInput, TOutput, TError>,
+  'mutate' | 'reset' | 'hasValue'
+>;
+
+@Injectable({ providedIn: 'root' })
+export class CartService {
+  private readonly api = inject(CartApi);
+  private readonly checkoutMutation = mutation<void, Order>({
+    mutationFn: (_, signal) => this.api.checkout(signal),
+  });
+
+  readonly checkoutState: MutationState<void, Order> = this.checkoutMutation;
+
+  checkout(): Promise<Order> {
+    return this.checkoutMutation.mutate();
+  }
+}
+```
+
+Omit `hasValue` too: it narrows to the full `MutationRef`, which would bring `mutate` back after
+`if (state.hasValue())`. Narrow with `snapshot()` instead. This only restricts the type: the
+object is the same, as with any `Omit`.
+
 <a id="using-httpclient"></a>
 
 ## Testing a component

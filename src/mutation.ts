@@ -9,6 +9,7 @@ import {
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
+import { abortError } from './abort-error.js';
 import { createCallTracker, type Call } from './call-tracker.js';
 import { createConcurrencyGate } from './concurrency.js';
 import { IDLE, failed, started, succeeded, type MutationState } from './mutation-state.js';
@@ -41,15 +42,15 @@ export function mutation<TInput, TOutput, TError = unknown>(
   const value = computed(() => snapshot().value, named('value'));
   const error = computed(() => snapshot().error, named('error'));
   const currentInput = computed(() => state().input, named('input'));
+  const isIdle = computed(() => status() === 'idle');
+  const isSuccess = computed(() => status() === 'success');
+  const isError = computed(() => status() === 'error');
 
-  let destroyed = false;
   const gate = createConcurrencyGate(options.concurrency);
   const calls = createCallTracker<TInput>(pendingTasks, named('pendingInputs'));
+  const isPending = computed(() => calls.pendingInputs().length > 0);
 
-  destroyRef.onDestroy(() => {
-    destroyed = true;
-    calls.abortAll();
-  });
+  destroyRef.onDestroy(() => calls.abortAll());
 
   function reset(): void {
     calls.abortAll();
@@ -94,23 +95,23 @@ export function mutation<TInput, TOutput, TError = unknown>(
   }
 
   function mutate(input: TInput): Promise<TOutput> {
-    const call = startCall(input);
-    // Marks the call as handled so a caller that ignores it does not get an unhandled rejection;
+    const call = admitCall(input);
+    // Marks the call as handled so a caller that ignores it does not get an unhandled rejection.
     call.catch(() => undefined);
     return call;
   }
 
-  function startCall(input: TInput): Promise<TOutput> {
-    if (destroyed) {
-      return Promise.reject(new DOMException('Destroyed', 'AbortError'));
+  function admitCall(input: TInput): Promise<TOutput> {
+    if (destroyRef.destroyed) {
+      return Promise.reject(abortError('Destroyed'));
     }
     if (!gate.admit()) {
-      return Promise.reject(new DOMException('Dropped', 'AbortError'));
+      return Promise.reject(abortError('Dropped'));
     }
-    return execute(input);
+    return runCall(input);
   }
 
-  async function execute(input: TInput): Promise<TOutput> {
+  async function runCall(input: TInput): Promise<TOutput> {
     const call = untracked(() => {
       state.update((current) => started(current, input));
       return calls.start(input);
@@ -138,10 +139,10 @@ export function mutation<TInput, TOutput, TError = unknown>(
     value,
     error,
     input: currentInput,
-    isPending: computed(() => calls.pendingInputs().length > 0),
-    isIdle: computed(() => status() === 'idle'),
-    isSuccess: computed(() => status() === 'success'),
-    isError: computed(() => status() === 'error'),
+    isPending,
+    isIdle,
+    isSuccess,
+    isError,
     pendingInputs: calls.pendingInputs,
     snapshot,
     hasValue(): this is MutationRef<TInput, TOutput, TError, TOutput> {

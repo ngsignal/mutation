@@ -1,4 +1,5 @@
 import { signal, type PendingTasks } from '@angular/core';
+import { abortError } from './abort-error.js';
 
 /** A `mutate()` admitted by the concurrency gate. */
 export interface Call<TInput> {
@@ -35,7 +36,7 @@ export function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOpti
     isLatest: (call: Call<TInput>) => call === latest,
     abortAll(): void {
       for (const { controller, removeTask } of activeCalls.values()) {
-        controller.abort(new DOMException('Aborted', 'AbortError'));
+        controller.abort(abortError('Aborted'));
         removeTask();
       }
       activeCalls.clear();

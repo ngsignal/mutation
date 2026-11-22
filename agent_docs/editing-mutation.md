@@ -19,22 +19,24 @@ re-check them against the code: it is the source of truth, this file only summar
   call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
   always settles with the call's real outcome. Each callback runs through `runCallback`: an
   exception goes to `ErrorHandler`, as in `OutputEmitterRef.emit()`, and must never reach the
-  `catch` of `execute` (it would turn a successful write into an error).
-- **After destroy**, `mutate()` rejects with `DOMException('Destroyed', 'AbortError')` before
-  touching any signal or calling `mutationFn`.
+  `catch` of `runCall` (it would turn a successful write into an error).
+- **After destroy** (`destroyRef.destroyed`), `mutate()` rejects with `abortError('Destroyed')`
+  before touching any signal or calling `mutationFn`. Every `AbortError` comes from
+  `abortError()` (`abort-error.ts`): its reasons are the README's Cancellations table.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
   run to completion and their outcome is ignored. Only `reset()` and destroy abort
   (`createCallTracker`'s `abortAll`): they abort every in-flight
   call's controller, release its pending task and forget it. Don't call supersession
   "cancellation".
 - **`PendingTasks`.** Each call adds a task (`calls.start()`), released by `call.finish()`
-  in the `finally` of `execute`, or
+  in the `finally` of `runCall`, or
   earlier by `reset()` / destroy. A superseded call keeps its task until it settles.
   A leaked task means `ApplicationRef.isStable` never fires and SSR hangs.
-- **`untracked()`.** The start-of-call writes (`status`, `error`, `input`) and the
+- **`untracked()`.** The start-of-call write (the `started` transition) and the
   `mutationFn` invocation are wrapped so that calling `mutate()` from a reactive context
   never creates a dependency. Keep new signal writes on that path inside `untracked`.
-- **`mutate()` vs `execute()`.** `mutate()` attaches a no-op `.catch` so that ignoring the
+- **`mutate()` → `admitCall()` → `runCall()`.** `admitCall()` rejects at once after destroy
+  or when the gate refuses the call; `runCall()` runs an admitted call. `mutate()` attaches a no-op `.catch` so that ignoring the
   promise (`(click)="save.mutate(x)"`) never reports an unhandled rejection. Callers that
   await it still receive the error.
 

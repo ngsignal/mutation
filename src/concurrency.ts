@@ -1,3 +1,4 @@
+import { abortError } from './abort-error.js';
 import type { MutationOptions } from './mutation.types.js';
 
 /** A concurrency mode: it frees what it holds by itself, when the call settles or aborts. */
@@ -25,12 +26,12 @@ function createQueueGate(): ConcurrencyGate {
     run<T>(task: () => Promise<T>, abortSignal: AbortSignal) {
       return new Promise<T>((resolve, reject) => {
         // Aborted while waiting: reject now rather than when its turn comes.
-        const leaveQueue = () => reject(notStartedError());
+        const leaveQueue = () => reject(abortError('NotStarted'));
         abortSignal.addEventListener('abort', leaveQueue, { once: true });
 
         const call = previousCall.then(() => {
           abortSignal.removeEventListener('abort', leaveQueue);
-          return abortSignal.aborted ? Promise.reject(notStartedError()) : task();
+          return abortSignal.aborted ? Promise.reject(abortError('NotStarted')) : task();
         });
         // The next call waits for this one even if it left the queue: writes stay in order.
         previousCall = call.catch(() => undefined);
@@ -38,10 +39,6 @@ function createQueueGate(): ConcurrencyGate {
       });
     },
   };
-}
-
-function notStartedError(): DOMException {
-  return new DOMException('NotStarted', 'AbortError');
 }
 
 function createDropGate(): ConcurrencyGate {

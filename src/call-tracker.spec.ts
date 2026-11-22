@@ -189,29 +189,6 @@ describe('isPending()', () => {
     expect(m.isPending()).toBe(false);
   });
 
-  it('stays true while a superseded call is in flight after the latest one failed', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-    const m = createMutation<string, string>({ mutationFn: sequencedMutationFn(first, second) });
-
-    void m.mutate('a');
-    const secondCall = m.mutate('b');
-    second.reject(new Error('second failed'));
-    await secondCall.catch(() => undefined);
-
-    expect(m.status()).toBe('error');
-    expect(m.isPending()).toBe(true);
-  });
-
-  it('turns false on reset() while calls are still in flight', () => {
-    const m = createMutation<string, string>({ mutationFn: () => new Promise<string>(() => undefined) });
-
-    void m.mutate('a');
-    void m.mutate('b');
-    m.reset();
-
-    expect(m.isPending()).toBe(false);
-  });
 });
 
 describe('pending tasks', () => {

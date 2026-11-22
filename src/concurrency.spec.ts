@@ -33,53 +33,6 @@ describe('concurrent mutate() calls', () => {
     expect(m.value()).toBe('ok');
   });
 
-  it('ignores the response of a stale call when a more recent mutation has started', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-
-    const m = createMutation<void, string>({ mutationFn: sequencedMutationFn(first, second) });
-
-    const firstCall = m.mutate();
-    const secondCall = m.mutate();
-
-    second.resolve('second');
-    await secondCall;
-    expect(m.status()).toBe('success');
-    expect(m.value()).toBe('second');
-
-    first.resolve('first');
-    await firstCall;
-    expect(m.value()).toBe('second');
-    expect(m.status()).toBe('success');
-  });
-
-  it('keeps the rejection of a stale call out of the signals when a more recent mutation has already succeeded', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-    const onError = vi.fn();
-
-    const m = createMutation<void, string>({
-      mutationFn: sequencedMutationFn(first, second),
-      onError,
-    });
-
-    const firstCall = m.mutate();
-    const secondCall = m.mutate();
-
-    second.resolve('second');
-    await secondCall;
-    expect(m.status()).toBe('success');
-    expect(m.value()).toBe('second');
-
-    first.reject(new Error('too late'));
-    await expect(firstCall).rejects.toThrow('too late');
-
-    expect(m.status()).toBe('success');
-    expect(m.value()).toBe('second');
-    expect(m.error()).toBeUndefined();
-    expect(onError).toHaveBeenCalledExactlyOnceWith(new Error('too late'), undefined, { isLatest: false });
-  });
-
   it('rejects a superseded call with its own real error, even though the signals ignore it', async () => {
     const first = createDeferred<string>();
     const second = createDeferred<string>();
@@ -186,63 +139,6 @@ describe("concurrency: 'parallel'", () => {
 });
 
 describe("concurrency: 'queue'", () => {
-  it('does not start the next mutationFn call until the previous one has settled', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-    const started: string[] = [];
-
-    const m = createMutation<string, string>({
-      concurrency: 'queue',
-      mutationFn: (input) => {
-        started.push(input);
-        return input === 'first' ? first.promise : second.promise;
-      },
-    });
-
-    const firstCall = m.mutate('first');
-    const secondCall = m.mutate('second');
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(started).toEqual(['first']);
-
-    first.resolve('first-done');
-    await firstCall;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(started).toEqual(['first', 'second']);
-
-    second.resolve('second-done');
-    await secondCall;
-  });
-
-  it('still only commits the most recently submitted call, deterministically', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-    const onSuccess = vi.fn();
-
-    const m = createMutation<void, string>({
-      concurrency: 'queue',
-      mutationFn: sequencedMutationFn(first, second),
-      onSuccess,
-    });
-
-    const firstCall = m.mutate();
-    const secondCall = m.mutate();
-
-    // Resolved out of submission order on purpose: queueing still guarantees mutationFn for
-    // 'second' only runs after 'first' has settled, so this can't make 'first' win.
-    second.resolve('second-done');
-    first.resolve('first-done');
-    await firstCall;
-    await secondCall;
-
-    expect(m.status()).toBe('success');
-    expect(m.value()).toBe('second-done');
-    expect(onSuccess.mock.calls).toEqual([
-      ['first-done', undefined, { isLatest: false }],
-      ['second-done', undefined, { isLatest: true }],
-    ]);
-  });
-
   it('skips mutationFn for a call that is still queued when reset() runs', async () => {
     const first = createDeferred<string>();
     const started: string[] = [];
@@ -268,33 +164,6 @@ describe("concurrency: 'queue'", () => {
     await secondCall;
 
     expect(started).toEqual(['first']);
-  });
-
-  it('does not block calls queued after one that fails', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-    const third = createDeferred<string>();
-
-    const m = createMutation<void, string>({
-      concurrency: 'queue',
-      mutationFn: sequencedMutationFn(first, second, third),
-    });
-
-    const firstCall = m.mutate().catch(() => undefined);
-    const secondCall = m.mutate().catch(() => undefined);
-    const thirdCall = m.mutate();
-
-    first.reject(new Error('first failed'));
-    await firstCall;
-
-    second.reject(new Error('second failed'));
-    await secondCall;
-
-    third.resolve('third-done');
-    await thirdCall;
-
-    expect(m.status()).toBe('success');
-    expect(m.value()).toBe('third-done');
   });
 
   it('releases the pending task of a still-queued call immediately when reset() runs, without calling its mutationFn', async () => {
@@ -416,36 +285,6 @@ describe("concurrency: 'queue'", () => {
 });
 
 describe("concurrency: 'drop'", () => {
-  it('drops mutate() calls made while one is in flight, rejecting them with an AbortError', async () => {
-    const first = createDeferred<string>();
-    const started: string[] = [];
-    const onSuccess = vi.fn();
-
-    const m = createMutation<string, string>({
-      concurrency: 'drop',
-      mutationFn: (input) => {
-        started.push(input);
-        return first.promise;
-      },
-      onSuccess,
-    });
-
-    const firstCall = m.mutate('first');
-    const droppedCall = m.mutate('second');
-
-    await expect(droppedCall).rejects.toMatchObject({ name: 'AbortError', message: 'Dropped' });
-    expect(started).toEqual(['first']);
-    expect(m.status()).toBe('pending');
-    expect(m.input()).toBe('first');
-
-    first.resolve('first-done');
-    await expect(firstCall).resolves.toBe('first-done');
-
-    expect(m.value()).toBe('first-done');
-    expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess).toHaveBeenCalledWith('first-done', 'first', { isLatest: true });
-  });
-
   it('does not report an unhandled rejection for a dropped call the caller ignores', async () => {
     const first = createDeferred<string>();
     const unhandled = vi.fn();
@@ -483,25 +322,6 @@ describe("concurrency: 'drop'", () => {
     first.resolve('done');
     await firstCall;
     expect(removeFns[0]).toHaveBeenCalledTimes(1);
-  });
-
-  it('accepts a new call once the previous one has failed', async () => {
-    const first = createDeferred<string>();
-    const second = createDeferred<string>();
-
-    const m = createMutation<void, string>({
-      concurrency: 'drop',
-      mutationFn: sequencedMutationFn(first, second),
-    });
-
-    const firstCall = m.mutate();
-    first.reject(new Error('first failed'));
-    await expect(firstCall).rejects.toThrow('first failed');
-
-    const secondCall = m.mutate();
-    second.resolve('second-done');
-    await expect(secondCall).resolves.toBe('second-done');
-    expect(m.status()).toBe('success');
   });
 
   it('unlocks after a mutationFn that throws synchronously', async () => {

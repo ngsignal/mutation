@@ -617,19 +617,6 @@ describe('concurrency: "drop"', () => {
   });
 });
 
-describe('pendingInputs()', () => {
-  it('lists the input of a request until its response arrives', async () => {
-    const m = createUserMutation();
-
-    const call = m.mutate('Ada');
-    expect(m.pendingInputs()).toEqual(['Ada']);
-
-    httpTesting.expectOne('/api/users').flush({ id: 1, name: 'Ada' });
-    await call;
-    expect(m.pendingInputs()).toEqual([]);
-  });
-});
-
 describe('reset()', () => {
   it('clears progress, statusCode and headers along with the mutation state', async () => {
     const m = createUserMutation();

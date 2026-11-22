@@ -56,7 +56,6 @@ function createDropGate(): ConcurrencyGate {
       holder = abortSignal;
       // An aborted call that settles later must not unlock a newer call: only the holder can.
       const unlock = () => {
-        abortSignal.removeEventListener('abort', unlock);
         if (holder === abortSignal) {
           holder = undefined;
           locked = false;

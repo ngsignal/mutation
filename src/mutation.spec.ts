@@ -211,15 +211,6 @@ describe('input', () => {
     expect(m.input()).toBe('task');
   });
 
-  it('resets to undefined after reset()', async () => {
-    const m = createMutation<string, string>({ mutationFn: (input) => Promise.resolve(input) });
-
-    await m.mutate('task');
-    expect(m.input()).toBe('task');
-
-    m.reset();
-    expect(m.input()).toBeUndefined();
-  });
 });
 
 describe('returned promise', () => {
@@ -248,16 +239,17 @@ describe('returned promise', () => {
 });
 
 describe('reset()', () => {
-  it('resets status/value/error to their initial state', async () => {
-    const m = createMutation<void, string>({ mutationFn: () => Promise.resolve('ok') });
+  it('resets status/value/error/input to their initial state', async () => {
+    const m = createMutation<string, string>({ mutationFn: (input) => Promise.resolve(input) });
 
-    await m.mutate();
+    await m.mutate('task');
     expect(m.status()).toBe('success');
 
     m.reset();
     expect(m.status()).toBe('idle');
     expect(m.value()).toBeUndefined();
     expect(m.error()).toBeUndefined();
+    expect(m.input()).toBeUndefined();
   });
 
   it("aborts an in-flight call's signal with an 'Aborted' AbortError as its reason", () => {
@@ -469,7 +461,7 @@ describe('injector option', () => {
   });
 
   it('throws when created outside an injection context without the injector option', () => {
-    expect(() => mutation<void, string>({ mutationFn: () => Promise.resolve('ok') })).toThrow();
+    expect(() => mutation<void, string>({ mutationFn: () => Promise.resolve('ok') })).toThrow(/mutation/);
   });
 
   it('ignores the result if the injector is destroyed while the mutation is in flight', async () => {

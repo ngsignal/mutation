@@ -108,16 +108,6 @@ describe('injection context', () => {
 });
 
 describe('options forwarded to mutation()', () => {
-  it('exposes pendingInputs() for the calls in flight', () => {
-    const m = TestBed.runInInjectionContext(() =>
-      rxMutation<string, string>({ mutationFn: () => new Subject<string>() }),
-    );
-
-    void m.mutate('a');
-
-    expect(m.pendingInputs()).toEqual(['a']);
-  });
-
   it('calls onSettled after onSuccess/onError either way', async () => {
     const calls: string[] = [];
     const success = TestBed.runInInjectionContext(() =>

@@ -12,7 +12,7 @@ import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDe
 import { TestBed } from '@angular/core/testing';
 import { EMPTY, of } from 'rxjs';
 import { expectTypeOf } from 'vitest';
-import { httpMutation, type HttpMutationRequest } from './http-mutation';
+import { httpMutation, type HttpMutationRef, type HttpMutationRequest } from './http-mutation';
 import { failWith } from './testing/rxjs';
 
 interface User {
@@ -42,6 +42,15 @@ function createUserMutation() {
 }
 
 describe('request', () => {
+  it('infers a void input from a request without parameters, so mutate() takes no argument', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation({ request: () => ({ method: 'POST', url: '/api/logout' }) }),
+    );
+
+    expectTypeOf(m).toEqualTypeOf<HttpMutationRef<void, unknown>>();
+    expectTypeOf(m.mutate).toBeCallableWith();
+  });
+
   it('sends the described request and resolves with the response body', async () => {
     const m = TestBed.runInInjectionContext(() =>
       httpMutation<string, User>({
@@ -181,6 +190,15 @@ describe('parse', () => {
 });
 
 describe('response body variants', () => {
+  it('infers a void input from a request without parameters, so mutate() takes no argument', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation.text({ request: () => ({ method: 'POST', url: '/api/cache/clear' }) }),
+    );
+
+    expectTypeOf(m).toEqualTypeOf<HttpMutationRef<void, string>>();
+    expectTypeOf(m.mutate).toBeCallableWith();
+  });
+
   it('httpMutation.text() reads the body as a string', async () => {
     const m = TestBed.runInInjectionContext(() =>
       httpMutation.text<string>({ request: (csv) => ({ method: 'POST', url: '/api/import', body: csv }) }),

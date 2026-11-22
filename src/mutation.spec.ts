@@ -376,6 +376,24 @@ describe('hasValue()', () => {
 });
 
 describe('MutationRef type parameters', () => {
+  it('infers a void input from a mutationFn without parameters, so mutate() takes no argument', () => {
+    const m = TestBed.runInInjectionContext(() => mutation({ mutationFn: () => Promise.resolve(1) }));
+
+    expectTypeOf(m).toEqualTypeOf<MutationRef<void, number>>();
+    expectTypeOf(m.mutate).toBeCallableWith();
+  });
+
+  it('still requires the input when mutationFn takes one', () => {
+    const m = TestBed.runInInjectionContext(() =>
+      mutation({ mutationFn: (title: string) => Promise.resolve(title.length) }),
+    );
+
+    expectTypeOf(m).toEqualTypeOf<MutationRef<string, number>>();
+    // @ts-expect-error: the input is required
+    expectTypeOf(m.mutate).toBeCallableWith();
+    expectTypeOf(m.mutate).toBeCallableWith('a');
+  });
+
   it('takes TError third, in the same order as mutation(), with TValue defaulted last', () => {
     const m = createMutation<string, number, Error>({ mutationFn: () => Promise.resolve(1) });
 

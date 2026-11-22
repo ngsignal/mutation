@@ -23,7 +23,7 @@ import type {
  * Low-level primitive for mutations (POST/PUT/PATCH/DELETE), the write-side counterpart of
  * `resource()`, which only covers reads.
  */
-export function mutation<TInput, TOutput, TError = unknown>(
+export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   options: MutationOptions<TInput, TOutput, TError>,
 ): MutationRef<TInput, TOutput, TError> {
   if (!options.injector) {

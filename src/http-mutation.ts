@@ -150,12 +150,12 @@ function sendRequest(
   });
 }
 
-type HttpMutationRawBodyFn<TRaw> = <TInput, TOutput = TRaw, TError = unknown>(
+type HttpMutationRawBodyFn<TRaw> = <TInput = void, TOutput = TRaw, TError = unknown>(
   options: HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw>,
 ) => HttpMutationRef<TInput, TOutput, TError>;
 
 export interface HttpMutationFn {
-  <TInput, TOutput, TError = unknown>(
+  <TInput = void, TOutput = unknown, TError = unknown>(
     options: HttpMutationOptions<TInput, TOutput, TError>,
   ): HttpMutationRef<TInput, TOutput, TError>;
   /** Same as `httpMutation()`, with the response body read as a `string`. */

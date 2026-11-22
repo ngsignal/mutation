@@ -1,6 +1,8 @@
 import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject, of } from 'rxjs';
+import { expectTypeOf } from 'vitest';
+import type { MutationRef } from './mutation.types';
 import { rxMutation } from './rx-mutation';
 import { failWith, isObserved } from './testing/rxjs';
 
@@ -63,6 +65,12 @@ describe('lifecycle', () => {
     await m.mutate('task');
 
     expect(onSuccess).toHaveBeenCalledWith('task-done', 'task', { isLatest: true });
+  });
+  it('infers a void input from a mutationFn without parameters, so mutate() takes no argument', () => {
+    const m = TestBed.runInInjectionContext(() => rxMutation({ mutationFn: () => of('done') }));
+
+    expectTypeOf(m).toEqualTypeOf<MutationRef<void, string>>();
+    expectTypeOf(m.mutate).toBeCallableWith();
   });});
 
 describe('cleanup', () => {

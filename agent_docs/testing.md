@@ -6,6 +6,12 @@ Vitest + jsdom, global setup in `setup-vitest.ts`, one spec file per source file
 Tests use `TestBed` for an injection context, and
 `runInInjectionContext` or an explicit `injector` when the call happens outside one.
 
+`mutation()` is tested through its public API, in the spec of the source file behind each
+behavior: `concurrency.spec.ts` (supersession, the three modes, property-based tests),
+`call-tracker.spec.ts` (`pendingInputs()`, `isPending()`, pending tasks) and `mutation.spec.ts`
+(the rest). Their shared helpers (`createMutation`, `createDeferred`, `sequencedMutationFn`,
+`spyOnPendingTasks`) are in `src/testing/mutation.ts`.
+
 Unit specs use `HttpClientTestingBackend`, which hides backend differences. The one exception
 to "one spec file per source file" is `*.integration.spec.ts`: real requests to the local server
 of `src/testing/http-test-server.ts`, through Angular's actual `FetchBackend` and

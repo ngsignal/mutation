@@ -43,3 +43,8 @@ export function sequencedMutationFn<T>(
   let callIndex = 0;
   return () => deferredCalls[callIndex++].promise;
 }
+
+/** Lets a `'queue'` mutation start the mutationFn of the call at its head, a microtask after `mutate()`. */
+export function queueTurn(): Promise<void> {
+  return Promise.resolve();
+}

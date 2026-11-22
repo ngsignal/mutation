@@ -9,7 +9,7 @@ import { TestBed } from '@angular/core/testing';
 import { expectTypeOf } from 'vitest';
 import { mutation } from './mutation';
 import type { MutationRef } from './mutation.types';
-import { createDeferred, createMutation, sequencedMutationFn } from './testing/mutation';
+import { createDeferred, createMutation, sequencedMutationFn, queueTurn } from './testing/mutation';
 
 beforeEach(() => {
   TestBed.configureTestingModule({
@@ -339,8 +339,7 @@ describe('reset()', () => {
 
     const runningCall = m.mutate();
     const queuedCall = m.mutate();
-    // Let the queue actually start the first call's mutationFn before resetting.
-    await Promise.resolve();
+    await queueTurn();
     m.reset();
     first.resolve('first');
 

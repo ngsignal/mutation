@@ -6,7 +6,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
 import { mutation } from './mutation';
-import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn } from './testing/mutation';
+import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn, queueTurn } from './testing/mutation';
 
 beforeEach(() => {
   TestBed.configureTestingModule({
@@ -258,8 +258,7 @@ describe("concurrency: 'queue'", () => {
     const firstCall = m.mutate('first').catch(() => undefined);
     const secondCall = m.mutate('second').catch(() => undefined);
 
-    // Let the queue actually start the first call's mutationFn before resetting.
-    await Promise.resolve();
+    await queueTurn();
     expect(started).toEqual(['first']);
 
     m.reset();
@@ -314,8 +313,7 @@ describe("concurrency: 'queue'", () => {
     const firstCall = m.mutate('first');
     const secondCall = m.mutate('second').catch(() => undefined);
 
-    // Let the queue actually start the first call's mutationFn before resetting.
-    await Promise.resolve();
+    await queueTurn();
     expect(started).toEqual(['first']);
     expect(removeFns[1]).not.toHaveBeenCalled();
 
@@ -347,8 +345,7 @@ describe("concurrency: 'queue'", () => {
     void m.mutate('first');
     const secondCall = m.mutate('second').catch(() => undefined);
 
-    // Let the queue actually start the first call's mutationFn before destroying.
-    await Promise.resolve();
+    await queueTurn();
     expect(started).toEqual(['first']);
 
     childInjector.destroy();
@@ -368,8 +365,7 @@ describe("concurrency: 'queue'", () => {
     void m.mutate('first');
     const secondCall = m.mutate('second');
 
-    // Let the queue actually start the first call's mutationFn before resetting.
-    await Promise.resolve();
+    await queueTurn();
     m.reset();
 
     await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
@@ -387,8 +383,7 @@ describe("concurrency: 'queue'", () => {
     void m.mutate('first');
     const secondCall = m.mutate('second');
 
-    // Let the queue actually start the first call's mutationFn before destroying.
-    await Promise.resolve();
+    await queueTurn();
     childInjector.destroy();
 
     await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
@@ -407,8 +402,7 @@ describe("concurrency: 'queue'", () => {
     });
 
     void m.mutate('first');
-    // Let the queue actually start the first call's mutationFn before resetting.
-    await Promise.resolve();
+    await queueTurn();
     m.reset();
 
     const afterResetCall = m.mutate('after-reset');

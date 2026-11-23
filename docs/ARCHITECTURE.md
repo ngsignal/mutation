@@ -44,6 +44,10 @@ aborted by `reset()` or destroy run no callback: the caller asked to forget them
 - **Cancellation**: neither auto-cancels a mutation when superseded, a write may already have
   reached the server and be unsafe to cancel there, unlike a read. `mutation()` still hands
   `mutationFn` an `AbortSignal`, but only aborts it on explicit reset or destroy.
+- **Ordering across mutations**: TanStack's `scope.id` runs the mutations sharing an id one at a
+  time, the id being fixed when the mutation is created. `mutationQueue()` does the same with an
+  object rather than a string, and `{ queue, key }` takes the key from each call's input, so one
+  mutation can keep its writes in order per entity.
 
 Reach for TanStack if you want retries, offline support, or cross-component cache invalidation.
 Reach for this if you want the smallest primitive that behaves like `resource()`'s write-side

@@ -63,6 +63,63 @@ Roll back the failed item, not a snapshot of the list: deletes can overlap (see
 [stale-response guarding](../README.md#stale-response-guarding)), and a snapshot would also bring
 back users whose delete succeeds. The restored user comes back at the end of the list.
 
+## Ordering writes across mutations
+
+`concurrency: 'queue'` orders the calls of one mutation. Writes to the same data often come from
+different mutations: renaming a todo on blur, then deleting it. Clicking the delete button blurs
+the input first, so the `PATCH` always leaves just before the `DELETE`. Sent in parallel, the
+`DELETE` can land first and the `PATCH` fails with a `404`. Give both mutations the same queue:
+
+```ts
+@Injectable({ providedIn: 'root' })
+export class TodoWrites {
+  readonly queue = mutationQueue();
+}
+
+export class TodoList {
+  private readonly writes = inject(TodoWrites);
+
+  readonly rename = httpMutation<{ id: string; title: string }, Todo>({
+    request: ({ id, title }) => ({ method: 'PATCH', url: `/api/todos/${id}`, body: { title } }),
+    concurrency: this.writes.queue,
+  });
+
+  readonly remove = httpMutation<string, void>({
+    request: (id) => ({ method: 'DELETE', url: `/api/todos/${id}` }),
+    concurrency: this.writes.queue,
+  });
+}
+```
+
+Calls then run one at a time, in call order, whichever mutation makes them, and each mutation
+keeps its own signals. The queue lives in a service so that every component writing todos shares
+it; a queue at module level would also be shared by every SSR request.
+
+To order writes per entity rather than all together, give a key. Here the saves of one document
+stay in order, while the other documents save at once:
+
+```ts
+@Injectable({ providedIn: 'root' })
+export class DocumentSaver {
+  private readonly docWrites = mutationQueue();
+
+  readonly save = httpMutation<{ docId: string; content: string }, Doc>({
+    request: ({ docId, content }) => ({ method: 'PUT', url: `/api/docs/${docId}`, body: { content } }),
+    concurrency: { queue: this.docWrites, key: (draft) => draft.docId },
+  });
+}
+```
+
+- `request()`, and an `rxMutation()`'s `mutationFn`, run when the call leaves the queue: a
+  `PATCH` queued behind the `POST` that creates its entity can read the id that the `POST`'s
+  `onSuccess` stored.
+- A failed call doesn't block the queue: the next one runs. If it depends on the failed one, make
+  its `request()` or `mutationFn` throw.
+- `reset()` and destroy only reject the mutation's own calls; the calls of the other mutations
+  stay in the queue.
+- A queue only orders the writes of one browser tab. For several tabs or users, have the server
+  check a version (`ETag` and `If-Match`).
+
 ## Retrying writes
 
 There is no `retry` option: whether a failed write is safe to retry depends on your API. A `429`

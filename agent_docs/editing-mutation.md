@@ -64,7 +64,12 @@ the call settles or its `AbortSignal` aborts (`reset()` / destroy). `mutation()`
 branches on the mode and never unlocks a gate.
 
 - `'parallel'` or *unset* (the default): all calls start immediately; the latest one wins (`calls.isLatest()`).
-- `'queue'` (`createQueueGate`): `mutationFn` calls are serialized through a promise tail
+- `'queue'`, a `mutationQueue()` or `{ queue, key }` (`createQueueGate` over the `WriteQueue` of
+  `mutation-queue.ts`): `'queue'` is a queue of its own, a `MutationQueue` is shared by every
+  mutation given it, and a key gives each key its own tail, deleted once it drains. The gate gets
+  the call (`input`, `AbortSignal`) to compute the key, and wraps `adapter.run`, so a shared queue
+  works for every adapter and `request()` runs when the call leaves the queue. `reset()` / destroy
+  only abort the mutation's own calls. `mutationFn` calls are serialized through a promise tail
   that always settles, so one failure never blocks the queue. A call aborted while waiting
   rejects at once with an `AbortError`, without waiting for its turn, and never calls
   `mutationFn`. Only the latest submitted

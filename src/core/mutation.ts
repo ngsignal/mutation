@@ -172,7 +172,7 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
       const task = gate.run(() => {
         mutationFnStarted = true;
         return untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra }));
-      }, call.abortSignal);
+      }, call);
       const result = await rejectOnAbortOnceStarted(task, call.abortSignal, () => mutationFnStarted);
       call.finish(() => commitSuccess(call, extra, result));
       return result;

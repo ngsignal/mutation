@@ -1,47 +1,48 @@
-import { abortError } from './abort-error.js';
+import { createWriteQueue, writeQueueOf, type WriteQueue } from './mutation-queue.js';
 import type { MutationOptions } from './mutation.types.js';
 
-/** A concurrency mode: it frees what it holds by itself, when the call settles or aborts. */
-export interface ConcurrencyGate {
-  admit(): boolean;
-  run<T>(task: () => Promise<T>, abortSignal: AbortSignal): Promise<T>;
+/** What a gate knows of a call: the queue key comes from its input. */
+export interface GateCall<TInput> {
+  readonly input: TInput;
+  readonly abortSignal: AbortSignal;
 }
 
-export function createConcurrencyGate(concurrency: MutationOptions<unknown, unknown>['concurrency']): ConcurrencyGate {
+/** A concurrency mode: it frees what it holds by itself, when the call settles or aborts. */
+export interface ConcurrencyGate<TInput> {
+  admit(): boolean;
+  run<T>(task: () => Promise<T>, call: GateCall<TInput>): Promise<T>;
+}
+
+export function createConcurrencyGate<TInput>(
+  concurrency: MutationOptions<TInput, unknown>['concurrency'],
+): ConcurrencyGate<TInput> {
   switch (concurrency) {
     case 'queue':
-      return createQueueGate();
+      return createQueueGate(createWriteQueue(), noKey);
     case 'drop':
       return createDropGate();
     case 'parallel':
     case undefined:
       return { admit: () => true, run: (task) => task() };
+    default:
+      return 'key' in concurrency
+        ? createQueueGate(writeQueueOf(concurrency.queue), concurrency.key)
+        : createQueueGate(writeQueueOf(concurrency), noKey);
   }
 }
 
-function createQueueGate(): ConcurrencyGate {
-  let previousCall: Promise<unknown> = Promise.resolve();
+function noKey(): undefined {
+  return undefined;
+}
+
+function createQueueGate<TInput>(queue: WriteQueue, key: (input: TInput) => unknown): ConcurrencyGate<TInput> {
   return {
     admit: () => true,
-    run<T>(task: () => Promise<T>, abortSignal: AbortSignal) {
-      return new Promise<T>((resolve, reject) => {
-        // Aborted while waiting: reject now rather than when its turn comes.
-        const leaveQueue = () => reject(abortError('NotStarted'));
-        abortSignal.addEventListener('abort', leaveQueue, { once: true });
-
-        const call = previousCall.then(() => {
-          abortSignal.removeEventListener('abort', leaveQueue);
-          return abortSignal.aborted ? Promise.reject(abortError('NotStarted')) : task();
-        });
-        // The next call waits for this one even if it left the queue: writes stay in order.
-        previousCall = call.catch(() => undefined);
-        call.then(resolve, reject);
-      });
-    },
+    run: (task, { input, abortSignal }) => queue.run(key(input), task, abortSignal),
   };
 }
 
-function createDropGate(): ConcurrencyGate {
+function createDropGate<TInput>(): ConcurrencyGate<TInput> {
   let locked = false;
   let holder: AbortSignal | undefined;
   return {
@@ -52,7 +53,7 @@ function createDropGate(): ConcurrencyGate {
       locked = true;
       return true;
     },
-    run(task, abortSignal) {
+    run(task, { abortSignal }) {
       holder = abortSignal;
       // An aborted call that settles later must not unlock a newer call: only the holder can.
       const unlock = () => {

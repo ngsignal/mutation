@@ -179,7 +179,9 @@ list can disable each row being written:
 
 `isPending()` is shorthand for `pendingInputs().length > 0`, like `submitting()` in Signal Forms.
 It stays true after a success or error while a superseded call is still running. A reset or
-destroy turns it false.
+destroy turns it false. A call leaves the list before its callbacks run: an `onSuccess` sees
+only the other calls. `pendingInputs()` also gives
+[optimistic updates without a rollback](./docs/RECIPES.md#optimistic-updates).
  
 ### Also included
  

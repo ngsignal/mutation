@@ -5,7 +5,11 @@ import { abortError } from './abort-error.js';
 export interface Call<TInput> {
   readonly input: TInput;
   readonly abortSignal: AbortSignal;
-  finish(): void;
+  /**
+   * Takes the settled call out of `pendingInputs()` and out of `abortAll()`'s reach, runs `commit`,
+   * then releases its pending task: a call that `commit` starts keeps the app unstable.
+   */
+  finish(commit: () => void): void;
 }
 
 /** A newer call, `reset()` or destroy makes a call no longer the latest; only `reset()` and destroy abort it. */
@@ -22,10 +26,15 @@ export function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOpti
       const call: Call<TInput> = {
         input,
         abortSignal: controller.signal,
-        finish(): void {
-          removeTask();
-          activeCalls.delete(call);
-          publishInputs();
+        finish(commit): void {
+          if (activeCalls.delete(call)) {
+            publishInputs();
+          }
+          try {
+            commit();
+          } finally {
+            removeTask();
+          }
         },
       };
       activeCalls.set(call, { controller, removeTask });
@@ -35,13 +44,18 @@ export function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOpti
     },
     isLatest: (call: Call<TInput>) => call === latest,
     abortAll(): void {
-      for (const { controller, removeTask } of activeCalls.values()) {
+      latest = undefined;
+      if (activeCalls.size === 0) {
+        return;
+      }
+      // Forgotten before aborting: a call an abort listener starts is a new call, not one to abort.
+      const aborted = Array.from(activeCalls.values());
+      activeCalls.clear();
+      pendingInputs.set([]);
+      for (const { controller, removeTask } of aborted) {
         controller.abort(abortError('Aborted'));
         removeTask();
       }
-      activeCalls.clear();
-      latest = undefined;
-      pendingInputs.set([]);
     },
   };
 }

@@ -22,8 +22,30 @@ the last write to land.
 
 ### Optimistic updates
 
-`resource().value` is a `WritableSignal`: update it immediately, roll back in `.catch()`
-(`mutate()` always rejects like `mutationFn` does, for that specific call):
+`pendingInputs()` lists the calls in flight, so the optimistic view is a `computed`: hide the
+users being deleted, and remove each one from the resource once its delete succeeds:
+
+```ts
+readonly deleteUser = mutation<User, void>({
+  mutationFn: (user, signal) => this.api.deleteUser(user.id, signal),
+  onSuccess: (_output, user) => this.usersResource.update((users) => users.filter((u) => u.id !== user.id)),
+});
+
+readonly visibleUsers = computed(() => {
+  const deleting = new Set(this.deleteUser.pendingInputs().map((user) => user.id));
+  return this.usersResource.value().filter((user) => !deleting.has(user.id));
+});
+```
+
+There is nothing to roll back: a failed delete leaves `pendingInputs()` and the user shows again,
+in place. Overlapping deletes each hide their own user. A call leaves `pendingInputs()` just
+before `onSuccess` runs, in the same task, so the user never flashes back on screen. For a create,
+render `pendingInputs()` as extra rows the same way. React's `useOptimistic` and TanStack Query's
+optimistic updates "via the UI" follow the same idea.
+
+When other code reads the resource itself, update it instead. `resource().value` is a
+`WritableSignal`: update it immediately, roll back in `.catch()` (`mutate()` always rejects like
+`mutationFn` does, for that specific call):
 
 ```ts
 readonly deleteUser = mutation<User, void>({

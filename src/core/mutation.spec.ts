@@ -6,8 +6,23 @@ import {
 } from '@angular/core';
 import { SIGNAL } from '@angular/core/primitives/signals';
 import { TestBed } from '@angular/core/testing';
+import fc from 'fast-check';
 import { expectTypeOf } from 'vitest';
-import { createDeferred, createMutation, nextTask, outcomeAfterATask, sequencedMutationFn, queueTurn } from '../testing/mutation';
+import {
+  abortedAfterSettling,
+  concurrencyArb,
+  describeOutcome,
+  droppedUnlikeModel,
+  expectedFinalState,
+  expectedOutcome,
+  finalState,
+  listedInOwnCallbacks,
+  startLifecycleRun,
+  startedOrCancelled,
+  stepsArb,
+  wrongCallbacks,
+} from '../testing/lifecycle-run';
+import { createDeferred, createMutation, nextTask, outcomeAfterATask, sequencedMutationFn, queueTurn, spyOnPendingTasks } from '../testing/mutation';
 import { mutation } from './mutation';
 import type { MutationRef } from './mutation.types';
 
@@ -705,4 +720,28 @@ describe('debugName', () => {
 
     expect(debugNameOf(m.status)).toBeUndefined();
   });
+});
+
+describe('lifecycle properties', () => {
+  it('keeps the lifecycle consistent whatever callbacks and abort listeners do in between', async () => {
+    const removeFns = spyOnPendingTasks();
+
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), concurrencyArb, stepsArb, async (scheduler, concurrency, steps) => {
+        const firstTask = removeFns.length;
+        const run = startLifecycleRun(scheduler, concurrency);
+        await run.play(steps);
+        const outcomes = (await run.settleAll()).map(describeOutcome);
+
+        expect(droppedUnlikeModel(run.calls, outcomes)).toEqual([]);
+        expect(removeFns.slice(firstTask).filter((remove) => remove.mock.calls.length === 0)).toEqual([]);
+        expect(wrongCallbacks(run.calls, outcomes)).toEqual([]);
+        expect(listedInOwnCallbacks(run.calls)).toEqual([]);
+        expect(abortedAfterSettling(run.calls)).toEqual([]);
+        expect(run.calls.map((call) => startedOrCancelled(call, outcomes[call.id]))).toEqual(run.calls.map(expectedOutcome));
+        expect(run.statusMismatches).toEqual([]);
+        expect(finalState(run.mutationRef)).toEqual(expectedFinalState(run.calls, run.log));
+      }),
+    );
+  }, 30_000);
 });

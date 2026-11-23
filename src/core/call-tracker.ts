@@ -1,5 +1,5 @@
-import { signal, type PendingTasks } from '@angular/core';
-import { abortError } from './abort-error.js';
+import { signal, type DestroyRef, type PendingTasks } from '@angular/core';
+import { abortedError } from './abort-error.js';
 
 /** A `mutate()` admitted by the concurrency gate. */
 export interface Call<TInput> {
@@ -12,12 +12,47 @@ export interface Call<TInput> {
   finish(commit: () => void): void;
 }
 
-/** A newer call, `reset()` or destroy makes a call no longer the latest; only `reset()` and destroy abort it. */
-export function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOptions?: { debugName: string }) {
+/**
+ * A newer call, `reset()` or destroy makes a call no longer the latest; only `reset()` and destroy
+ * abort it. Destroy is only listened to while calls are in flight: an idle mutation leaves nothing
+ * behind in a long-lived injector.
+ */
+export function createCallTracker<TInput>(
+  pendingTasks: PendingTasks,
+  destroyRef: DestroyRef,
+  signalOptions?: { debugName: string },
+) {
   const activeCalls = new Map<Call<TInput>, { controller: AbortController; removeTask: () => void }>();
   let latest: Call<TInput> | undefined;
+  let stopListeningToDestroy: (() => void) | undefined;
   const pendingInputs = signal<readonly TInput[]>([], signalOptions);
   const publishInputs = () => pendingInputs.set(Array.from(activeCalls.keys(), (call) => call.input));
+
+  function onActiveCallsChanged(): void {
+    publishInputs();
+    if (activeCalls.size === 0) {
+      stopListeningToDestroy?.();
+      stopListeningToDestroy = undefined;
+    } else {
+      stopListeningToDestroy ??= destroyRef.onDestroy(abortAll);
+    }
+  }
+
+  function abortAll(): void {
+    latest = undefined;
+    if (activeCalls.size === 0) {
+      return;
+    }
+    // Forgotten before aborting: a call an abort listener starts is a new call, not one to abort.
+    const aborted = Array.from(activeCalls.values());
+    activeCalls.clear();
+    onActiveCallsChanged();
+    for (const { controller, removeTask } of aborted) {
+      controller.abort(abortedError());
+      removeTask();
+    }
+  }
+
   return {
     pendingInputs: pendingInputs.asReadonly(),
     start(input: TInput): Call<TInput> {
@@ -28,7 +63,7 @@ export function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOpti
         abortSignal: controller.signal,
         finish(commit): void {
           if (activeCalls.delete(call)) {
-            publishInputs();
+            onActiveCallsChanged();
           }
           try {
             commit();
@@ -39,23 +74,10 @@ export function createCallTracker<TInput>(pendingTasks: PendingTasks, signalOpti
       };
       activeCalls.set(call, { controller, removeTask });
       latest = call;
-      publishInputs();
+      onActiveCallsChanged();
       return call;
     },
     isLatest: (call: Call<TInput>) => call === latest,
-    abortAll(): void {
-      latest = undefined;
-      if (activeCalls.size === 0) {
-        return;
-      }
-      // Forgotten before aborting: a call an abort listener starts is a new call, not one to abort.
-      const aborted = Array.from(activeCalls.values());
-      activeCalls.clear();
-      pendingInputs.set([]);
-      for (const { controller, removeTask } of aborted) {
-        controller.abort(abortError('Aborted'));
-        removeTask();
-      }
-    },
+    abortAll,
   };
 }

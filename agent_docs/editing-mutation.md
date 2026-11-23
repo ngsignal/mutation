@@ -18,25 +18,30 @@ gets a new hook here, not a wrapper around the returned ref.
 
 - **Latest call** (`Call`, `createCallTracker` in `call-tracker.ts`). Each admitted `mutate()` is a `Call` object
   (input, `AbortSignal`, `finish(commit)`). The tracker remembers the latest one started;
-  `reset()` and destroy forget it. `commitSuccess` / `commitError` write the signals only
-  when the call is still the latest (`calls.isLatest(call)`).
-- **Callbacks run for every settled call.** `settledCallContext` returns `{ isLatest }`, or
-  `undefined` when the call was aborted (by `reset()` / destroy, which abort every call
-  in flight): then no signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
+  `reset()` and destroy forget it. `commit` writes the signals only when the call is still the
+  latest (`calls.isLatest(call)`).
+- **Callbacks run for every settled call.** `commit` passes them `{ isLatest }`, and does nothing
+  when the call was aborted (by `reset()` / destroy, which abort every call in flight): then no
+  signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
   call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
   settles with the call's own outcome, superseded or not, or rejects with the abort reason as
-  soon as `reset()` / destroy aborts the call (`rejectOnAbortOnceStarted`), even if
-  `mutationFn` ignores its signal. A call still queued keeps its gate's `'NotStarted'`
-  rejection, and the gate still waits for the real write, so a queue stays ordered. Each callback runs through `runCallback`: an
+  soon as `reset()` / destroy aborts the call (`rejectOnAbort`), even if `mutationFn` ignores
+  its signal: `'NotStarted'` if the call was still queued, the signal's `'Aborted'` once
+  `mutationFn` ran. Only the core rejects on abort: the queue keeps an aborted call's turn and
+  skips its task then, and still waits for a real write, so it stays ordered. Each callback runs through `runCallback`: an
   exception goes to `ErrorHandler`, as in `OutputEmitterRef.emit()`, and must never reach the
   `catch` of `runCall` (it would turn a successful write into an error).
-- **After destroy** (`destroyRef.destroyed`), `mutate()` rejects with `abortError('Destroyed')`
+- **After destroy** (`destroyRef.destroyed`), `mutate()` rejects with `neverSentError('Destroyed')`
   before touching any signal or calling `mutationFn`. Every `AbortError` comes from
-  `abortError()` (`abort-error.ts`): its reasons are the README's Cancellations table.
+  `abort-error.ts`: `neverSentError()` for a call rejected before `mutationFn` ran (only
+  `mutation.ts` creates them, and they make `wasNeverSent()` true), `abortedError()` for a call
+  aborted in flight. `runCall` clears the never-sent mark from any error `mutationFn` rejects
+  with (`markMaybeSent`). The reasons are the README's Cancellations table.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
   run to completion and their outcome is ignored. Only `reset()` and destroy abort
   (`createCallTracker`'s `abortAll`): they abort every in-flight
-  call's controller, release its pending task and forget it. Don't call supersession
+  call's controller, release its pending task and forget it. The tracker listens to destroy only while calls are
+  in flight, so an idle mutation leaves no reference in a long-lived injector. Don't call supersession
   "cancellation".
 - **Settling order** (`call.finish(commit)`). A settled call first leaves the tracker, so its
   callbacks see it out of `pendingInputs()` / `isPending()` and a `reset()` they call doesn't

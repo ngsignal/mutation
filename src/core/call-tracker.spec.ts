@@ -4,9 +4,10 @@ import {
   createEnvironmentInjector,
   ApplicationRef,
   computed,
+  DestroyRef,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { expectTypeOf } from 'vitest';
+import { expectTypeOf, type Mock } from 'vitest';
 import { spyOnPendingTasks, createDeferred, createMutation, nextTask, sequencedMutationFn } from '../testing/mutation';
 import { mutation } from './mutation';
 import type { MutationRef } from './mutation.types';
@@ -346,5 +347,66 @@ describe('pending tasks', () => {
     expect(releasedDuringCallbacks).toBe(false);
     expect(removeFns[0]).toHaveBeenCalledOnce();
     expect(removeFns[1]).not.toHaveBeenCalled();
+  });
+});
+
+describe('destroy listener', () => {
+  function spyOnDestroyListeners(injector: EnvironmentInjector): Mock<() => void>[] {
+    const destroyRef = injector.get(DestroyRef);
+    const originalOnDestroy = destroyRef.onDestroy.bind(destroyRef);
+    const unregisterFns: Mock<() => void>[] = [];
+    vi.spyOn(destroyRef, 'onDestroy').mockImplementation((callback) => {
+      const unregister = vi.fn(originalOnDestroy(callback));
+      unregisterFns.push(unregister);
+      return unregister;
+    });
+    return unregisterFns;
+  }
+
+  it('is not registered while the mutation is idle, so it leaves nothing in a long-lived injector', async () => {
+    const childInjector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const unregisterFns = spyOnDestroyListeners(childInjector);
+    const m = mutation<void, string>({ mutationFn: () => Promise.resolve('ok'), injector: childInjector });
+    expect(unregisterFns).toHaveLength(0);
+
+    await m.mutate();
+
+    expect(unregisterFns).toHaveLength(1);
+    expect(unregisterFns[0]).toHaveBeenCalledOnce();
+  });
+
+  it('is registered once for overlapping calls, and removed when the last one settles', async () => {
+    const childInjector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const unregisterFns = spyOnDestroyListeners(childInjector);
+    const first = createDeferred<string>();
+    const second = createDeferred<string>();
+    const m = mutation<void, string>({ mutationFn: sequencedMutationFn(first, second), injector: childInjector });
+
+    const firstCall = m.mutate();
+    const secondCall = m.mutate();
+    first.resolve('a');
+    await firstCall;
+    expect(unregisterFns).toHaveLength(1);
+    expect(unregisterFns[0]).not.toHaveBeenCalled();
+
+    second.resolve('b');
+    await secondCall;
+    expect(unregisterFns[0]).toHaveBeenCalledOnce();
+  });
+
+  it('is registered again for the next call, which destroy still aborts', async () => {
+    const childInjector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const unregisterFns = spyOnDestroyListeners(childInjector);
+    const m = mutation<void, string>({
+      mutationFn: sequencedMutationFn({ promise: Promise.resolve('a') }, createDeferred<string>()),
+      injector: childInjector,
+    });
+
+    await m.mutate();
+    const pendingCall = m.mutate();
+    childInjector.destroy();
+
+    expect(unregisterFns).toHaveLength(2);
+    await expect(pendingCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
   });
 });

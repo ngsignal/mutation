@@ -1,19 +1,24 @@
-type AbortReason = 'Aborted' | 'Dropped' | 'NotStarted' | 'Destroyed';
+type NeverSentReason = 'Dropped' | 'NotStarted' | 'Destroyed';
 
 // Created on first use: `sideEffects: false` forbids module-level allocations.
 let neverSentErrors: WeakSet<DOMException> | undefined;
 
-export function abortError(reason: AbortReason): DOMException {
+/** A call aborted in flight: its write may have reached the server. */
+export function abortedError(): DOMException {
+  return new DOMException('Aborted', 'AbortError');
+}
+
+/** A call rejected before its `mutationFn` ran: `wasNeverSent()` is true for it. */
+export function neverSentError(reason: NeverSentReason): DOMException {
   const error = new DOMException(reason, 'AbortError');
-  if (reason !== 'Aborted') {
-    (neverSentErrors ??= new WeakSet()).add(error);
-  }
+  (neverSentErrors ??= new WeakSet()).add(error);
   return error;
 }
 
 /**
  * For an error a `mutationFn` rejected with: its call ran, so its write may have left, even when
- * the error is another mutation's `'Dropped'`.
+ * the error is another mutation's `'Dropped'`. The error object is shared with that mutation's
+ * caller, so `wasNeverSent()` turns false for it too once this runs.
  */
 export function markMaybeSent(error: unknown): void {
   if (error instanceof DOMException) {

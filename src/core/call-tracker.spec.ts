@@ -7,8 +7,8 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { expectTypeOf } from 'vitest';
+import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn } from '../testing/mutation';
 import { mutation } from './mutation';
-import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn } from './testing/mutation';
 
 beforeEach(() => {
   TestBed.configureTestingModule({

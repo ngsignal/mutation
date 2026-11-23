@@ -5,8 +5,8 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
+import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn, queueTurn } from '../testing/mutation';
 import { mutation } from './mutation';
-import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn, queueTurn } from './testing/mutation';
 
 beforeEach(() => {
   TestBed.configureTestingModule({

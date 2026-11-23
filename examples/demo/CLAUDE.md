@@ -6,7 +6,7 @@ Educational first: the library API must stay visible, never hidden behind archit
 ## Where things are
 
 - Library: the repository root (`../..`)
-  - source `src/mutation.ts`, `src/mutation.types.ts` · tests `src/mutation.spec.ts`
+  - source `src/core/mutation.ts`, `src/core/mutation.types.ts` · tests `src/core/mutation.spec.ts`
   - `rxMutation` (`@ngsignal/mutation/rxjs-interop`), `httpMutation` (`@ngsignal/mutation/http`)
   - docs `README.md`, `docs/RECIPES.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md`
 - Version running: `@ngsignal/mutation` from npm, pinned in `package.json` and bumped by

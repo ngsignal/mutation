@@ -9,9 +9,9 @@ import {
 } from '@angular/common/http';
 import { Injector, assertInInjectionContext, inject, signal, type Signal } from '@angular/core';
 import { filter, map, tap } from 'rxjs/operators';
-import { toAbortablePromise } from './internal/to-abortable-promise.js';
-import { mutation } from './mutation.js';
-import type { MutationOptions, MutationRef } from './mutation.types.js';
+import { mutation } from '../core/mutation.js';
+import type { MutationOptions, MutationRef } from '../core/mutation.types.js';
+import { toAbortablePromise } from '../internal/to-abortable-promise.js';
 
 /** `httpResource()`'s request, except `method` is required and there is no `transferCache`, which only applies to reads. */
 // Derived from HttpResourceRequest so it can't drift from what Angular accepts.

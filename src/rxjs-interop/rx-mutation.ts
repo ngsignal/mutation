@@ -1,8 +1,8 @@
 import { assertInInjectionContext } from '@angular/core';
 import type { Observable } from 'rxjs';
-import { toAbortablePromise } from './internal/to-abortable-promise.js';
-import { mutation } from './mutation.js';
-import type { MutationOptions, MutationRef } from './mutation.types.js';
+import { mutation } from '../core/mutation.js';
+import type { MutationOptions, MutationRef } from '../core/mutation.types.js';
+import { toAbortablePromise } from '../internal/to-abortable-promise.js';
 
 /** Options of `rxMutation()`: `mutation()`'s options, with a `mutationFn` that returns an Observable. */
 export interface RxMutationOptions<TInput, TOutput, TError = unknown>

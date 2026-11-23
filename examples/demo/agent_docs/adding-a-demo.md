@@ -2,7 +2,7 @@
 
 ## Checklist
 
-1. Confirm the API exists in `node_modules/@ngsignal/mutation/dist/*.d.ts`.
+1. Confirm the API exists in `node_modules/@ngsignal/mutation/dist/**/*.d.ts`.
 2. Confirm how it behaves: README, then source, then tests when ambiguous
    (the repository root, `../..`).
 3. Prefer extending an existing page: there is one page per concept, not per API member.

@@ -9,8 +9,8 @@ import {
 } from '@angular/common/http';
 import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { startHttpTestServer, type HttpTestServer } from '../testing/http-test-server';
 import { httpMutation } from './http-mutation';
-import { startHttpTestServer, type HttpTestServer } from './testing/http-test-server';
 
 // Integration tests: real requests to a local server, through Angular's actual FetchBackend /
 // HttpXhrBackend. Unit tests with HttpClientTestingBackend live in http-mutation.spec.ts.

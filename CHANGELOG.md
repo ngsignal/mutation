@@ -1,7 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.9.0
 
+- **Breaking:** `reset()` and destroy reject a call in flight at once with an `'Aborted'`
+  `AbortError`, like `fetch()`, even if `mutationFn` ignores its `AbortSignal` or rejects with
+  its own error. `mutate()` used to wait for `mutationFn` and settle with its outcome, so code
+  after `await mutate()` could still run once the component was gone. `rxMutation()` and
+  `httpMutation()` already behaved this way.
+- **Breaking:** `rxMutation()` resolves with the last value, once the Observable completes, not
+  with the first one. An Observable that never completes stays pending until a reset or destroy.
+- **Breaking:** when `parse` throws, `httpMutation()` rejects with an `HttpMutationParseError`.
+  The original error is its `cause`.
 - Feature: `wasNeverSent(error)` tells whether a call was cancelled before its `mutationFn` ran
   (`'Dropped'`, `'NotStarted'`, `'Destroyed'`), so its write never left, e.g. to roll back an
   optimistic update only then.
@@ -11,17 +20,6 @@
   queues per key instead, e.g. per entity id; a call given the queue without a key waits for
   every key, and the calls after it wait for it. See
   [Ordering writes across mutations](./docs/RECIPES.md#ordering-writes-across-mutations).
-- Docs: that recipe bounds a request with a timeout (`timeout` in `request()`, or
-  `AbortSignal.timeout()`), so a hung call can't hold a shared queue forever.
-- **Breaking**: `reset()` and destroy reject a call in flight at once with an `'Aborted'`
-  `AbortError`, like `fetch()`, even if `mutationFn` ignores its `AbortSignal` or rejects with
-  its own error. `mutate()` used to wait for `mutationFn` and settle with its outcome, so code
-  after `await mutate()` could still run once the component was gone. `rxMutation()` and
-  `httpMutation()` already behaved this way.
-- **Breaking**: `rxMutation()` resolves with the last value, once the Observable completes, not
-  with the first one. An Observable that never completes stays pending until a reset or destroy.
-- **Breaking**: when `parse` throws, `httpMutation()` rejects with an `HttpMutationParseError`.
-  The original error is its `cause`.
 - Feature: `httpMutation()`'s callbacks receive each call's `response`.
 - Feature (types only): `MutationOptions` takes a `TContext` type parameter for the callbacks'
   context.
@@ -35,12 +33,6 @@
   `rxMutation()` and `httpMutation()`.
 - Feature: `concurrency: 'parallel'` names the default mode, for code that wants to state it.
   Leaving `concurrency` unset still means `'parallel'`.
-- Docs: in queue mode, `pendingInputs()[0]` is the input of the request in flight.
-- Docs: a [testing recipe](./docs/RECIPES.md#testing-a-component): `fixture.whenStable()` waits
-  for the calls in flight, and with `HttpTestingController` the request must be flushed first.
-- Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation
-  from `submit()`. The README now says that `isPending()` means `pendingInputs().length > 0` and
-  that progress needs `reportProgress: true`.
 - Fix: a call leaves `pendingInputs()` before its callbacks run, so `isPending()` is no longer
   true in the `onSuccess` of the only call in flight. Its pending task is still released after
   the callbacks.
@@ -50,6 +42,14 @@
   and left with an idle status.
 - Fix: `reset()` with no call in flight, or a call aborted by `reset()` that settles later, no
   longer notifies `pendingInputs()` readers.
+- Docs: the [ordering recipe](./docs/RECIPES.md#ordering-writes-across-mutations) bounds a request with a timeout (`timeout` in `request()`, or
+  `AbortSignal.timeout()`), so a hung call can't hold a shared queue forever.
+- Docs: in queue mode, `pendingInputs()[0]` is the input of the request in flight.
+- Docs: a [testing recipe](./docs/RECIPES.md#testing-a-component): `fixture.whenStable()` waits
+  for the calls in flight, and with `HttpTestingController` the request must be flushed first.
+- Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation
+  from `submit()`. The README now says that `isPending()` means `pendingInputs().length > 0` and
+  that progress needs `reportProgress: true`.
 - Docs: the [optimistic updates recipe](./docs/RECIPES.md#optimistic-updates) builds the
   optimistic view from `pendingInputs()`, with nothing to roll back.
 - Docs: a [recipe](./docs/RECIPES.md#choosing-settings-by-http-method) maps each HTTP method to

@@ -45,9 +45,11 @@ aborted by `reset()` or destroy run no callback: the caller asked to forget them
   reached the server and be unsafe to cancel there, unlike a read. `mutation()` still hands
   `mutationFn` an `AbortSignal`, but only aborts it on explicit reset or destroy.
 - **Ordering across mutations**: TanStack's `scope.id` runs the mutations sharing an id one at a
-  time, the id being fixed when the mutation is created. `mutationQueue()` does the same with an
-  object rather than a string, and `{ queue, key }` takes the key from each call's input, so one
-  mutation can keep its writes in order per entity.
+  time, the id being read from the mutation's options, never from the variables of the call.
+  `mutationQueue()` does the same with an object rather than a string, and `{ queue, key }` takes
+  the key from each call's input, so one mutation can keep its writes in order per entity. A
+  mutation given the queue without a key waits for every key, where a TanStack mutation without
+  a scope runs at once.
 
 Reach for TanStack if you want retries, offline support, or cross-component cache invalidation.
 Reach for this if you want the smallest primitive that behaves like `resource()`'s write-side

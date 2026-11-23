@@ -129,12 +129,15 @@ readonly removeAll = httpMutation<void, void>({
   `timeout: 10_000` in `httpMutation()`'s `request()`, or with `fetch()`:
 
   ```ts
-  mutationFn: (draft, abortSignal) =>
-    fetch(`/api/docs/${draft.docId}`, {
+  mutationFn: async (draft, abortSignal) => {
+    const response = await fetch(`/api/docs/${draft.docId}`, {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(draft),
       signal: AbortSignal.any([abortSignal, AbortSignal.timeout(10_000)]),
-    }),
+    });
+    if (!response.ok) throw new Error(`PUT failed with ${response.status}`);
+  },
   ```
 - `request()`, and an `rxMutation()`'s `mutationFn`, run when the call leaves the queue: a
   `PATCH` queued behind the `POST` that creates its entity can read the id that the `POST`'s

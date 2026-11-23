@@ -9,7 +9,7 @@ import {
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
-import { abortError } from './abort-error.js';
+import { abortError, markMaybeSent } from './abort-error.js';
 import { createCallTracker, type Call } from './call-tracker.js';
 import { createConcurrencyGate } from './concurrency.js';
 import {
@@ -160,6 +160,9 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
       return result;
 
     } catch (err) {
+      if (mutationFnStarted) {
+        markMaybeSent(err);
+      }
       call.finish(() => commitError(call, extra, err as TError));
       throw err;
     }

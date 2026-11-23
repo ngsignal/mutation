@@ -168,6 +168,18 @@ Completing without a value rejects. An Observable that never completes (a store 
 calls behind it wait too. With `observe: 'events'`, the last value is the `HttpResponse` — use
 `httpMutation()` for progress.
 
+If the source might not complete, bound the wait inside `mutationFn` with RxJS's `timeout()`:
+the call rejects with a `TimeoutError` and unsubscribes. The write may still reach the server,
+so don't retry it blindly (see [Retrying writes](#retrying-writes)):
+
+```ts
+import { timeout } from 'rxjs/operators';
+
+readonly saveSettings = rxMutation({
+  mutationFn: (settings: Settings) => this.settingsFacade.save(settings).pipe(timeout(10_000)),
+});
+```
+
 ### Describing an HTTP request
 
 `httpMutation()` takes a request description instead — the same shape as `httpResource()`'s

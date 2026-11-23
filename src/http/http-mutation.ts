@@ -45,7 +45,11 @@ type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
   HttpMutationOptions<TInput, TOutput, TError, TRaw> &
   ([TRaw] extends [TOutput] ? unknown : { parse: (raw: TRaw) => TOutput });
 
-/** Returned by `httpMutation()`: a `MutationRef` plus the latest call's HTTP metadata, cleared when a call starts and on `reset()`. */
+/**
+ * Returned by `httpMutation()`: a `MutationRef` plus the HTTP metadata of the latest request sent,
+ * cleared when a request starts and on `reset()`. With `concurrency: 'queue'`, that is the request
+ * in flight, whose input is `pendingInputs()[0]`, not `input()`.
+ */
 export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined>
   extends MutationRef<TInput, TOutput, TError, TValue> {
   /** Latest upload progress event. Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */

@@ -12,6 +12,9 @@
   `rxMutation()` and `httpMutation()`.
 - Feature: `concurrency: 'parallel'` names the default mode, for code that wants to state it.
   Leaving `concurrency` unset still means `'parallel'`.
+- Docs: `rxMutation()` warns that unsubscribing after the first value cancels the request when
+  a value comes first (`startWith()`), and `httpMutation()`'s HTTP metadata follows the request
+  in flight with `concurrency: 'queue'`, whose input is `pendingInputs()[0]`.
 - Docs: a [testing recipe](./docs/RECIPES.md#testing-a-component): `fixture.whenStable()` waits
   for the calls in flight, and with `HttpTestingController` the request must be flushed first.
 - Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation

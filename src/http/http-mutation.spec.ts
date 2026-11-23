@@ -601,6 +601,8 @@ describe('concurrency: "queue"', () => {
 
     firstReq.event({ type: HttpEventType.UploadProgress, loaded: 50, total: 100 });
     expect(m.uploadProgress()).toMatchObject({ loaded: 50, total: 100 });
+    expect(m.pendingInputs()[0]).toBe('a');
+    expect(m.input()).toBe('b');
 
     firstReq.flush('first');
     await first;

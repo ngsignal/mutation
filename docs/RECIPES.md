@@ -165,6 +165,11 @@ Unlike `rxResource()`, only the first value counts: it resolves the call, then `
 unsubscribes. Completing without a value rejects. With `observe: 'events'`, that first value is
 `Sent`, not the body — use `httpMutation()` for progress.
 
+That unsubscribe cancels whatever the Observable would have done next. A value emitted before
+the request (`startWith(placeholder)`, `concat(of(placeholder), request$)`) resolves the call and
+cancels the request, which may already have been sent. For an optimistic value, see
+[Optimistic updates](#optimistic-updates) instead.
+
 ### Describing an HTTP request
 
 `httpMutation()` takes a request description instead — the same shape as `httpResource()`'s
@@ -295,7 +300,8 @@ call: a superseded call's events are ignored (see [stale-response guarding](../R
 With `concurrency: 'queue'`, a request only starts once the previous one settles, and these
 signals follow the request actually in flight: while an older upload is still running with a
 newer call queued behind it, `uploadProgress` shows the older upload's progress (its outcome will
-still be ignored). They reset as soon as the queued request starts.
+still be ignored). They reset as soon as the queued request starts. `input()` follows the latest
+call, not the request in flight: read `pendingInputs()[0]` to label the progress bar.
 
 `error()` is typed `unknown` by default. It is an `HttpErrorResponse` for HTTP failures, but an
 interceptor may throw anything else — pass `TError` explicitly if you rely on it:

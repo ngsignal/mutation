@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import fc from 'fast-check';
 import { Subject } from 'rxjs';
 import { expectTypeOf } from 'vitest';
 import { httpMutation } from '../http/http-mutation';
@@ -10,6 +11,7 @@ import { createDeferred, createMutation, nextTask } from '../testing/mutation';
 import { isObserved } from '../testing/rxjs';
 import { mutation } from './mutation';
 import { mutationQueue, writeQueueOf } from './mutation-queue';
+import type { MutationRef } from './mutation.types';
 
 let httpTesting: HttpTestingController;
 
@@ -383,5 +385,108 @@ describe('mutationQueue() with a key', () => {
       // @ts-expect-error a key is a string or a number
       concurrency: { queue, key: (draft) => draft },
     });
+  });
+});
+
+describe('mutationQueue() properties', () => {
+  type Kind = 'save' | 'archive' | 'removeAll';
+  type Step =
+    | { type: 'mutate'; kind: Kind; docId: 'A' | 'B'; succeeds: boolean }
+    | { type: 'reset'; kind: Kind }
+    | { type: 'settleOne' };
+
+  interface Call {
+    id: number;
+    kind: Kind;
+    docId: 'A' | 'B';
+    succeeds: boolean;
+    startedAt?: number;
+    endedAt?: number;
+    abortedAs?: 'NotStarted' | 'Aborted';
+  }
+
+  const kindArb = fc.constantFrom<Kind>('save', 'archive', 'removeAll');
+  const stepArb: fc.Arbitrary<Step> = fc.oneof(
+    {
+      arbitrary: fc.record({
+        type: fc.constant('mutate' as const),
+        kind: kindArb,
+        docId: fc.constantFrom('A' as const, 'B' as const),
+        succeeds: fc.boolean(),
+      }),
+      weight: 4,
+    },
+    { arbitrary: fc.record({ type: fc.constant('reset' as const), kind: kindArb }), weight: 1 },
+    { arbitrary: fc.constant({ type: 'settleOne' as const }), weight: 3 },
+  );
+
+  // 'removeAll' has no key: it orders against every call.
+  const conflict = (earlier: Call, later: Call) =>
+    earlier.kind === 'removeAll' || later.kind === 'removeAll' || earlier.docId === later.docId;
+
+  it('keeps conflicting calls in call order, starts every call not reset while queued, and settles each as expected', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), fc.array(stepArb, { minLength: 1, maxLength: 12 }), async (scheduler, steps) => {
+        const queue = mutationQueue();
+        const calls: Call[] = [];
+        const outcomes: Promise<number>[] = [];
+        let clock = 0;
+
+        // Ignores its AbortSignal, so an aborted call in flight still holds the queue.
+        const mutationFn = async (call: Call) => {
+          call.startedAt = clock++;
+          await scheduler.schedule(Promise.resolve());
+          call.endedAt = clock++;
+          if (!call.succeeds) throw new Error(`failed ${call.id}`);
+          return call.id;
+        };
+        const mutations: Record<Kind, MutationRef<Call, number>> = {
+          save: createMutation<Call, number>({ mutationFn, concurrency: { queue, key: (call) => call.docId } }),
+          archive: createMutation<Call, number>({ mutationFn, concurrency: { queue, key: (call) => call.docId } }),
+          removeAll: createMutation<Call, number>({ mutationFn, concurrency: queue }),
+        };
+
+        for (const step of steps) {
+          if (step.type === 'mutate') {
+            const call: Call = { id: calls.length, kind: step.kind, docId: step.docId, succeeds: step.succeeds };
+            calls.push(call);
+            outcomes.push(mutations[step.kind].mutate(call));
+          } else if (step.type === 'reset') {
+            for (const call of calls) {
+              if (call.kind === step.kind && call.abortedAs === undefined && call.endedAt === undefined) {
+                call.abortedAs = call.startedAt === undefined ? 'NotStarted' : 'Aborted';
+              }
+            }
+            mutations[step.kind].reset();
+          } else {
+            if (scheduler.count() > 0) await scheduler.waitOne();
+            await nextTask();
+          }
+        }
+        const results = await scheduler.waitFor(Promise.allSettled(outcomes));
+        await scheduler.waitIdle();
+
+        const overlaps = calls.flatMap((later) =>
+          calls
+            .slice(0, later.id)
+            .filter((earlier) => conflict(earlier, later) && earlier.startedAt !== undefined && later.startedAt !== undefined)
+            .filter((earlier) => (later.startedAt ?? 0) < (earlier.endedAt ?? Infinity))
+            .map((earlier) => [earlier.id, later.id]),
+        );
+        expect(overlaps).toEqual([]);
+
+        const startedWrongly = calls.filter((call) => (call.startedAt === undefined) !== (call.abortedAs === 'NotStarted'));
+        expect(startedWrongly).toEqual([]);
+
+        const settledAs = results.map((result) =>
+          result.status === 'fulfilled' ? result.value : `${(result.reason as Error).name}: ${(result.reason as Error).message}`,
+        );
+        const expected = calls.map((call) => {
+          if (call.abortedAs) return `AbortError: ${call.abortedAs}`;
+          return call.succeeds ? call.id : `Error: failed ${call.id}`;
+        });
+        expect(settledAs).toEqual(expected);
+      }),
+    );
   });
 });

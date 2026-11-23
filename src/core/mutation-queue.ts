@@ -5,16 +5,22 @@ import type { MutationQueue } from './mutation.types.js';
 export interface WriteQueue {
   /** The last call queued under each key, removed once it settles: a key never outlives its calls. */
   readonly tails: ReadonlyMap<unknown, Promise<unknown>>;
-  /** Runs `task` once every call queued before it under `key` has settled. */
+  /**
+   * Runs `task` once every call queued before it under `key` has settled. A call without a key
+   * (`undefined`) is a barrier: it waits for the calls of every key, and every call queued after
+   * it waits for it.
+   */
   run<T>(key: unknown, task: () => Promise<T>, abortSignal: AbortSignal): Promise<T>;
 }
 
 /**
  * Creates a write queue to share between mutations: pass it as their `concurrency`, and their calls
  * run one at a time, in call order, whichever mutation makes them. Each mutation keeps its own
- * signals. Use `{ queue, key }` to queue per key instead, e.g. per entity id.
+ * signals. Use `{ queue, key }` to queue per key instead, e.g. per entity id: a call made without a
+ * key then waits for every key, and the calls made after it wait for it.
  *
- * Create it in a service: a queue at module level would be shared by every SSR request.
+ * Create it in a service: a queue at module level would be shared by every SSR request. A
+ * `mutationFn` must not wait for a call on its own queue: that call would wait for it, forever.
  *
  * @example
  * ```ts
@@ -38,6 +44,12 @@ export function writeQueueOf(queue: MutationQueue): WriteQueue {
   return queue as unknown as WriteQueue;
 }
 
+/** Settles once every tail has: the tails never reject. One tail or none takes no extra microtask. */
+function allSettled(tails: readonly (Promise<unknown> | undefined)[]): Promise<unknown> {
+  const pending = tails.filter((tail) => tail !== undefined);
+  return pending.length > 1 ? Promise.all(pending) : (pending[0] ?? Promise.resolve());
+}
+
 export function createWriteQueue(): WriteQueue {
   const tails = new Map<unknown, Promise<unknown>>();
   return {
@@ -48,7 +60,8 @@ export function createWriteQueue(): WriteQueue {
         const leaveQueue = () => reject(abortError('NotStarted'));
         abortSignal.addEventListener('abort', leaveQueue, { once: true });
 
-        const call = (tails.get(key) ?? Promise.resolve()).then(() => {
+        const ahead = key === undefined ? Array.from(tails.values()) : [tails.get(undefined), tails.get(key)];
+        const call = allSettled(ahead).then(() => {
           abortSignal.removeEventListener('abort', leaveQueue);
           return abortSignal.aborted ? Promise.reject(abortError('NotStarted')) : task();
         });

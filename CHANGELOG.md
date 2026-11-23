@@ -5,7 +5,8 @@
 - Feature: `mutationQueue()` creates a write queue to share between mutations. Pass it as their
   `concurrency` and their calls run one at a time, in call order, whichever mutation makes them,
   with `mutation()`, `rxMutation()` and `httpMutation()` alike. `concurrency: { queue, key }`
-  queues per key instead, e.g. per entity id. See
+  queues per key instead, e.g. per entity id; a call given the queue without a key waits for
+  every key, and the calls after it wait for it. See
   [Ordering writes across mutations](./docs/RECIPES.md#ordering-writes-across-mutations).
 - **Breaking**: `reset()` and destroy reject a call in flight at once with an `'Aborted'`
   `AbortError`, like `fetch()`, even if `mutationFn` ignores its `AbortSignal` or rejects with

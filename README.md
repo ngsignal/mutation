@@ -213,7 +213,7 @@ What happens to a second call while one is still in flight:
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
 | `'drop'`        | Rejected at once (`'Dropped'`), `mutationFn` never runs, signals untouched | Double-submit protection (payment, form submit) |
 | a `mutationQueue()` | Waits for the previous call of every mutation given the same queue   | Different writes to the same data (rename, then delete) |
-| `{ queue, key }` | Waits for the previous call with the same key; other keys run at once   | Order per entity (autosave of several documents) |
+| `{ queue, key }` | Waits for the previous call with the same key; other keys run at once. A call on the same queue without a key waits for every key | Order per entity (autosave of several documents) |
 
 In every mode, the state signals reflect the most recent call of the mutation itself. Sharing a
 queue works the same with `mutation()`, `rxMutation()` and `httpMutation()`: see

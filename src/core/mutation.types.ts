@@ -65,7 +65,8 @@ export interface MutationOptions<
    * a call made while one is in flight rejects at once (`'Dropped'`).
    *
    * A `mutationQueue()`: one at a time, in call order, with the calls of every mutation given the
-   * same queue. `{ queue, key }`: the same, per key, e.g. one queue per entity id.
+   * same queue. `{ queue, key }`: the same, per key, e.g. one queue per entity id; a call given the
+   * queue without a key waits for every key, and the calls after it wait for it.
    */
   concurrency?: 'parallel' | 'queue' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */

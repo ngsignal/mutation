@@ -294,6 +294,77 @@ describe('mutationQueue() with a key', () => {
     expect(writeQueueOf(queue).tails.size).toBe(0);
   });
 
+  it('runs a call without a key once the calls of every key ahead of it have settled', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const save = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(label(draft)),
+      concurrency: { queue, key: byDoc },
+    });
+    const removeAll = createMutation<void, string>({ mutationFn: () => writes.mutationFn('remove all'), concurrency: queue });
+
+    const saveA = save.mutate({ docId: 'A', content: '1' });
+    const saveB = save.mutate({ docId: 'B', content: '1' });
+    const removeAllCall = removeAll.mutate();
+    await nextTask();
+    expect(writes.started).toEqual(['A:1', 'B:1']);
+
+    writes.resolve('A:1');
+    await saveA;
+    await nextTask();
+    expect(writes.started).toEqual(['A:1', 'B:1']);
+
+    writes.resolve('B:1');
+    await saveB;
+    await nextTask();
+    expect(writes.started).toEqual(['A:1', 'B:1', 'remove all']);
+    writes.resolve('remove all');
+    await expect(removeAllCall).resolves.toBe('remove all-done');
+  });
+
+  it('runs the keyed calls made after a call without a key once it has settled, other keys still at once', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const save = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(label(draft)),
+      concurrency: { queue, key: byDoc },
+    });
+    const removeAll = createMutation<void, string>({ mutationFn: () => writes.mutationFn('remove all'), concurrency: queue });
+
+    const removeAllCall = removeAll.mutate();
+    void save.mutate({ docId: 'A', content: '2' });
+    void save.mutate({ docId: 'B', content: '2' });
+    await nextTask();
+    expect(writes.started).toEqual(['remove all']);
+
+    writes.resolve('remove all');
+    await removeAllCall;
+    await nextTask();
+    expect(writes.started).toEqual(['remove all', 'A:2', 'B:2']);
+  });
+
+  it('forgets a call without a key once it has settled', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const save = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(label(draft)),
+      concurrency: { queue, key: byDoc },
+    });
+    const removeAll = createMutation<void, string>({ mutationFn: () => writes.mutationFn('remove all'), concurrency: queue });
+
+    const saveA = save.mutate({ docId: 'A', content: '1' });
+    const removeAllCall = removeAll.mutate();
+    await nextTask();
+    writes.resolve('A:1');
+    await saveA;
+    await nextTask();
+    writes.resolve('remove all');
+    await removeAllCall;
+    await nextTask();
+
+    expect(writeQueueOf(queue).tails.size).toBe(0);
+  });
+
   it("types the key's argument as the mutation's input", () => {
     const queue = mutationQueue();
 

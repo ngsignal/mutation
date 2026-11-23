@@ -2,7 +2,7 @@ import { createWriteQueue, writeQueueOf, type WriteQueue } from './mutation-queu
 import type { MutationOptions } from './mutation.types.js';
 
 /** What a gate knows of a call: the queue key comes from its input. */
-export interface GateCall<TInput> {
+interface GateCall<TInput> {
   readonly input: TInput;
   readonly abortSignal: AbortSignal;
 }

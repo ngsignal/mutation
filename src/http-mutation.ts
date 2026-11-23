@@ -13,47 +13,50 @@ import { toAbortablePromise } from './internal/to-abortable-promise.js';
 import { mutation } from './mutation.js';
 import type { MutationOptions, MutationRef } from './mutation.types.js';
 
-/**
- * Same shape as `httpResource()`'s request, reused so it can't drift from what Angular accepts,
- * except `method` is required (no silent GET default for a mutation) and there's no
- * `transferCache` (SSR transfer cache only applies to reads).
- */
+/** `httpResource()`'s request, except `method` is required and there is no `transferCache`, which only applies to reads. */
+// Derived from HttpResourceRequest so it can't drift from what Angular accepts.
 export type HttpMutationRequest = Omit<HttpResourceRequest, 'method' | 'transferCache'> & {
   // `string & {}` keeps autocompletion for the common methods while still accepting any string.
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' | (string & {});
 };
 
+/** Options of `httpMutation()`: `mutation()`'s options, with `request` and `parse` in place of `mutationFn`. */
 export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = unknown>
   extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
   /**
-   * Describe the request for a given input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`.
+   * Describes the request for an input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`.
+   * With `concurrency: 'queue'`, it runs when the call leaves the queue: pass values to freeze at
+   * `mutate()` time through the input.
+   *
    * If the request completes without an `HttpResponse` (an interceptor returning `EMPTY`), the call
    * fails with `Error('Request completed without an HttpResponse event')`.
    */
   request: (input: TInput) => HttpMutationRequest;
   /**
-   * Transform or validate the response body before it resolves the call (e.g. a schema's `parse`).
-   * If it throws, the call fails with that error, although the server has already applied the write.
+   * Transforms or validates the response body before it resolves the call, e.g. a schema's `parse`.
+   * Receives `null` for a body-less response (`204`). If it throws, the call fails with that error,
+   * although the server has already applied the write.
    */
   parse?: (raw: TRaw) => TOutput;
 }
 
-/** Options of the non-JSON variants: `parse` becomes required when `TOutput` isn't the raw body type. */
-export type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
+/** Options of `httpMutation.text()`, `.blob()` and `.arrayBuffer()`: `parse` is required when `TOutput` isn't the raw body type. */
+type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
   HttpMutationOptions<TInput, TOutput, TError, TRaw> &
   ([TRaw] extends [TOutput] ? unknown : { parse: (raw: TRaw) => TOutput });
 
+/** Returned by `httpMutation()`: a `MutationRef` plus the latest call's HTTP metadata, cleared when a call starts and on `reset()`. */
 export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined>
   extends MutationRef<TInput, TOutput, TError, TValue> {
-  /** Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */
+  /** Latest upload progress event. Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */
   readonly uploadProgress: Signal<HttpProgressEvent | undefined>;
-  /** Needs `reportProgress: true`. */
+  /** Latest download progress event. Needs `reportProgress: true`. */
   readonly downloadProgress: Signal<HttpProgressEvent | undefined>;
-  /** From the `HttpResponse`, or the `HttpErrorResponse` when the request fails. Kept when `parse` throws. */
+  /** Status code of the `HttpResponse`, or of the `HttpErrorResponse` when the request fails. Kept when `parse` throws. */
   readonly statusCode: Signal<number | undefined>;
-  /** From the `HttpResponse`, or the `HttpErrorResponse` when the request fails. */
+  /** Headers of the `HttpResponse`, or of the `HttpErrorResponse` when the request fails. */
   readonly headers: Signal<HttpHeaders | undefined>;
-  /** True once a call succeeded, even with an empty body: a `204` resolves to `null`, not `undefined`. */
+  /** Checks `value() !== undefined`, so a body-less response (`204`) counts: it resolves to `null`. */
   hasValue(): this is HttpMutationRef<TInput, TOutput, TError, TOutput>;
 }
 
@@ -154,7 +157,9 @@ type HttpMutationRawBodyFn<TRaw> = <TInput = void, TOutput = TRaw, TError = unkn
   options: HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw>,
 ) => HttpMutationRef<TInput, TOutput, TError>;
 
+/** Type of `httpMutation`: its JSON call signature, plus `.text()`, `.blob()` and `.arrayBuffer()` for other response bodies. */
 export interface HttpMutationFn {
+  /** Creates a mutation that sends an `HttpClient` request per call, with the response body parsed as JSON. */
   <TInput = void, TOutput = unknown, TError = unknown>(
     options: HttpMutationOptions<TInput, TOutput, TError>,
   ): HttpMutationRef<TInput, TOutput, TError>;
@@ -211,6 +216,22 @@ function makeHttpMutationFn(responseType: ResponseType) {
   };
 }
 
+/**
+ * Creates a mutation that sends an `HttpClient` request per call, the mutation counterpart of
+ * `httpResource()`: interceptors and `HttpTestingController` apply. The body is parsed as JSON: use
+ * `.text()`, `.blob()` or `.arrayBuffer()` for other responses.
+ *
+ * Must run in an injection context, or receive `options.injector`.
+ *
+ * @example
+ * ```ts
+ * readonly createUser = httpMutation<CreateUserDto, User>({
+ *   request: (dto) => ({ method: 'POST', url: '/api/users', body: dto }),
+ * });
+ * ```
+ *
+ * @see https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#describing-an-http-request
+ */
 export const httpMutation: HttpMutationFn = Object.assign(makeHttpMutationFn('json'), {
   text: makeHttpMutationFn('text'),
   blob: makeHttpMutationFn('blob'),

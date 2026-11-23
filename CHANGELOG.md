@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Feature: `wasNeverSent(error)` tells whether a call was cancelled before its `mutationFn` ran
+  (`'Dropped'`, `'NotStarted'`, `'Destroyed'`), so its write never left, e.g. to roll back an
+  optimistic update only then.
 - Feature: `mutationQueue()` creates a write queue to share between mutations. Pass it as their
   `concurrency` and their calls run one at a time, in call order, whichever mutation makes them,
   with `mutation()`, `rxMutation()` and `httpMutation()` alike. `concurrency: { queue, key }`

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, resource } from '@angular/core';
 import { mutation } from '@ngsignal/mutation';
 import { User, createFakeUserServer } from '../../shared/fake-api';
 
@@ -17,10 +17,11 @@ export class OptimisticDemo {
 
   protected readonly deleteUser = mutation<User, void, Error>({
     mutationFn: (user, abortSignal) => this.server.deleteUser(user, abortSignal),
+    onSuccess: (_output, user) => this.users.update((users) => users.filter((u) => u.id !== user.id)),
   });
 
-  protected remove(user: User): void {
-    this.users.update((users) => users.filter((u) => u.id !== user.id));
-    this.deleteUser.mutate(user).catch(() => this.users.update((users) => [...users, user]));
-  }
+  protected readonly visibleUsers = computed(() => {
+    const deleting = new Set(this.deleteUser.pendingInputs().map((user) => user.id));
+    return this.users.value().filter((user) => !deleting.has(user.id));
+  });
 }

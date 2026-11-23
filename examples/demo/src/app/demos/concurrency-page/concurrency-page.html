@@ -1,10 +1,15 @@
 <p class="pitch">
   What a second <code>mutate()</code> does while a call is in flight. By default it runs in
   parallel. <code>concurrency: 'queue'</code> waits for the previous call, so writes reach the
-  server in order. <code>concurrency: 'drop'</code> rejects it at once.
+  server in order. <code>concurrency: 'drop'</code> rejects it at once. A
+  <code>mutationQueue()</code> orders the calls of several mutations, optionally per key.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrency-page/queue-demo.ts">Source ('queue')</a>
   ·
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrency-page/drop-demo.ts">Source ('drop')</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrency-page/shared-queue-demo.ts">Source (shared queue)</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrency-page/keyed-queue-demo.ts">Source (keyed queue)</a>
 </p>
 
 <section>
@@ -18,5 +23,19 @@
   <h2>'drop': pay</h2>
   <app-restartable>
     <ng-template><app-drop-demo /></ng-template>
+  </app-restartable>
+</section>
+
+<section>
+  <h2>mutationQueue(): rename, then delete</h2>
+  <app-restartable>
+    <ng-template><app-shared-queue-demo /></ng-template>
+  </app-restartable>
+</section>
+
+<section>
+  <h2>{{ '{' }} queue, key {{ '}' }}: save per document</h2>
+  <app-restartable>
+    <ng-template><app-keyed-queue-demo /></ng-template>
   </app-restartable>
 </section>

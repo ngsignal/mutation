@@ -142,6 +142,62 @@ export function createFakePaymentServer() {
   };
 }
 
+/** One todo. A rename takes 1.2 s and fails with a 404 if the todo is gone by then; a delete takes 0.3 s. */
+export function createFakeTodoServer() {
+  const requests = createRequestLog();
+  const title = signal<string | undefined>('Buy milk');
+
+  return {
+    requests: requests.entries,
+    /** `undefined` once deleted. */
+    title: title.asReadonly(),
+
+    rename: (newTitle: string, abortSignal: AbortSignal): Promise<string> =>
+      requests.track(`PATCH /todos/1 "${newTitle}"`, abortSignal, async () => {
+        await delay(undefined, 1200, abortSignal);
+        if (title() === undefined) {
+          throw new Error('404: todo not found');
+        }
+        title.set(newTitle);
+        return newTitle;
+      }),
+
+    remove: (abortSignal: AbortSignal): Promise<void> =>
+      requests.track('DELETE /todos/1', abortSignal, async () => {
+        await delay(undefined, 300, abortSignal);
+        title.set(undefined);
+      }),
+  };
+}
+
+export interface Draft {
+  docId: 'A' | 'B';
+  content: string;
+}
+
+/** Two documents. Saving A takes 1.5 s, saving B or deleting them all 0.3 s. A save creates a deleted document again. */
+export function createFakeDocumentServer() {
+  const requests = createRequestLog();
+  const documents = signal<Partial<Record<Draft['docId'], string>>>({ A: 'draft', B: 'draft' });
+
+  return {
+    requests: requests.entries,
+    documents: documents.asReadonly(),
+
+    save: ({ docId, content }: Draft, abortSignal: AbortSignal): Promise<void> =>
+      requests.track(`PUT /docs/${docId} "${content}"`, abortSignal, async () => {
+        await delay(undefined, docId === 'A' ? 1500 : 300, abortSignal);
+        documents.update((current) => ({ ...current, [docId]: content }));
+      }),
+
+    removeAll: (abortSignal: AbortSignal): Promise<void> =>
+      requests.track('DELETE /docs', abortSignal, async () => {
+        await delay(undefined, 300, abortSignal);
+        documents.set({});
+      }),
+  };
+}
+
 /** Exposes a fake call the way `HttpClient` does: a cold Observable, aborted on unsubscribe. */
 function asObservable<T>(call: (abortSignal: AbortSignal) => Promise<T>): Observable<T> {
   return new Observable<T>((subscriber) => {

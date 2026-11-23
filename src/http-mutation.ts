@@ -13,13 +13,8 @@ import { toAbortablePromise } from './internal/to-abortable-promise.js';
 import { mutation } from './mutation.js';
 import type { MutationOptions, MutationRef } from './mutation.types.js';
 
-/**
- * Request sent for one call: the same shape as `httpResource()`'s request (`url`, `body`,
- * `headers`, `params`, `context`, `reportProgress`, …), except `method` is required and there is
- * no `transferCache`, which only applies to reads.
- */
-// Derived from HttpResourceRequest so it can't drift from what Angular accepts. `method` is required
-// so a mutation never defaults to GET.
+/** `httpResource()`'s request, except `method` is required and there is no `transferCache`, which only applies to reads. */
+// Derived from HttpResourceRequest so it can't drift from what Angular accepts.
 export type HttpMutationRequest = Omit<HttpResourceRequest, 'method' | 'transferCache'> & {
   // `string & {}` keeps autocompletion for the common methods while still accepting any string.
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' | (string & {});
@@ -30,8 +25,8 @@ export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = u
   extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
   /**
    * Describes the request for an input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`.
-   * Runs when the request is sent: with `concurrency: 'queue'`, that is when the call leaves the
-   * queue, so signals it reads may have changed since `mutate()`. Pass such values in the input.
+   * With `concurrency: 'queue'`, it runs when the call leaves the queue: pass values to freeze at
+   * `mutate()` time through the input.
    *
    * If the request completes without an `HttpResponse` (an interceptor returning `EMPTY`), the call
    * fails with `Error('Request completed without an HttpResponse event')`.
@@ -50,10 +45,7 @@ type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
   HttpMutationOptions<TInput, TOutput, TError, TRaw> &
   ([TRaw] extends [TOutput] ? unknown : { parse: (raw: TRaw) => TOutput });
 
-/**
- * Returned by `httpMutation()`: a `MutationRef` plus the HTTP metadata of the latest call. The
- * metadata signals are cleared when a new call starts and on `reset()`.
- */
+/** Returned by `httpMutation()`: a `MutationRef` plus the latest call's HTTP metadata, cleared when a call starts and on `reset()`. */
 export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined>
   extends MutationRef<TInput, TOutput, TError, TValue> {
   /** Latest upload progress event. Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */
@@ -64,7 +56,7 @@ export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOu
   readonly statusCode: Signal<number | undefined>;
   /** Headers of the `HttpResponse`, or of the `HttpErrorResponse` when the request fails. */
   readonly headers: Signal<HttpHeaders | undefined>;
-  /** True when `value()` isn't `undefined`, and narrows it to `TOutput`. A body-less response (`204`) counts: it resolves to `null`. */
+  /** Checks `value() !== undefined`, so a body-less response (`204`) counts: it resolves to `null`. */
   hasValue(): this is HttpMutationRef<TInput, TOutput, TError, TOutput>;
 }
 
@@ -167,18 +159,15 @@ type HttpMutationRawBodyFn<TRaw> = <TInput = void, TOutput = TRaw, TError = unkn
 
 /** Type of `httpMutation`: its JSON call signature, plus `.text()`, `.blob()` and `.arrayBuffer()` for other response bodies. */
 export interface HttpMutationFn {
-  /**
-   * Creates a mutation that sends an `HttpClient` request per call, with the response body parsed
-   * as JSON. Must run in an injection context, or receive `options.injector`.
-   */
+  /** Creates a mutation that sends an `HttpClient` request per call, with the response body parsed as JSON. */
   <TInput = void, TOutput = unknown, TError = unknown>(
     options: HttpMutationOptions<TInput, TOutput, TError>,
   ): HttpMutationRef<TInput, TOutput, TError>;
-  /** Same as `httpMutation()`, with the response body read as a `string`. `parse` is required when `TOutput` isn't `string`. */
+  /** Same as `httpMutation()`, with the response body read as a `string`. */
   text: HttpMutationRawBodyFn<string>;
-  /** Same as `httpMutation()`, with the response body read as a `Blob` (e.g. a generated file). `parse` is required when `TOutput` isn't `Blob`. */
+  /** Same as `httpMutation()`, with the response body read as a `Blob` (e.g. a generated file). */
   blob: HttpMutationRawBodyFn<Blob>;
-  /** Same as `httpMutation()`, with the response body read as an `ArrayBuffer`. `parse` is required when `TOutput` isn't `ArrayBuffer`. */
+  /** Same as `httpMutation()`, with the response body read as an `ArrayBuffer`. */
   arrayBuffer: HttpMutationRawBodyFn<ArrayBuffer>;
 }
 
@@ -229,12 +218,10 @@ function makeHttpMutationFn(responseType: ResponseType) {
 
 /**
  * Creates a mutation that sends an `HttpClient` request per call, the mutation counterpart of
- * `httpResource()`. Interceptors and `HttpTestingController` apply as usual. The response body is
- * parsed as JSON: use `httpMutation.text()`, `.blob()` or `.arrayBuffer()` for other bodies.
+ * `httpResource()`: interceptors and `HttpTestingController` apply. The body is parsed as JSON: use
+ * `.text()`, `.blob()` or `.arrayBuffer()` for other responses.
  *
- * Besides `MutationRef`'s signals, it exposes the status code, headers and progress of the latest
- * call. Must run in an injection context, or receive `options.injector`. `reset()` and destroy
- * cancel the requests in flight.
+ * Must run in an injection context, or receive `options.injector`.
  *
  * @example
  * ```ts

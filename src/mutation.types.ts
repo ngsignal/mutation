@@ -36,11 +36,7 @@ export interface MutationOptions<TInput, TOutput, TError = unknown> {
     input: TInput,
     context: MutationCallbackContext,
   ) => void;
-  /**
-   * What a call made while another is in flight does. `'parallel'` (the default): it runs at once.
-   * `'queue'`: it waits for the previous calls, so writes reach the server in order. `'drop'`: it
-   * rejects at once with an `AbortError` (`'Dropped'`), without calling `mutationFn`.
-   */
+  /** `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`: a call made while one is in flight rejects at once (`'Dropped'`). */
   concurrency?: 'parallel' | 'queue' | 'drop';
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
@@ -55,12 +51,7 @@ export type MutationSnapshot<TOutput, TError = unknown> =
   | Readonly<{ status: 'success'; value: TOutput; error: undefined }>
   | Readonly<{ status: 'error'; value: TOutput | undefined; error: TError }>;
 
-/**
- * State and methods of a mutation, returned by `mutation()` and `rxMutation()`. The signals follow
- * the latest call, except `isPending` and `pendingInputs`, which cover every call in flight.
- *
- * Not meant to be implemented by hand: a minor version may add members.
- */
+/** Returned by `mutation()` and `rxMutation()`. Not meant to be implemented by hand: a minor version may add members. */
 export interface MutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined> {
   /** Status of the latest call: a superseded call never writes it. */
   readonly status: Signal<MutationStatus>;
@@ -72,25 +63,19 @@ export interface MutationRef<TInput, TOutput, TError = unknown, TValue = TOutput
   readonly input: Signal<TInput | undefined>;
   /** True while any call is in flight, superseded and queued ones included, unlike `status()`, which follows the latest call. */
   readonly isPending: Signal<boolean>;
-  /** `status() === 'idle'`. */
   readonly isIdle: Signal<boolean>;
-  /** `status() === 'success'`. */
   readonly isSuccess: Signal<boolean>;
-  /** `status() === 'error'`. */
   readonly isError: Signal<boolean>;
   /** Inputs of the calls still in flight, in call order, superseded and queued ones included: `input()` only tracks the latest call. */
   readonly pendingInputs: Signal<readonly TInput[]>;
-  /** `status`, `value` and `error` of the latest call in one object, narrowed by `status`. */
   readonly snapshot: Signal<MutationSnapshot<TOutput, TError>>;
-  /** True when `value()` isn't `undefined`, and narrows it to `TOutput`. Always false for a `void` mutation: check `isSuccess()` instead. */
+  /** Checks `value() !== undefined`. Always false for a `void` mutation: check `isSuccess()` instead. */
   hasValue(): this is MutationRef<TInput, TOutput, TError, TOutput>;
   /**
-   * Starts a call. The promise settles with this call's outcome, even when a newer call supersedes
-   * it. It rejects with an `AbortError` when the call is dropped, made after destroy, or aborted
-   * while queued; aborted in flight, it rejects with whatever `mutationFn` rejects with.
-   * Safe to ignore: a failure never reports an unhandled rejection.
+   * Starts a call, settled with its own outcome even once superseded. Cancellations reject with an
+   * `AbortError`. Safe to ignore: a failure never reports an unhandled rejection.
    */
   mutate(input: TInput): Promise<TOutput>;
-  /** Aborts every call in flight and returns to `'idle'`, clearing `value`, `error` and `input`. Never undoes a write the server already received. */
+  /** Aborts the calls in flight and returns to `'idle'`. Never undoes a write the server already received. */
   reset(): void;
 }

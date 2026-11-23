@@ -7,10 +7,7 @@ import type { MutationOptions, MutationRef } from './mutation.types.js';
 /** Options of `rxMutation()`: `mutation()`'s options, with a `mutationFn` that returns an Observable. */
 export interface RxMutationOptions<TInput, TOutput, TError = unknown>
   extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
-  /**
-   * Performs the write for one call, e.g. an existing service method. Only its first value counts.
-   * `reset()` and destroy unsubscribe, which cancels an `HttpClient` request.
-   */
+  /** Performs the write for one call, e.g. an existing service method. `reset()` and destroy unsubscribe. */
   mutationFn: (input: TInput) => Observable<TOutput>;
 }
 

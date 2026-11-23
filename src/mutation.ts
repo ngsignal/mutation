@@ -21,11 +21,10 @@ import type {
 
 /**
  * Creates a mutation: a write (POST, PUT, PATCH, DELETE) whose state is exposed as signals, the
- * write-side counterpart of `resource()`, which only covers reads. Each `mutate(input)` runs
- * `mutationFn`. Calls never abort each other: the signals follow the latest one.
+ * write-side counterpart of `resource()`, which only covers reads. Calls never abort each other:
+ * the signals follow the latest one.
  *
- * Must run in an injection context, or receive `options.injector`. Destroying it aborts the calls
- * in flight, like `reset()`.
+ * Must run in an injection context, or receive `options.injector`.
  *
  * @example
  * ```ts

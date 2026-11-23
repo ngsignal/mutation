@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { expectTypeOf } from 'vitest';
-import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn } from '../testing/mutation';
+import { spyOnPendingTasks, createDeferred, createMutation, nextTask, sequencedMutationFn } from '../testing/mutation';
 import { mutation } from './mutation';
 import type { MutationRef } from './mutation.types';
 
@@ -164,7 +164,8 @@ describe('pendingInputs()', () => {
     void m.mutate('b');
 
     first.resolve('first');
-    await firstCall;
+    await expect(firstCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
 
     expect(m.pendingInputs()).toEqual(['b']);
   });
@@ -177,7 +178,8 @@ describe('pendingInputs()', () => {
     m.reset();
     const afterReset = m.pendingInputs();
     deferred.resolve('too late');
-    await call;
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
 
     expect(m.pendingInputs()).toBe(afterReset);
   });
@@ -279,7 +281,8 @@ describe('pending tasks', () => {
     expect(removeFns[0]).toHaveBeenCalledTimes(1);
 
     deferred.resolve('too late');
-    await call;
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
 
     expect(removeFns[0]).toHaveBeenCalledTimes(2);
   });

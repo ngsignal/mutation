@@ -230,10 +230,10 @@ reached the server, e.g. before rolling back an optimistic update:
 | `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No, `mutationFn` never ran     |
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No, `mutationFn` never ran     |
 | `reset()`/destroy while queued (`'queue'`)        | `'NotStarted'`, at once           | No, `mutationFn` never ran     |
-| `reset()`/destroy while in flight                 | `'Aborted'`\*                     | **Maybe**: the request had left |
+| `reset()`/destroy while in flight                 | `'Aborted'`, at once              | **Maybe**: the request had left |
 
-\* The abort signal's reason: the RxJS and HTTP variants, and `fetch()`, reject with it. A
-`mutationFn` that ignores the signal or rejects with its own error decides the message.
+`mutate()` rejects at once, like `fetch()`, even if `mutationFn` ignores the signal or rejects
+with its own error: pass the signal on anyway, so the request itself stops.
 
 > [!WARNING]
 > Aborting never undoes a write the server already received: a reset only stops the client

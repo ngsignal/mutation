@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
-import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn, queueTurn } from '../testing/mutation';
+import { spyOnPendingTasks, createDeferred, createMutation, nextTask, outcomeAfterATask, sequencedMutationFn, queueTurn } from '../testing/mutation';
 import { mutation } from './mutation';
 
 beforeEach(() => {
@@ -190,7 +190,8 @@ describe("concurrency: 'queue'", () => {
     expect(removeFns[1]).toHaveBeenCalledTimes(1);
 
     first.resolve('first-done');
-    await firstCall;
+    await expect(firstCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
     await secondCall;
 
     expect(started).toEqual(['first']);
@@ -256,6 +257,19 @@ describe("concurrency: 'queue'", () => {
     childInjector.destroy();
 
     await expect(secondCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
+  });
+
+  it("rejects the call in flight at once with the 'Aborted' reason on reset(), even if its mutationFn ignores its AbortSignal", async () => {
+    const m = createMutation<string, string>({
+      concurrency: 'queue',
+      mutationFn: () => new Promise<string>(() => undefined),
+    });
+
+    const firstCall = m.mutate('first');
+    await queueTurn();
+    m.reset();
+
+    expect(await outcomeAfterATask(firstCall)).toMatchObject({ rejected: { name: 'AbortError', message: 'Aborted' } });
   });
 
   it('keeps a call made after reset() behind an in-flight call that ignores its AbortSignal', async () => {
@@ -382,7 +396,8 @@ describe("concurrency: 'drop'", () => {
     expect(started).toEqual(['first', 'second']);
 
     first.resolve('first-done');
-    await firstCall;
+    await expect(firstCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
     expect(m.status()).toBe('pending');
 
     // 'first' settling must not release the lock now held by 'second'.

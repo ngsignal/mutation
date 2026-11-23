@@ -24,7 +24,10 @@ gets a new hook here, not a wrapper around the returned ref.
   `undefined` when the call was aborted (by `reset()` / destroy, which abort every call
   in flight): then no signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
   call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
-  always settles with the call's real outcome. Each callback runs through `runCallback`: an
+  settles with the call's own outcome, superseded or not, or rejects with the abort reason as
+  soon as `reset()` / destroy aborts the call (`rejectOnAbortOnceStarted`), even if
+  `mutationFn` ignores its signal. A call still queued keeps its gate's `'NotStarted'`
+  rejection, and the gate still waits for the real write, so a queue stays ordered. Each callback runs through `runCallback`: an
   exception goes to `ErrorHandler`, as in `OutputEmitterRef.emit()`, and must never reach the
   `catch` of `runCall` (it would turn a successful write into an error).
 - **After destroy** (`destroyRef.destroyed`), `mutate()` rejects with `abortError('Destroyed')`

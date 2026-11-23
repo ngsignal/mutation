@@ -340,6 +340,54 @@ describe('reset()', () => {
     expect(onError).not.toHaveBeenCalled();
     expect(onSettled).not.toHaveBeenCalled();
   });
+
+  it('does not abort the signal of a call that already succeeded when its onSuccess calls reset()', async () => {
+    let abortSignal!: AbortSignal;
+    const m: MutationRef<void, string> = createMutation<void, string>({
+      mutationFn: (_input, signal) => {
+        abortSignal = signal;
+        return Promise.resolve('ok');
+      },
+      onSuccess: () => m.reset(),
+    });
+
+    await m.mutate();
+
+    expect(abortSignal.aborted).toBe(false);
+  });
+
+  it('keeps a call made by an abort listener while it aborts the calls in flight', async () => {
+    const second = createDeferred<string>();
+    const onSuccess = vi.fn();
+    let secondSignal!: AbortSignal;
+    let secondCall!: Promise<string>;
+    const m: MutationRef<string, string> = createMutation<string, string>({
+      mutationFn: (input, signal) => {
+        if (input === 'first') {
+          signal.addEventListener('abort', () => {
+            secondCall = m.mutate('second');
+          });
+          return new Promise<string>(() => undefined);
+        }
+        secondSignal = signal;
+        return second.promise;
+      },
+      onSuccess,
+    });
+
+    void m.mutate('first');
+    m.reset();
+
+    expect(secondSignal.aborted).toBe(false);
+    expect(m.status()).toBe('pending');
+    expect(m.pendingInputs()).toEqual(['second']);
+
+    second.resolve('ok');
+    await secondCall;
+
+    expect(m.value()).toBe('ok');
+    expect(onSuccess).toHaveBeenCalledOnce();
+  });
 });
 
 describe('hasValue()', () => {

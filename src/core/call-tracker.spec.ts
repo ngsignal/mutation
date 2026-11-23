@@ -9,6 +9,7 @@ import { TestBed } from '@angular/core/testing';
 import { expectTypeOf } from 'vitest';
 import { spyOnPendingTasks, createDeferred, createMutation, sequencedMutationFn } from '../testing/mutation';
 import { mutation } from './mutation';
+import type { MutationRef } from './mutation.types';
 
 beforeEach(() => {
   TestBed.configureTestingModule({
@@ -167,6 +168,42 @@ describe('pendingInputs()', () => {
 
     expect(m.pendingInputs()).toEqual(['b']);
   });
+
+  it('keeps the same array when a call aborted by reset() settles later', async () => {
+    const deferred = createDeferred<string>();
+    const m = createMutation<string, string>({ mutationFn: () => deferred.promise });
+
+    const call = m.mutate('a');
+    m.reset();
+    const afterReset = m.pendingInputs();
+    deferred.resolve('too late');
+    await call;
+
+    expect(m.pendingInputs()).toBe(afterReset);
+  });
+
+  it('keeps the same array when reset() finds no call in flight', async () => {
+    const m = createMutation<string, string>({ mutationFn: () => Promise.resolve('ok') });
+
+    await m.mutate('a');
+    const beforeReset = m.pendingInputs();
+    m.reset();
+
+    expect(m.pendingInputs()).toBe(beforeReset);
+  });
+
+  it('no longer lists a call when its callbacks run', async () => {
+    const seen: (readonly string[])[] = [];
+    const m: MutationRef<string, string> = createMutation<string, string>({
+      mutationFn: (input) => (input === 'ok' ? Promise.resolve('done') : Promise.reject(new Error('failed'))),
+      onSettled: () => seen.push(m.pendingInputs()),
+    });
+
+    await m.mutate('ok');
+    await m.mutate('ko').catch(() => undefined);
+
+    expect(seen).toEqual([[], []]);
+  });
 });
 
 describe('isPending()', () => {
@@ -189,6 +226,17 @@ describe('isPending()', () => {
     expect(m.isPending()).toBe(false);
   });
 
+  it('is false in onSuccess when no other call is in flight', async () => {
+    let seen: { status: string; isPending: boolean } | undefined;
+    const m: MutationRef<void, string> = createMutation<void, string>({
+      mutationFn: () => Promise.resolve('ok'),
+      onSuccess: () => (seen = { status: m.status(), isPending: m.isPending() }),
+    });
+
+    await m.mutate();
+
+    expect(seen).toEqual({ status: 'success', isPending: false });
+  });
 });
 
 describe('pending tasks', () => {
@@ -277,5 +325,23 @@ describe('pending tasks', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(stable).toBe(true);
+  });
+
+  it('releases the pending task once the callbacks have run, so a call they start keeps the app unstable', async () => {
+    const removeFns = spyOnPendingTasks();
+    let releasedDuringCallbacks: boolean | undefined;
+    const m: MutationRef<string, string> = createMutation<string, string>({
+      mutationFn: (input) => (input === 'first' ? Promise.resolve('ok') : new Promise<string>(() => undefined)),
+      onSuccess: (_output, input) => {
+        if (input === 'first') void m.mutate('chained');
+      },
+      onSettled: () => (releasedDuringCallbacks = removeFns[0].mock.calls.length > 0),
+    });
+
+    await m.mutate('first');
+
+    expect(releasedDuringCallbacks).toBe(false);
+    expect(removeFns[0]).toHaveBeenCalledOnce();
+    expect(removeFns[1]).not.toHaveBeenCalled();
   });
 });

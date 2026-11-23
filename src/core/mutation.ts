@@ -81,10 +81,11 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
 
   destroyRef.onDestroy(() => calls.abortAll());
 
+  // Back to idle before aborting, so a call that an abort listener starts keeps its state.
   function reset(): void {
-    calls.abortAll();
     state.set(IDLE);
     adapter.onReset?.();
+    calls.abortAll();
   }
 
   function settledCallContext(call: Call<TInput>, extra: TExtra): (MutationCallbackContext & TExtra) | undefined {
@@ -153,15 +154,12 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
         () => untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra })),
         call.abortSignal,
       );
-      commitSuccess(call, extra, result);
+      call.finish(() => commitSuccess(call, extra, result));
       return result;
 
     } catch (err) {
-      commitError(call, extra, err as TError);
+      call.finish(() => commitError(call, extra, err as TError));
       throw err;
-
-    } finally {
-      call.finish();
     }
   }
 

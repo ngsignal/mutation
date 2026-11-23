@@ -4,7 +4,7 @@ import type { MutationCallbackContext, MutationOptions } from './mutation.types.
 export interface MutationAdapter<TInput, TOutput, TExtra extends object> {
   createContext(): TExtra;
   run(input: TInput, call: AdapterCall<TExtra>): Promise<TOutput>;
-  /** Runs after `reset()` has aborted the calls in flight. */
+  /** Runs when `reset()` is called, before it aborts the calls in flight. */
   onReset?(): void;
 }
 

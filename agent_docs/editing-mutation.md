@@ -17,7 +17,7 @@ gets a new hook here, not a wrapper around the returned ref.
 ## Lifecycle mechanisms
 
 - **Latest call** (`Call`, `createCallTracker` in `call-tracker.ts`). Each admitted `mutate()` is a `Call` object
-  (input, `AbortSignal`, `finish()`). The tracker remembers the latest one started;
+  (input, `AbortSignal`, `finish(commit)`). The tracker remembers the latest one started;
   `reset()` and destroy forget it. `commitSuccess` / `commitError` write the signals only
   when the call is still the latest (`calls.isLatest(call)`).
 - **Callbacks run for every settled call.** `settledCallContext` returns `{ isLatest }`, or
@@ -35,10 +35,16 @@ gets a new hook here, not a wrapper around the returned ref.
   (`createCallTracker`'s `abortAll`): they abort every in-flight
   call's controller, release its pending task and forget it. Don't call supersession
   "cancellation".
-- **`PendingTasks`.** Each call adds a task (`calls.start()`), released by `call.finish()`
-  in the `finally` of `runCall`, or
-  earlier by `reset()` / destroy. A superseded call keeps its task until it settles.
-  A leaked task means `ApplicationRef.isStable` never fires and SSR hangs.
+- **Settling order** (`call.finish(commit)`). A settled call first leaves the tracker, so its
+  callbacks see it out of `pendingInputs()` / `isPending()` and a `reset()` they call doesn't
+  abort its signal; then `commit` writes the signals and runs the callbacks; then its pending
+  task is released, so a call a callback starts keeps the app unstable.
+- **`PendingTasks`.** Each call adds a task (`calls.start()`), released by `call.finish()` once
+  the callbacks have run, or earlier by `reset()` / destroy. A superseded call keeps its task
+  until it settles. A leaked task means `ApplicationRef.isStable` never fires and SSR hangs.
+- **`reset()` order.** It writes `IDLE` and runs `onReset` before `abortAll()`, and `abortAll()`
+  forgets the calls before aborting them: a call that an abort listener starts is a new call,
+  kept with its state.
 - **`untracked()`.** The start-of-call write (the `started` transition) and the
   `mutationFn` invocation are wrapped so that calling `mutate()` from a reactive context
   never creates a dependency. Keep new signal writes on that path inside `untracked`.

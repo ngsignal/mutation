@@ -25,6 +25,17 @@
 - Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation
   from `submit()`. The README now says that `isPending()` means `pendingInputs().length > 0` and
   that progress needs `reportProgress: true`.
+- Fix: a call leaves `pendingInputs()` before its callbacks run, so `isPending()` is no longer
+  true in the `onSuccess` of the only call in flight. Its pending task is still released after
+  the callbacks.
+- Fix: `reset()` called from `onSuccess` no longer aborts the `AbortSignal` of the call that
+  just succeeded.
+- Fix: a `mutate()` made by an abort listener during `reset()` is no longer aborted at once
+  and left with an idle status.
+- Fix: `reset()` with no call in flight, or a call aborted by `reset()` that settles later, no
+  longer notifies `pendingInputs()` readers.
+- Docs: the [optimistic updates recipe](./docs/RECIPES.md#optimistic-updates) builds the
+  optimistic view from `pendingInputs()`, with nothing to roll back.
 
 ## 0.8.0
 

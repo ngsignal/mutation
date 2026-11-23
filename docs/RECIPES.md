@@ -108,6 +108,10 @@ Return errors, don't throw them: the return value is how the form learns what fa
 already blocks a second submit, so `concurrency: 'drop'` only matters if the mutation is also
 called from elsewhere.
 
+With `httpMutation()`, a failed request rejects with an `HttpErrorResponse`: the server's error
+body, e.g. a `422`'s field errors, is in its `error` property, typed `any`. Check its shape before
+mapping it to fields.
+
 Signal Forms are stable since Angular 22. On Angular 21 they are experimental and the API may
 differ.
 

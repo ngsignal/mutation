@@ -1,6 +1,7 @@
 import { assertInInjectionContext } from '@angular/core';
 import type { Observable } from 'rxjs';
-import { mutation } from '../core/mutation.js';
+import { noExtraContext, type NoExtraContext } from '../core/mutation-adapter.js';
+import { createMutation } from '../core/mutation.js';
 import type { MutationOptions, MutationRef } from '../core/mutation.types.js';
 import { toAbortablePromise } from '../internal/to-abortable-promise.js';
 
@@ -32,10 +33,9 @@ export function rxMutation<TInput = void, TOutput = unknown, TError = unknown>(
   if (!options.injector) {
     assertInInjectionContext(rxMutation);
   }
-  const { mutationFn, ...mutationOptions } = options;
-  return mutation<TInput, TOutput, TError>({
-    ...mutationOptions,
-    mutationFn: (input, abortSignal) =>
-      toAbortablePromise(mutationFn(input), abortSignal, 'Observable completed without emitting a value'),
+  return createMutation<TInput, TOutput, TError, NoExtraContext>(options, {
+    createContext: noExtraContext,
+    run: (input, { abortSignal }) =>
+      toAbortablePromise(options.mutationFn(input), abortSignal, 'Observable completed without emitting a value'),
   });
 }

@@ -12,15 +12,18 @@ import {
 import { abortError } from './abort-error.js';
 import { createCallTracker, type Call } from './call-tracker.js';
 import { createConcurrencyGate } from './concurrency.js';
-import type { MutationAdapter, MutationAdapterOptions } from './mutation-adapter.js';
+import {
+  noExtraContext,
+  type MutationAdapter,
+  type MutationAdapterOptions,
+  type NoExtraContext,
+} from './mutation-adapter.js';
 import { IDLE, failed, started, succeeded, type MutationState } from './mutation-state.js';
 import type {
   MutationCallbackContext,
   MutationOptions,
   MutationRef,
 } from './mutation.types.js';
-
-type NoExtra = Record<never, never>;
 
 /**
  * Creates a mutation: a write (POST, PUT, PATCH, DELETE) whose state is exposed as signals, the
@@ -44,8 +47,8 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   if (!options.injector) {
     assertInInjectionContext(mutation);
   }
-  return createMutation<TInput, TOutput, TError, NoExtra>(options, {
-    createContext: () => ({}),
+  return createMutation<TInput, TOutput, TError, NoExtraContext>(options, {
+    createContext: noExtraContext,
     run: (input, call) => options.mutationFn(input, call.abortSignal),
   });
 }

@@ -14,6 +14,10 @@ export interface AdapterCall<TExtra> {
   readonly context: TExtra;
 }
 
+/** For an adapter that adds nothing to the callbacks' context. */
+export type NoExtraContext = Record<never, never>;
+export const noExtraContext = (): NoExtraContext => ({});
+
 export type MutationAdapterOptions<TInput, TOutput, TError, TExtra extends object> = Omit<
   MutationOptions<TInput, TOutput, TError, MutationCallbackContext & TExtra>,
   'mutationFn'

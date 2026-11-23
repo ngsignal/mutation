@@ -17,7 +17,7 @@ export const routes: Routes = [
   { path: 'manual', component: WithoutMutationPage, title: 'Without mutation()' },
   { path: 'concurrent', component: ConcurrentPage, title: 'Concurrent calls' },
   { path: 'state', component: StatePage, title: 'Reading state' },
-  { path: 'concurrency', component: ConcurrencyPage, title: "concurrency: 'queue' and 'drop'" },
+  { path: 'concurrency', component: ConcurrencyPage, title: "concurrency: 'queue', 'drop' and mutationQueue()" },
   { path: 'cancellation', component: CancellationPage, title: 'Cancellation and reset()' },
   { path: 'resource', component: ResourcePage, title: 'Working with resource()' },
   { path: 'form-submit', component: FormSubmitPage, title: 'Form submit' },

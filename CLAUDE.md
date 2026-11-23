@@ -95,6 +95,8 @@ Any change to options, returned signals, exported types or semantics:
 
 - add a test in the matching `*.spec.ts`: new behavior without a test is not done;
 - update `README.md` and, if affected, `docs/`;
+- add or update its page in `examples/demo` (see its `CLAUDE.md`): a changed recipe changes its
+  demo too;
 - add a `CHANGELOG.md` entry (`0.x`: patch = fixes only, minor may break; breaking first);
 - never bump the version or publish (`.github/workflows/publish.yml` does that).
 

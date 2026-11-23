@@ -29,7 +29,7 @@ const NAV_GROUPS: readonly { heading: string; links: readonly NavLink[] }[] = [
       { path: '/manual', label: 'Without mutation()', api: 'mutation' },
       { path: '/concurrent', label: 'Concurrent calls', api: 'mutation' },
       { path: '/state', label: 'Reading state', api: 'mutation' },
-      { path: '/concurrency', label: "'queue' and 'drop'", api: 'mutation' },
+      { path: '/concurrency', label: "'queue', 'drop', mutationQueue()", api: 'mutation' },
       { path: '/cancellation', label: 'Cancellation and reset()', api: 'mutation' },
       { path: '/resource', label: 'Working with resource()', api: 'mutation' },
     ],

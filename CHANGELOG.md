@@ -8,6 +8,8 @@
   queues per key instead, e.g. per entity id; a call given the queue without a key waits for
   every key, and the calls after it wait for it. See
   [Ordering writes across mutations](./docs/RECIPES.md#ordering-writes-across-mutations).
+- Docs: that recipe bounds a request with a timeout (`timeout` in `request()`, or
+  `AbortSignal.timeout()`), so a hung call can't hold a shared queue forever.
 - **Breaking**: `reset()` and destroy reject a call in flight at once with an `'Aborted'`
   `AbortError`, like `fetch()`, even if `mutationFn` ignores its `AbortSignal` or rejects with
   its own error. `mutate()` used to wait for `mutationFn` and settle with its outcome, so code

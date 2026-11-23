@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import fc from 'fast-check';
 import { Subject } from 'rxjs';
 import { expectTypeOf } from 'vitest';
 import { httpMutation } from '../http/http-mutation';
 import { rxMutation } from '../rxjs-interop/rx-mutation';
 import { createDeferred, createMutation, nextTask } from '../testing/mutation';
+import { describeOutcome, expectedOutcome, overlappingConflicts, startQueueRun, stepsArb, wronglyStarted } from '../testing/queue-run';
 import { isObserved } from '../testing/rxjs';
 import { mutation } from './mutation';
 import { mutationQueue, writeQueueOf } from './mutation-queue';
@@ -383,5 +385,21 @@ describe('mutationQueue() with a key', () => {
       // @ts-expect-error a key is a string or a number
       concurrency: { queue, key: (draft) => draft },
     });
+  });
+});
+
+describe('mutationQueue() properties', () => {
+  it('keeps conflicting calls in call order, starts every call not reset while queued, and settles each as expected', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), stepsArb, async (scheduler, steps) => {
+        const run = startQueueRun(scheduler);
+        await run.play(steps);
+        const results = await run.settleAll();
+
+        expect(overlappingConflicts(run.calls)).toEqual([]);
+        expect(wronglyStarted(run.calls)).toEqual([]);
+        expect(results.map(describeOutcome)).toEqual(run.calls.map(expectedOutcome));
+      }),
+    );
   });
 });

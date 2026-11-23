@@ -110,6 +110,22 @@ export class DocumentSaver {
 }
 ```
 
+A mutation given the queue without a key is a barrier for the keyed ones: a "delete all
+documents" waits for the saves in flight, and the saves made after it wait for it:
+
+```ts
+readonly removeAll = httpMutation<void, void>({
+  request: () => ({ method: 'DELETE', url: '/api/docs' }),
+  concurrency: this.docWrites,
+});
+```
+
+- Never call a mutation of the same queue from a `mutationFn` and wait for it: that call queues
+  behind the one waiting for it, and neither ever settles (nor does SSR). Chain it from
+  `onSuccess`, or call both and let the queue order them.
+- A call that never settles holds the queue for every mutation sharing it, even after its own
+  mutation is reset or destroyed: writes stay in order. Pass the `AbortSignal` on to the request
+  (`httpMutation()` and `rxMutation()` do), and give a `mutationFn` that can hang a timeout.
 - `request()`, and an `rxMutation()`'s `mutationFn`, run when the call leaves the queue: a
   `PATCH` queued behind the `POST` that creates its entity can read the id that the `POST`'s
   `onSuccess` stored.

@@ -52,6 +52,10 @@
   longer notifies `pendingInputs()` readers.
 - Docs: the [optimistic updates recipe](./docs/RECIPES.md#optimistic-updates) builds the
   optimistic view from `pendingInputs()`, with nothing to roll back.
+- Docs: a [recipe](./docs/RECIPES.md#choosing-settings-by-http-method) maps each HTTP method to
+  a `concurrency` mode and a retry policy, following RFC 9110 on idempotent methods. The retry
+  recipe honors `Retry-After`, and the status code recipe covers `202 Accepted` and
+  `Access-Control-Expose-Headers`.
 
 ## 0.8.0
 

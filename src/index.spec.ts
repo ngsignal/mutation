@@ -10,7 +10,7 @@ vi.mock('./http/http-mutation.js', () => {
 });
 
 describe('main entry point', () => {
-  it('only exposes mutation() and mutationQueue()', () => {
-    expect(Object.keys(mainEntry)).toEqual(['mutation', 'mutationQueue']);
+  it('only exposes mutation(), mutationQueue() and wasNeverSent()', () => {
+    expect(Object.keys(mainEntry)).toEqual(['mutation', 'mutationQueue', 'wasNeverSent']);
   });
 });

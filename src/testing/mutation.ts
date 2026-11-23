@@ -44,6 +44,19 @@ export function sequencedMutationFn<T>(
   return () => deferredCalls[callIndex++].promise;
 }
 
+/** Waits for the next macrotask, e.g. for a `mutationFn` settled after its call was aborted. */
+export function nextTask(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** What `promise` settled with by the next macrotask, or `'pending'`: checks that a call settles at once. */
+export function outcomeAfterATask(promise: Promise<unknown>): Promise<{ resolved: unknown } | { rejected: unknown } | 'pending'> {
+  return Promise.race([
+    promise.then((resolved) => ({ resolved }), (rejected: unknown) => ({ rejected })),
+    nextTask().then(() => 'pending' as const),
+  ]);
+}
+
 /** Lets a `'queue'` mutation start the mutationFn of the call at its head, a microtask after `mutate()`. */
 export function queueTurn(): Promise<void> {
   return Promise.resolve();

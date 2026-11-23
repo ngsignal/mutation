@@ -80,7 +80,8 @@ export interface MutationRef<TInput, TOutput, TError = unknown, TValue = TOutput
   hasValue(): this is MutationRef<TInput, TOutput, TError, TOutput>;
   /**
    * Starts a call, settled with its own outcome even once superseded. Cancellations reject with an
-   * `AbortError`. Safe to ignore: a failure never reports an unhandled rejection.
+   * `AbortError`, `reset()` and destroy at once, even if `mutationFn` ignores its signal. Safe to
+   * ignore: a failure never reports an unhandled rejection.
    */
   mutate(input: TInput): Promise<TOutput>;
   /** Aborts the calls in flight and returns to `'idle'`. Never undoes a write the server already received. */

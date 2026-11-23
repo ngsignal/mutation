@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Breaking**: `reset()` and destroy reject a call in flight at once with an `'Aborted'`
+  `AbortError`, like `fetch()`, even if `mutationFn` ignores its `AbortSignal` or rejects with
+  its own error. `mutate()` used to wait for `mutationFn` and settle with its outcome, so code
+  after `await mutate()` could still run once the component was gone. `rxMutation()` and
+  `httpMutation()` already behaved this way.
 - **Breaking**: `rxMutation()` resolves with the last value, once the Observable completes, not
   with the first one. An Observable that never completes stays pending until a reset or destroy.
 - **Breaking**: when `parse` throws, `httpMutation()` rejects with an `HttpMutationParseError`.

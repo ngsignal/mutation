@@ -7,7 +7,7 @@ import {
 import { SIGNAL } from '@angular/core/primitives/signals';
 import { TestBed } from '@angular/core/testing';
 import { expectTypeOf } from 'vitest';
-import { createDeferred, createMutation, sequencedMutationFn, queueTurn } from '../testing/mutation';
+import { createDeferred, createMutation, nextTask, outcomeAfterATask, sequencedMutationFn, queueTurn } from '../testing/mutation';
 import { mutation } from './mutation';
 import type { MutationRef } from './mutation.types';
 
@@ -285,7 +285,8 @@ describe('reset()', () => {
     expect(m.status()).toBe('idle');
 
     deferred.resolve('too late');
-    await call;
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
 
     expect(m.status()).toBe('idle');
     expect(m.value()).toBeUndefined();
@@ -310,7 +311,8 @@ describe('reset()', () => {
 
     resolved.resolve('too late');
     rejected.reject(new DOMException('Aborted', 'AbortError'));
-    await resolvedCall;
+    await expect(resolvedCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
     await rejectedCall.catch(() => undefined);
 
     expect(onSuccess).not.toHaveBeenCalled();
@@ -335,10 +337,63 @@ describe('reset()', () => {
     m.reset();
     first.resolve('first');
 
-    await runningCall;
+    await expect(runningCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
     await expect(queuedCall).rejects.toMatchObject({ name: 'AbortError' });
     expect(onError).not.toHaveBeenCalled();
     expect(onSettled).not.toHaveBeenCalled();
+  });
+
+  it("rejects a call in flight at once with the 'Aborted' reason, even if mutationFn ignores its AbortSignal", async () => {
+    const m = createMutation<void, string>({ mutationFn: () => new Promise<string>(() => undefined) });
+
+    const call = m.mutate();
+    m.reset();
+
+    expect(await outcomeAfterATask(call)).toMatchObject({ rejected: { name: 'AbortError', message: 'Aborted' } });
+  });
+
+  it("rejects a call in flight with the 'Aborted' reason, whatever its mutationFn settles with afterwards", async () => {
+    const resolved = createDeferred<string>();
+    const rejected = createDeferred<string>();
+    const m = createMutation<void, string>({ mutationFn: sequencedMutationFn(resolved, rejected) });
+
+    const resolvedCall = m.mutate();
+    const rejectedCall = m.mutate();
+    m.reset();
+    resolved.resolve('written');
+    rejected.reject(new Error('server error'));
+
+    await expect(resolvedCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await expect(rejectedCall).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+  });
+
+  it('runs no callback when reset() runs after mutationFn resolves but before the call commits', async () => {
+    const deferred = createDeferred<string>();
+    const onSuccess = vi.fn();
+    const m = createMutation<void, string>({ mutationFn: () => deferred.promise, onSuccess });
+
+    const call = m.mutate();
+    void deferred.promise.then(() => m.reset());
+    deferred.resolve('written');
+    await call;
+
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(m.status()).toBe('idle');
+  });
+
+  it("rejects a call in flight with the 'Aborted' reason even if mutationFn rejects with its own error on abort", async () => {
+    const m = createMutation<void, string>({
+      mutationFn: (_input, signal) =>
+        new Promise<string>((_resolve, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('canceled')));
+        }),
+    });
+
+    const call = m.mutate();
+    m.reset();
+
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
   });
 
   it('does not abort the signal of a call that already succeeded when its onSuccess calls reset()', async () => {
@@ -551,7 +606,8 @@ describe('injector option', () => {
     expect(abortSignal.aborted).toBe(true);
 
     deferred.resolve('too late');
-    await call;
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
 
     expect(m.status()).toBe('pending');
     expect(m.value()).toBeUndefined();
@@ -574,7 +630,8 @@ describe('injector option', () => {
     const call = m.mutate();
     childInjector.destroy();
     deferred.resolve('too late');
-    await call;
+    await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await nextTask();
 
     expect(onSuccess).not.toHaveBeenCalled();
     expect(onSettled).not.toHaveBeenCalled();
@@ -600,6 +657,16 @@ describe('injector option', () => {
     childInjector.destroy();
 
     await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it("rejects a call in flight at once with the 'Aborted' reason when the injector is destroyed, even if mutationFn ignores its AbortSignal", async () => {
+    const childInjector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const m = mutation<void, string>({ mutationFn: () => new Promise<string>(() => undefined), injector: childInjector });
+
+    const call = m.mutate();
+    childInjector.destroy();
+
+    expect(await outcomeAfterATask(call)).toMatchObject({ rejected: { name: 'AbortError', message: 'Aborted' } });
   });
 
   it('rejects a mutate() call made after the injector is destroyed, without calling mutationFn', async () => {

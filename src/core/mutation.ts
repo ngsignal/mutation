@@ -53,6 +53,24 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   });
 }
 
+/**
+ * Settles like `task`, or rejects with the abort reason as soon as `abortSignal` aborts, like
+ * `fetch()`: a `mutationFn` that ignores the signal can't keep `mutate()` pending. Before the call
+ * has started, its gate rejects it (`'NotStarted'`). `task` keeps running, so a queue still waits
+ * for the write.
+ */
+function rejectOnAbortOnceStarted<T>(task: Promise<T>, abortSignal: AbortSignal, hasStarted: () => boolean): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      if (hasStarted()) {
+        reject(abortSignal.reason);
+      }
+    };
+    abortSignal.addEventListener('abort', onAbort, { once: true });
+    void task.then(resolve, reject).finally(() => abortSignal.removeEventListener('abort', onAbort));
+  });
+}
+
 /** Shared by `mutation()` and its adapters, which check the injection context first. */
 export function createMutation<TInput, TOutput, TError, TExtra extends object>(
   options: MutationAdapterOptions<TInput, TOutput, TError, TExtra>,
@@ -149,11 +167,13 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
     });
 
     const extra = adapter.createContext();
+    let mutationFnStarted = false;
     try {
-      const result = await gate.run(
-        () => untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra })),
-        call.abortSignal,
-      );
+      const task = gate.run(() => {
+        mutationFnStarted = true;
+        return untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra }));
+      }, call.abortSignal);
+      const result = await rejectOnAbortOnceStarted(task, call.abortSignal, () => mutationFnStarted);
       call.finish(() => commitSuccess(call, extra, result));
       return result;
 

@@ -28,8 +28,9 @@ aborted by `reset()` or destroy run no callback: the caller asked to forget them
   has `reportProgress`, so both signals are fed by that one flag.
 - **A failed `parse` does not mean a failed write.** For a read, a `parse` error just means no
   value; for a write, the server has already applied it (see
-  [Validating the response](./RECIPES.md#validating-the-response)). A mutation primitive in
-  Angular will have to surface that distinction, not just an error.
+  [Validating the response](./RECIPES.md#validating-the-response)), hence a dedicated
+  `HttpMutationParseError`. A mutation primitive in Angular will have to surface that
+  distinction too.
 
 ## Why not TanStack Query?
 

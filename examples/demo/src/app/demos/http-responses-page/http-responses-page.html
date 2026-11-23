@@ -53,9 +53,10 @@
   </dl>
   <p class="hint">
     With the outdated response, <code>status</code> is <code>error</code> while
-    <code>statusCode</code> is still <code>201</code>: <strong>the server has already applied
-    the write</strong>. Treat it as a contract mismatch, not a failed write — retrying would
-    create the user twice.
+    <code>statusCode</code> is still <code>201</code> and <code>error</code> is an
+    <code>HttpMutationParseError</code>: <strong>the server has already applied the
+    write</strong>. Treat it as a contract mismatch, not a failed write — retrying would create
+    the user twice.
   </p>
 </section>
 

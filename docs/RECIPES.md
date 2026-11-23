@@ -165,9 +165,16 @@ readonly createUser = rxMutation<CreateUserDto, User>({
 });
 ```
 
-Unlike `rxResource()`, only the first value counts: it resolves the call, then `rxMutation()`
-unsubscribes. Completing without a value rejects. With `observe: 'events'`, that first value is
-`Sent`, not the body — use `httpMutation()` for progress.
+The call resolves with the last value, once the Observable completes. One that never completes
+stays pending until a reset or destroy. If that can happen, add a `timeout()`:
+
+```ts
+import { timeout } from 'rxjs/operators';
+
+readonly saveSettings = rxMutation({
+  mutationFn: (settings: Settings) => this.settingsFacade.save(settings).pipe(timeout(10_000)),
+});
+```
 
 ### Describing an HTTP request
 
@@ -216,11 +223,11 @@ readonly createUser = httpMutation({
 });
 ```
 
-If `parse` throws, the call fails with that error: `status()` is `'error'` while `statusCode()`
-still holds the success code (e.g. `201`), because **the server has already applied the write**.
-Handle it as a contract mismatch, not as a failed write — retrying would write twice (see
-[Retrying writes](#retrying-writes)). For a
-body-less response (`204`), `parse` receives `null`.
+If `parse` throws, the call fails with an `HttpMutationParseError`. **The server has already
+applied the write**: don't retry it (see [Retrying writes](#retrying-writes)). The original error
+is its `cause`.
+
+For a body-less response (`204`), `parse` receives `null`.
 
 ### Non-JSON responses
 
@@ -299,7 +306,14 @@ call: a superseded call's events are ignored (see [stale-response guarding](../R
 With `concurrency: 'queue'`, a request only starts once the previous one settles, and these
 signals follow the request actually in flight: while an older upload is still running with a
 newer call queued behind it, `uploadProgress` shows the older upload's progress (its outcome will
-still be ignored). They reset as soon as the queued request starts.
+still be ignored). They reset as soon as the queued request starts. The input of the request in
+flight is `pendingInputs()[0]`.
+
+The signals keep only the latest call. Callbacks get each call's `response`:
+
+```ts
+onSuccess: (user, dto, { response }) => this.created.push(response?.headers.get('Location')),
+```
 
 `error()` is typed `unknown` by default. It is an `HttpErrorResponse` for HTTP failures, but an
 interceptor may throw anything else — pass `TError` explicitly if you rely on it:

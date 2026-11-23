@@ -1,10 +1,8 @@
 import type { Observable, Subscription } from 'rxjs';
 
 /**
- * Resolves with the first value of `source`, rejects on its error or if it completes empty, and
- * unsubscribes (rejecting with `abortSignal.reason`, an AbortError by default) as soon as
- * `abortSignal` aborts. Subscribes by hand because `firstValueFrom` is RxJS 7+, like
- * `rxResource()` does.
+ * `lastValueFrom()` that unsubscribes when `abortSignal` aborts. Written by hand because
+ * `lastValueFrom()` is RxJS 7+.
  */
 export function toAbortablePromise<T>(source: Observable<T>, abortSignal: AbortSignal, emptyMessage: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -15,6 +13,7 @@ export function toAbortablePromise<T>(source: Observable<T>, abortSignal: AbortS
 
     let settled = false;
     let subscription: Subscription | undefined;
+    let last: { value: T } | undefined;
 
     const settle = (applyOutcome: () => void) => {
       if (settled) return;
@@ -28,9 +27,11 @@ export function toAbortablePromise<T>(source: Observable<T>, abortSignal: AbortS
     abortSignal.addEventListener('abort', onAbort);
 
     subscription = source.subscribe({
-      next: (value) => settle(() => resolve(value)),
+      next: (value) => {
+        last = { value };
+      },
       error: (error: unknown) => settle(() => reject(error)),
-      complete: () => settle(() => reject(new Error(emptyMessage))),
+      complete: () => settle(() => (last ? resolve(last.value) : reject(new Error(emptyMessage)))),
     });
     // A synchronous source settles before `subscription` is assigned.
     if (settled) subscription.unsubscribe();

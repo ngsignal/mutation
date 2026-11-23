@@ -13,9 +13,7 @@ export interface RxMutationOptions<TInput, TOutput, TError = unknown>
 
 /**
  * Creates a mutation whose `mutationFn` returns an Observable, the mutation counterpart of
- * `rxResource()`. Unlike `rxResource()`, only the first emitted value is kept: it resolves the
- * call, then the Observable is unsubscribed. Completing without a value rejects with
- * `Error('Observable completed without emitting a value')`.
+ * `rxResource()`. The call resolves with the last value, once the Observable completes.
  *
  * Must run in an injection context, or receive `options.injector`.
  *

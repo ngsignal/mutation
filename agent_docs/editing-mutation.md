@@ -7,6 +7,13 @@ in flight), split out of it.
 ordering bugs, not logic bugs. Argue every edit in terms of the mechanisms below, and
 re-check them against the code: it is the source of truth, this file only summarizes it.
 
+## Adapters
+
+`mutation()` and `httpMutation()` both call `createMutation(options, adapter)`, which holds
+everything below. The adapter provides `run` (in place of `mutationFn`), `createContext` (extra
+callback context, filled during the call) and an optional `onReset`. An adapter that needs more
+gets a new hook here, not a wrapper around the returned ref.
+
 ## Lifecycle mechanisms
 
 - **Latest call** (`Call`, `createCallTracker` in `call-tracker.ts`). Each admitted `mutate()` is a `Call` object

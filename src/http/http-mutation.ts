@@ -6,11 +6,13 @@ import {
   type HttpHeaders,
   type HttpProgressEvent,
   type HttpResourceRequest,
+  type HttpResponse,
+  type HttpResponseBase,
 } from '@angular/common/http';
 import { Injector, assertInInjectionContext, inject, signal, type Signal } from '@angular/core';
 import { filter, map, tap } from 'rxjs/operators';
-import { mutation } from '../core/mutation.js';
-import type { MutationOptions, MutationRef } from '../core/mutation.types.js';
+import { createMutation } from '../core/mutation.js';
+import type { MutationCallbackContext, MutationOptions, MutationRef } from '../core/mutation.types.js';
 import { toAbortablePromise } from '../internal/to-abortable-promise.js';
 
 /** `httpResource()`'s request, except `method` is required and there is no `transferCache`, which only applies to reads. */
@@ -20,9 +22,26 @@ export type HttpMutationRequest = Omit<HttpResourceRequest, 'method' | 'transfer
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' | (string & {});
 };
 
+/** Last argument of `httpMutation()`'s `onSuccess`, `onError` and `onSettled`. */
+export interface HttpMutationCallbackContext extends MutationCallbackContext {
+  /** This call's response or error response, `undefined` if none came back. */
+  readonly response: HttpResponseBase | undefined;
+}
+
+/** Rejects a call whose `parse` threw: the write was applied, don't retry it. */
+export class HttpMutationParseError extends Error {
+  override readonly name = 'HttpMutationParseError';
+  readonly response: HttpResponse<unknown>;
+
+  constructor(response: HttpResponse<unknown>, cause: unknown) {
+    super(`parse() threw on a ${response.status} response: the server applied the write`, { cause });
+    this.response = response;
+  }
+}
+
 /** Options of `httpMutation()`: `mutation()`'s options, with `request` and `parse` in place of `mutationFn`. */
 export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = unknown>
-  extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
+  extends Omit<MutationOptions<TInput, TOutput, TError, HttpMutationCallbackContext>, 'mutationFn'> {
   /**
    * Describes the request for an input, e.g. `(user) => ({ method: 'POST', url: '/api/users', body: user })`.
    * With `concurrency: 'queue'`, it runs when the call leaves the queue: pass values to freeze at
@@ -34,8 +53,8 @@ export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = u
   request: (input: TInput) => HttpMutationRequest;
   /**
    * Transforms or validates the response body before it resolves the call, e.g. a schema's `parse`.
-   * Receives `null` for a body-less response (`204`). If it throws, the call fails with that error,
-   * although the server has already applied the write.
+   * Receives `null` for a body-less response (`204`). If it throws, the call fails with an
+   * `HttpMutationParseError`.
    */
   parse?: (raw: TRaw) => TOutput;
 }
@@ -45,7 +64,7 @@ type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
   HttpMutationOptions<TInput, TOutput, TError, TRaw> &
   ([TRaw] extends [TOutput] ? unknown : { parse: (raw: TRaw) => TOutput });
 
-/** Returned by `httpMutation()`: a `MutationRef` plus the latest call's HTTP metadata, cleared when a call starts and on `reset()`. */
+/** Returned by `httpMutation()`: a `MutationRef` plus the HTTP metadata of the latest request sent, cleared when a request starts and on `reset()`. */
 export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined>
   extends MutationRef<TInput, TOutput, TError, TValue> {
   /** Latest upload progress event. Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */
@@ -185,30 +204,47 @@ function makeHttpMutationFn(responseType: ResponseType) {
     const http = injector.get(HttpClient);
     const responseState = createHttpResponseState();
 
-    const mutationRef = mutation<TInput, TOutput, TError>({
-      ...mutationOptions,
-      injector,
-      mutationFn: (input, abortSignal) => {
-        const call = responseState.startCall();
-        const body$ = sendRequest(http, request(input), responseType).pipe(
-          tap({ next: call.recordEvent, error: call.recordError }),
-          filter((event) => event.type === HttpEventType.Response),
-          map((response) => (parse ? parse(response.body as never) : (response.body as TOutput))),
-        );
-        return toAbortablePromise(body$, abortSignal, 'Request completed without an HttpResponse event');
-      },
-    });
+    const readBody = (response: HttpResponse<unknown>): TOutput => {
+      if (!parse) {
+        return response.body as TOutput;
+      }
+      try {
+        return parse(response.body as never);
+      } catch (cause) {
+        throw new HttpMutationParseError(response, cause);
+      }
+    };
 
-    // hasValue() is a type guard hard-wired to MutationRef: re-declared so it narrows to
-    // HttpMutationRef (the spread copy would not type-check, and would narrow `value` to never).
+    const mutationRef = createMutation<TInput, TOutput, TError, { response: HttpResponseBase | undefined }>(
+      { ...mutationOptions, injector },
+      {
+        createContext: () => ({ response: undefined }),
+        run: (input, { abortSignal, context }) => {
+          const call = responseState.startCall();
+          const body$ = sendRequest(http, request(input), responseType).pipe(
+            tap({
+              next: call.recordEvent,
+              error: (error: unknown) => {
+                if (error instanceof HttpErrorResponse) context.response = error;
+                call.recordError(error);
+              },
+            }),
+            filter((event) => event.type === HttpEventType.Response),
+            map((response) => {
+              context.response = response;
+              return readBody(response);
+            }),
+          );
+          return toAbortablePromise(body$, abortSignal, 'Request completed without an HttpResponse event');
+        },
+        onReset: responseState.clear,
+      },
+    );
+
+    // Re-declared so the type guard narrows to HttpMutationRef, not MutationRef.
     return {
       ...mutationRef,
       ...responseState.signals,
-      reset(): void {
-        // mutationRef.reset() aborts in-flight calls, so no event can land after this clears.
-        mutationRef.reset();
-        responseState.clear();
-      },
       hasValue(): this is HttpMutationRef<TInput, TOutput, TError, TOutput> {
         return mutationRef.hasValue();
       },

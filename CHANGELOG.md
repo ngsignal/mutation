@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Breaking**: `rxMutation()` resolves with the last value, once the Observable completes, not
+  with the first one. An Observable that never completes stays pending until a reset or destroy.
+- **Breaking**: when `parse` throws, `httpMutation()` rejects with an `HttpMutationParseError`.
+  The original error is its `cause`.
+- Feature: `httpMutation()`'s callbacks receive each call's `response`.
+- Feature (types only): `MutationOptions` takes a `TContext` type parameter for the callbacks'
+  context.
 - Feature (types only): `TInput` defaults to `void` in `mutation()`, `rxMutation()` and
   `httpMutation()`, so a `mutationFn` or `request` without parameters gives a `mutate()` that
   takes no argument. It used to infer `unknown`, and `mutate()` required one. `TOutput` now
@@ -12,6 +19,7 @@
   `rxMutation()` and `httpMutation()`.
 - Feature: `concurrency: 'parallel'` names the default mode, for code that wants to state it.
   Leaving `concurrency` unset still means `'parallel'`.
+- Docs: in queue mode, `pendingInputs()[0]` is the input of the request in flight.
 - Docs: a [testing recipe](./docs/RECIPES.md#testing-a-component): `fixture.whenStable()` waits
   for the calls in flight, and with `HttpTestingController` the request must be flushed first.
 - Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation

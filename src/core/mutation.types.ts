@@ -18,23 +18,30 @@ export interface MutationCallbackContext {
  *
  * `TError` is an assertion, not a check: `error()` and `onError` receive whatever `mutationFn`
  * rejects with, an `AbortError` included.
+ *
+ * `TContext` is the callbacks' last argument, extended by adapters (`httpMutation()` adds `response`).
  */
-export interface MutationOptions<TInput, TOutput, TError = unknown> {
+export interface MutationOptions<
+  TInput,
+  TOutput,
+  TError = unknown,
+  TContext extends MutationCallbackContext = MutationCallbackContext,
+> {
   /**
    * Performs the write for one call. `abortSignal` aborts on `reset()` or destroy only, never when a
    * newer call supersedes this one: pass it on to `fetch()` or your HTTP client to cancel the request.
    */
   mutationFn: (input: TInput, abortSignal: AbortSignal) => Promise<TOutput>;
   /** Runs when a call resolves, after `value()` is set if it is the latest call. */
-  onSuccess?: (output: TOutput, input: TInput, context: MutationCallbackContext) => void;
+  onSuccess?: (output: TOutput, input: TInput, context: TContext) => void;
   /** Runs when a call rejects, after `error()` is set if it is the latest call. */
-  onError?: (error: TError, input: TInput, context: MutationCallbackContext) => void;
+  onError?: (error: TError, input: TInput, context: TContext) => void;
   /** Runs after `onSuccess` or `onError`, whatever the outcome. */
   onSettled?: (
     output: TOutput | undefined,
     error: TError | undefined,
     input: TInput,
-    context: MutationCallbackContext,
+    context: TContext,
   ) => void;
   /** `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`: a call made while one is in flight rejects at once (`'Dropped'`). */
   concurrency?: 'parallel' | 'queue' | 'drop';

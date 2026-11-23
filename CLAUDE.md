@@ -80,7 +80,7 @@ instead of copying the README.
    `'rxjs'` root (7.2+). No RxJS-7-only API such as `firstValueFrom` / `lastValueFrom`:
    subscribe by hand instead, as `rxResource()` does. Spec helpers and the RxJS 6 run: see
    `agent_docs/testing.md`. Once
-   Angular drops RxJS 6, narrow the peer to Angular's range, use `firstValueFrom` in
+   Angular drops RxJS 6, narrow the peer to Angular's range, use `lastValueFrom` in
    `toAbortablePromise`, and remove `src/testing/rxjs.ts` and the `rxjs-compat` CI job.
 
 ## Public API changes

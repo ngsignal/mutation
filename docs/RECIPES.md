@@ -146,14 +146,37 @@ readonly removeAll = httpMutation<void, void>({
 - A queue only orders the writes of one browser tab. For several tabs or users, have the server
   check a version (`ETag` and `If-Match`).
 
+## Choosing settings by HTTP method
+
+[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods) calls a method
+idempotent when sending the same request twice leaves the server as sending it once. That decides
+what to do when a write may have been applied without its response coming back (a timeout, a
+`502`/`504`, or an `'Aborted'` call), not whether to use a mutation: an idempotent write still
+changes the server, so `resource()` would still abort it.
+
+| Method   | Idempotent | `concurrency`                                                              | When the write may have been applied   |
+| -------- | ---------- | -------------------------------------------------------------------------- | -------------------------------------- |
+| `PUT`    | Yes        | `'queue'`, or `{ queue, key }` per entity                                   | Send it again                          |
+| `DELETE` | Yes        | `'parallel'`: a duplicate only gets a `404`                                 | Send it again, and count a `404` as done |
+| `POST`   | No         | `'drop'` for a form submit, `'parallel'` for independent creations          | Only with an idempotency key           |
+| `PATCH`  | It depends | `'queue'`, or `{ queue, key }` per entity                                   | Only if the patch sets values rather than adding to them, or with an idempotency key |
+
+Idempotent doesn't mean the order doesn't matter: two `PUT`s with different bodies are each
+idempotent, yet the one that lands last wins. Queue the writes to the same data, even idempotent
+ones.
+
 ## Retrying writes
 
-There is no `retry` option: whether a failed write is safe to retry depends on your API. A `429`
-or `503` means the server refused the request, so retrying is safe. A timeout or a `502`/`504`
-may come after the write was applied, and needs an idempotency key on the server side.
+There is no `retry` option: whether a failed write is safe to retry depends on its method and on
+your API. A `429` or `503` means the server refused the request, so retrying is safe; wait for the
+delay its `Retry-After` header gives when there is one (a number of seconds or a date). A timeout
+or a `502`/`504` may come after the write was applied: a `PUT` or a `DELETE` can be sent again, a
+`POST` needs an idempotency key on the server side (see
+[Choosing settings by HTTP method](#choosing-settings-by-http-method)).
 
 If you retry inside `mutationFn`, pass its `AbortSignal` to the wait between attempts, otherwise
-`reset()` and destroy won't stop the loop.
+`reset()` and destroy won't stop the loop. Retrying a `PUT` in parallel mode can overwrite a newer
+one sent in the meantime: with `concurrency: 'queue'`, the next call waits for the retries.
 
 With `httpMutation()`, put the idempotency key in `input` rather than generating it in
 `request()`: `request()` runs on every `mutate()`, so a key generated there changes when the user
@@ -403,6 +426,13 @@ from the `HttpErrorResponse` when the request fails. Useful for a `201 Created` 
   <p>Created at {{ createUser.headers()?.get('Location') }}</p>
 }
 ```
+
+A `202 Accepted` is a success too, though the server has only queued the write for later
+([RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-202-accepted)): check
+`statusCode()` before telling the user it's done.
+
+Cross-origin, the browser hides most response headers, `Location` included, unless the server
+lists them in `Access-Control-Expose-Headers`: `headers()?.get('Location')` is `null` otherwise.
 
 `uploadProgress`, `downloadProgress`, `statusCode` and `headers` reset to `undefined` when a
 call's request starts, and on `reset()`, and — like `value`/`status` — only reflect the current

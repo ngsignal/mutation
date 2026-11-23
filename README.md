@@ -260,6 +260,7 @@ The [recipes](./docs/RECIPES.md) show the usual patterns:
  
 - [Refreshing a resource after a mutation](./docs/RECIPES.md#refreshing-a-resource-after-a-mutation)
 - [Optimistic updates with rollback](./docs/RECIPES.md#optimistic-updates)
+- [Choosing settings by HTTP method](./docs/RECIPES.md#choosing-settings-by-http-method)
 - [Retrying writes](./docs/RECIPES.md#retrying-writes)
 - [Submitting a Signal Form](./docs/RECIPES.md#submitting-a-signal-form)
 - [Testing a component](./docs/RECIPES.md#testing-a-component)

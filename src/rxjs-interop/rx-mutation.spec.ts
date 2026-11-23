@@ -1,7 +1,8 @@
 import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Subject, of } from 'rxjs';
+import { Subject, from, of } from 'rxjs';
 import { expectTypeOf } from 'vitest';
+import { wasNeverSent } from '../core/abort-error';
 import type { MutationRef } from '../core/mutation.types';
 import { failWith, isObserved } from '../testing/rxjs';
 import { rxMutation } from './rx-mutation';
@@ -224,4 +225,18 @@ describe('cancellation', () => {
     await expect(call).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
   });
 
+  it("is not wasNeverSent() for another mutation's 'Dropped' that the Observable errors with", async () => {
+    const audit = TestBed.runInInjectionContext(() =>
+      rxMutation<void, string>({ mutationFn: () => new Subject<string>(), concurrency: 'drop' }),
+    );
+    void audit.mutate();
+    const save = TestBed.runInInjectionContext(() =>
+      rxMutation<void, string>({ mutationFn: () => from(audit.mutate()) }),
+    );
+
+    const error: unknown = await save.mutate().catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ name: 'AbortError', message: 'Dropped' });
+    expect(wasNeverSent(error)).toBe(false);
+  });
 });

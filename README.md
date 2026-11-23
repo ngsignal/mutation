@@ -239,12 +239,15 @@ reached the server, e.g. before rolling back an optimistic update:
 `mutate()` rejects at once, like `fetch()`, even if `mutationFn` ignores the signal or rejects
 with its own error: pass the signal on anyway, so the request itself stops.
 
-`wasNeverSent(error)` is true for the first three rows, where `mutationFn` never ran: e.g. roll
-back an optimistic update only then. HTTP status codes are yours to check.
+`wasNeverSent(error)` is true for the first three rows, where `mutationFn` never ran. It is false
+for any error `mutationFn` rejects with, even another mutation's `'Dropped'`: that call ran.
+HTTP status codes are yours to check. A rollback can skip only the writes that may have been
+applied:
 
 ```ts
-this.deleteUser.mutate(user).catch((error) => {
-  if (wasNeverSent(error)) this.users.update((users) => [...users, user]);
+this.deleteUser.mutate(user).catch((error: unknown) => {
+  const rejectedByServer = error instanceof HttpErrorResponse && error.status >= 400;
+  if (wasNeverSent(error) || rejectedByServer) this.users.update((users) => [...users, user]);
 });
 ```
 

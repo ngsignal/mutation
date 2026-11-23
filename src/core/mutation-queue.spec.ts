@@ -1,0 +1,316 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDetection } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Subject } from 'rxjs';
+import { expectTypeOf } from 'vitest';
+import { httpMutation } from '../http/http-mutation';
+import { rxMutation } from '../rxjs-interop/rx-mutation';
+import { createDeferred, createMutation, nextTask } from '../testing/mutation';
+import { isObserved } from '../testing/rxjs';
+import { mutation } from './mutation';
+import { mutationQueue, writeQueueOf } from './mutation-queue';
+
+let httpTesting: HttpTestingController;
+
+beforeEach(() => {
+  TestBed.configureTestingModule({
+    providers: [provideZonelessChangeDetection(), provideHttpClient(), provideHttpClientTesting()],
+  });
+  httpTesting = TestBed.inject(HttpTestingController);
+});
+
+/** A mutationFn that records the inputs it starts, each one settled by hand. */
+function manualWrites() {
+  const started: string[] = [];
+  const deferreds = new Map<string, ReturnType<typeof createDeferred<string>>>();
+  const deferredOf = (input: string) => {
+    const deferred = deferreds.get(input);
+    if (!deferred) throw new Error(`${input} has not started`);
+    return deferred;
+  };
+  return {
+    started,
+    mutationFn: (input: string) => {
+      started.push(input);
+      const deferred = createDeferred<string>();
+      deferreds.set(input, deferred);
+      return deferred.promise;
+    },
+    resolve: (input: string) => deferredOf(input).resolve(`${input}-done`),
+    reject: (input: string) => deferredOf(input).reject(new Error(`${input} failed`)),
+  };
+}
+
+describe('mutationQueue() shared by several mutations', () => {
+  it('runs the calls of every mutation sharing it one at a time, in call order', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const remove = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+
+    const renameCall = rename.mutate('rename');
+    const removeCall = remove.mutate('remove');
+    await nextTask();
+    expect(writes.started).toEqual(['rename']);
+
+    writes.resolve('rename');
+    await renameCall;
+    await nextTask();
+    expect(writes.started).toEqual(['rename', 'remove']);
+
+    writes.resolve('remove');
+    await expect(removeCall).resolves.toBe('remove-done');
+  });
+
+  it("sends an httpMutation()'s request only once the call ahead, from a mutation(), has settled", async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const create = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const update = TestBed.runInInjectionContext(() =>
+      httpMutation<number, unknown>({
+        request: (quantity) => ({ method: 'PATCH', url: '/api/lines/1', body: { quantity } }),
+        concurrency: queue,
+      }),
+    );
+
+    const createCall = create.mutate('create');
+    const updateCall = update.mutate(3);
+    await nextTask();
+    httpTesting.expectNone('/api/lines/1');
+
+    writes.resolve('create');
+    await createCall;
+    await nextTask();
+    httpTesting.expectOne('/api/lines/1').flush({ quantity: 3 });
+
+    await expect(updateCall).resolves.toEqual({ quantity: 3 });
+  });
+
+  it("subscribes to an rxMutation()'s Observable only once the call ahead, from an httpMutation(), has settled", async () => {
+    const queue = mutationQueue();
+    const notification = new Subject<string>();
+    const create = TestBed.runInInjectionContext(() =>
+      httpMutation<void, unknown>({ request: () => ({ method: 'POST', url: '/api/lines' }), concurrency: queue }),
+    );
+    const notify = TestBed.runInInjectionContext(() =>
+      rxMutation<void, string>({ mutationFn: () => notification, concurrency: queue }),
+    );
+
+    const createCall = create.mutate();
+    const notifyCall = notify.mutate();
+    await nextTask();
+    expect(isObserved(notification)).toBe(false);
+
+    httpTesting.expectOne('/api/lines').flush({ id: 1 });
+    await createCall;
+    await nextTask();
+    expect(isObserved(notification)).toBe(true);
+
+    notification.next('sent');
+    notification.complete();
+    await expect(notifyCall).resolves.toBe('sent');
+  });
+
+  it('runs the next call once the call ahead, from another mutation, has failed', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const remove = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+
+    const renameCall = rename.mutate('rename');
+    const removeCall = remove.mutate('remove');
+    await nextTask();
+    writes.reject('rename');
+    await expect(renameCall).rejects.toThrow('rename failed');
+    await nextTask();
+
+    expect(writes.started).toEqual(['rename', 'remove']);
+    writes.resolve('remove');
+    await expect(removeCall).resolves.toBe('remove-done');
+  });
+
+  it("keeps each mutation's signals on its own calls", async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const remove = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+
+    const renameCall = rename.mutate('rename');
+    void remove.mutate('remove');
+    await nextTask();
+    writes.resolve('rename');
+    await renameCall;
+
+    expect(rename.status()).toBe('success');
+    expect(rename.pendingInputs()).toEqual([]);
+    expect(remove.status()).toBe('pending');
+    expect(remove.pendingInputs()).toEqual(['remove']);
+  });
+
+  it("rejects only the mutation's own queued calls on its reset(), with 'NotStarted'", async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const remove = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+
+    const firstRename = rename.mutate('rename-1');
+    const secondRename = rename.mutate('rename-2');
+    const removeCall = remove.mutate('remove');
+    await nextTask();
+    remove.reset();
+
+    await expect(removeCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
+    writes.resolve('rename-1');
+    await firstRename;
+    await nextTask();
+    expect(writes.started).toEqual(['rename-1', 'rename-2']);
+    writes.resolve('rename-2');
+    await expect(secondRename).resolves.toBe('rename-2-done');
+  });
+
+  it("rejects only the mutation's own queued calls when its injector is destroyed", async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const childInjector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const remove = mutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue, injector: childInjector });
+
+    const renameCall = rename.mutate('rename-1');
+    const removeCall = remove.mutate('remove');
+    const nextRename = rename.mutate('rename-2');
+    await nextTask();
+    childInjector.destroy();
+
+    await expect(removeCall).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
+    writes.resolve('rename-1');
+    await renameCall;
+    await nextTask();
+    expect(writes.started).toEqual(['rename-1', 'rename-2']);
+    writes.resolve('rename-2');
+    await expect(nextRename).resolves.toBe('rename-2-done');
+  });
+
+  it("keeps another mutation's call behind an aborted call whose mutationFn ignores its AbortSignal", async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+    const remove = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: queue });
+
+    void rename.mutate('rename');
+    const removeCall = remove.mutate('remove');
+    await nextTask();
+    rename.reset();
+    await nextTask();
+    expect(writes.started).toEqual(['rename']);
+
+    writes.resolve('rename');
+    await nextTask();
+    expect(writes.started).toEqual(['rename', 'remove']);
+    writes.resolve('remove');
+    await expect(removeCall).resolves.toBe('remove-done');
+  });
+
+  it("doesn't link two mutations that each use concurrency: 'queue'", async () => {
+    const writes = manualWrites();
+    const rename = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: 'queue' });
+    const remove = createMutation<string, string>({ mutationFn: writes.mutationFn, concurrency: 'queue' });
+
+    void rename.mutate('rename');
+    void remove.mutate('remove');
+    await nextTask();
+
+    expect(writes.started).toEqual(['rename', 'remove']);
+  });
+});
+
+describe('mutationQueue() with a key', () => {
+  interface Draft {
+    docId: string;
+    content: string;
+  }
+  const byDoc = (draft: Draft) => draft.docId;
+  const label = (draft: Draft) => `${draft.docId}:${draft.content}`;
+
+  it('runs calls with different keys at once', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const save = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(label(draft)),
+      concurrency: { queue, key: byDoc },
+    });
+
+    void save.mutate({ docId: 'A', content: '1' });
+    void save.mutate({ docId: 'B', content: '1' });
+    await nextTask();
+
+    expect(writes.started).toEqual(['A:1', 'B:1']);
+  });
+
+  it('runs calls with the same key one at a time, in call order, across mutations', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const save = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(label(draft)),
+      concurrency: { queue, key: byDoc },
+    });
+    const archive = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(`archive ${label(draft)}`),
+      concurrency: { queue, key: byDoc },
+    });
+
+    const firstSave = save.mutate({ docId: 'A', content: '1' });
+    void archive.mutate({ docId: 'A', content: '1' });
+    void save.mutate({ docId: 'B', content: '1' });
+    await nextTask();
+    expect(writes.started).toEqual(['A:1', 'B:1']);
+
+    writes.resolve('A:1');
+    await firstSave;
+    await nextTask();
+    expect(writes.started).toEqual(['A:1', 'B:1', 'archive A:1']);
+  });
+
+  it('forgets a key once its calls have settled', async () => {
+    const queue = mutationQueue();
+    const writes = manualWrites();
+    const save = createMutation<Draft, string>({
+      mutationFn: (draft) => writes.mutationFn(label(draft)),
+      concurrency: { queue, key: byDoc },
+    });
+
+    const firstSave = save.mutate({ docId: 'A', content: '1' });
+    const secondSave = save.mutate({ docId: 'A', content: '2' });
+    await nextTask();
+    expect(writeQueueOf(queue).tails.size).toBe(1);
+
+    writes.resolve('A:1');
+    await firstSave;
+    await nextTask();
+    writes.resolve('A:2');
+    await secondSave;
+    await nextTask();
+
+    expect(writeQueueOf(queue).tails.size).toBe(0);
+  });
+
+  it("types the key's argument as the mutation's input", () => {
+    const queue = mutationQueue();
+
+    createMutation<Draft, string>({
+      mutationFn: () => Promise.resolve('ok'),
+      concurrency: {
+        queue,
+        key: (draft) => {
+          expectTypeOf(draft).toEqualTypeOf<Draft>();
+          return draft.docId;
+        },
+      },
+    });
+    createMutation<Draft, string>({
+      mutationFn: () => Promise.resolve('ok'),
+      // @ts-expect-error a key is a string or a number
+      concurrency: { queue, key: (draft) => draft },
+    });
+  });
+});

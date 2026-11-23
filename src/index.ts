@@ -1,2 +1,11 @@
 export { mutation } from './core/mutation.js';
-export type { MutationCallbackContext, MutationOptions, MutationRef, MutationSnapshot, MutationStatus } from './core/mutation.types.js';
+export { mutationQueue } from './core/mutation-queue.js';
+export type {
+  KeyedMutationQueue,
+  MutationCallbackContext,
+  MutationOptions,
+  MutationQueue,
+  MutationRef,
+  MutationSnapshot,
+  MutationStatus,
+} from './core/mutation.types.js';

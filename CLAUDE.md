@@ -30,11 +30,12 @@ npm run test:rxjs6      # suite on RxJS 6 (CI job rxjs-compat), see agent_docs/t
 ## Layout
 
 ```
-src/index.ts                     # main entry `@ngsignal/mutation`: mutation() and its types only
+src/index.ts                     # main entry `@ngsignal/mutation`: mutation(), mutationQueue() and their types only
 src/core/mutation.ts             # mutation() and createMutation(), the machinery its adapters share
 src/core/mutation-adapter.ts     # createMutation()'s adapter contract, not exported
 src/core/mutation.types.ts       # public types, shipped as .d.ts: changing them is an API change
 src/core/concurrency.ts          # mutation()'s concurrency modes (ConcurrencyGate), not exported
+src/core/mutation-queue.ts       # mutationQueue(), exported, and the write queue behind 'queue' and shared queues
 src/core/call-tracker.ts         # mutation()'s calls in flight and latest call, not exported
 src/core/mutation-state.ts       # mutation()'s state and its pure transitions, not exported
 src/core/abort-error.ts          # abortError(): the AbortError reasons, not exported

@@ -212,8 +212,12 @@ What happens to a second call while one is still in flight:
 | `'parallel'` (default) | Runs right away, in parallel                                      | Independent writes (adding items to a list)  |
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
 | `'drop'`        | Rejected at once (`'Dropped'`), `mutationFn` never runs, signals untouched | Double-submit protection (payment, form submit) |
+| a `mutationQueue()` | Waits for the previous call of every mutation given the same queue   | Different writes to the same data (rename, then delete) |
+| `{ queue, key }` | Waits for the previous call with the same key; other keys run at once   | Order per entity (autosave of several documents) |
 
-In every mode, the state signals reflect the most recent call.
+In every mode, the state signals reflect the most recent call of the mutation itself. Sharing a
+queue works the same with `mutation()`, `rxMutation()` and `httpMutation()`: see
+[Ordering writes across mutations](./docs/RECIPES.md#ordering-writes-across-mutations).
 
 In queue mode, a call made after a reset still waits for an aborted call already in flight to
 settle, so writes stay in order. Pass the abort signal on to your request (the RxJS and HTTP
@@ -268,7 +272,7 @@ included.
 | `onSuccess?`  | `(output: TOutput, input: TInput, context: MutationCallbackContext) => void`   |
 | `onError?`    | `(error: TError, input: TInput, context: MutationCallbackContext) => void`     |
 | `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput, context: MutationCallbackContext) => void` |
-| `concurrency?`| `'parallel' \| 'queue' \| 'drop'` (default `'parallel'`)                       |
+| `concurrency?`| `'parallel' \| 'queue' \| 'drop' \| MutationQueue \| { queue, key }` (default `'parallel'`) |
 | `injector?`   | `Injector`                                                                      |
 | `debugName?`  | `string`: names the state signals in Angular DevTools (`'save'` → `save.status`) |
 

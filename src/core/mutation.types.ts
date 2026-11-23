@@ -3,6 +3,23 @@ import type { Injector, Signal } from '@angular/core';
 /** Status of the latest call: `'idle'` before the first call and after `reset()`. */
 export type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
 
+declare const mutationQueueBrand: unique symbol;
+
+/**
+ * A write queue for several mutations, created by `mutationQueue()`: pass it as their
+ * `concurrency`. Opaque: it has no members of its own.
+ */
+export interface MutationQueue {
+  readonly [mutationQueueBrand]: true;
+}
+
+/** `concurrency` option that queues the calls per key: calls with different keys run at once. */
+export interface KeyedMutationQueue<TInput> {
+  readonly queue: MutationQueue;
+  /** The key of a call, e.g. the id of the entity it writes. */
+  readonly key: (input: TInput) => string | number;
+}
+
 /** Last argument of `onSuccess`, `onError` and `onSettled`. */
 export interface MutationCallbackContext {
   /** False when a more recent `mutate()` superseded this call: its outcome never reached the signals. */
@@ -43,8 +60,14 @@ export interface MutationOptions<
     input: TInput,
     context: TContext,
   ) => void;
-  /** `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`: a call made while one is in flight rejects at once (`'Dropped'`). */
-  concurrency?: 'parallel' | 'queue' | 'drop';
+  /**
+   * `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`:
+   * a call made while one is in flight rejects at once (`'Dropped'`).
+   *
+   * A `mutationQueue()`: one at a time, in call order, with the calls of every mutation given the
+   * same queue. `{ queue, key }`: the same, per key, e.g. one queue per entity id.
+   */
+  concurrency?: 'parallel' | 'queue' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
   /** Names the state signals in Angular DevTools: `'save'` gives `save.status`, `save.value`, … */

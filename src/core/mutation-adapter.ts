@@ -8,7 +8,7 @@ export interface MutationAdapter<TInput, TOutput, TExtra extends object> {
   onReset?(): void;
 }
 
-export interface AdapterCall<TExtra> {
+interface AdapterCall<TExtra> {
   readonly abortSignal: AbortSignal;
   /** Added to the callbacks' context: fill it before the call settles. */
   readonly context: TExtra;

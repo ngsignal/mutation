@@ -12,30 +12,13 @@ import {
 import { abortError } from './abort-error.js';
 import { createCallTracker, type Call } from './call-tracker.js';
 import { createConcurrencyGate } from './concurrency.js';
+import type { MutationAdapter, MutationAdapterOptions } from './mutation-adapter.js';
 import { IDLE, failed, started, succeeded, type MutationState } from './mutation-state.js';
 import type {
   MutationCallbackContext,
   MutationOptions,
   MutationRef,
 } from './mutation.types.js';
-
-export interface AdapterCall<TExtra> {
-  readonly abortSignal: AbortSignal;
-  /** Added to the callbacks' context: fill it before the call settles. */
-  readonly context: TExtra;
-}
-
-export interface MutationAdapter<TInput, TOutput, TExtra extends object> {
-  createContext(): TExtra;
-  run(input: TInput, call: AdapterCall<TExtra>): Promise<TOutput>;
-  /** Runs after `reset()` has aborted the calls in flight. */
-  onReset?(): void;
-}
-
-export type MutationAdapterOptions<TInput, TOutput, TError, TExtra extends object> = Omit<
-  MutationOptions<TInput, TOutput, TError, MutationCallbackContext & TExtra>,
-  'mutationFn'
->;
 
 type NoExtra = Record<never, never>;
 

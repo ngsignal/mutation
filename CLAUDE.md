@@ -31,7 +31,8 @@ npm run test:rxjs6      # suite on RxJS 6 (CI job rxjs-compat), see agent_docs/t
 
 ```
 src/index.ts                     # main entry `@ngsignal/mutation`: mutation() and its types only
-src/core/mutation.ts             # the primitive
+src/core/mutation.ts             # mutation() and createMutation(), the machinery its adapters share
+src/core/mutation-adapter.ts     # createMutation()'s adapter contract, not exported
 src/core/mutation.types.ts       # public types, shipped as .d.ts: changing them is an API change
 src/core/concurrency.ts          # mutation()'s concurrency modes (ConcurrencyGate), not exported
 src/core/call-tracker.ts         # mutation()'s calls in flight and latest call, not exported
@@ -40,7 +41,11 @@ src/core/abort-error.ts          # abortError(): the AbortError reasons, not exp
 src/rxjs-interop/index.ts        # entry `@ngsignal/mutation/rxjs-interop`
 src/rxjs-interop/rx-mutation.ts  # rxMutation() and its public types
 src/http/index.ts                # entry `@ngsignal/mutation/http`
-src/http/http-mutation.ts        # httpMutation() and its public types
+src/http/http-mutation.ts        # httpMutation() and its variants
+src/http/http-mutation.types.ts  # public types, shipped as .d.ts
+src/http/http-mutation-parse-error.ts  # HttpMutationParseError, exported
+src/http/http-response-state.ts  # the HTTP signals and each call's response, not exported
+src/http/send-request.ts         # request description → HttpClient, not exported
 src/internal/                    # helpers shared by the adapters, never exported from an entry point
 src/testing/                     # spec helpers, excluded from the build
 src/**/*.spec.ts                 # one spec file per source file, next to it

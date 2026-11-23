@@ -13,13 +13,9 @@ import { TestBed } from '@angular/core/testing';
 import { EMPTY, of } from 'rxjs';
 import { expectTypeOf } from 'vitest';
 import { failWith } from '../testing/rxjs';
-import {
-  HttpMutationParseError,
-  httpMutation,
-  type HttpMutationCallbackContext,
-  type HttpMutationRef,
-  type HttpMutationRequest,
-} from './http-mutation';
+import { httpMutation } from './http-mutation';
+import { HttpMutationParseError } from './http-mutation-parse-error';
+import type { HttpMutationCallbackContext, HttpMutationRef, HttpMutationRequest } from './http-mutation.types';
 
 interface User {
   id: number;

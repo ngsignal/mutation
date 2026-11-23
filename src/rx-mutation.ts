@@ -4,16 +4,32 @@ import { toAbortablePromise } from './internal/to-abortable-promise.js';
 import { mutation } from './mutation.js';
 import type { MutationOptions, MutationRef } from './mutation.types.js';
 
+/** Options of `rxMutation()`: `mutation()`'s options, with a `mutationFn` that returns an Observable. */
 export interface RxMutationOptions<TInput, TOutput, TError = unknown>
   extends Omit<MutationOptions<TInput, TOutput, TError>, 'mutationFn'> {
+  /**
+   * Performs the write for one call, e.g. an existing service method. Only its first value counts.
+   * `reset()` and destroy unsubscribe, which cancels an `HttpClient` request.
+   */
   mutationFn: (input: TInput) => Observable<TOutput>;
 }
 
 /**
- * `mutation()` for Observable-returning calls, the mutation counterpart of `rxResource()`. Unlike
- * `rxResource()`, only the first emitted value is kept: it resolves the call, then the Observable
- * is unsubscribed. Completing without a value rejects with
- * `Error('Observable completed without emitting a value')`; `reset()` and destroy unsubscribe.
+ * Creates a mutation whose `mutationFn` returns an Observable, the mutation counterpart of
+ * `rxResource()`. Unlike `rxResource()`, only the first emitted value is kept: it resolves the
+ * call, then the Observable is unsubscribed. Completing without a value rejects with
+ * `Error('Observable completed without emitting a value')`.
+ *
+ * Must run in an injection context, or receive `options.injector`.
+ *
+ * @example
+ * ```ts
+ * readonly createUser = rxMutation<CreateUserDto, User>({
+ *   mutationFn: (dto) => this.userService.create(dto),
+ * });
+ * ```
+ *
+ * @see https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#reusing-an-observable-returning-service
  */
 export function rxMutation<TInput = void, TOutput = unknown, TError = unknown>(
   options: RxMutationOptions<TInput, TOutput, TError>,

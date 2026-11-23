@@ -20,8 +20,21 @@ import type {
 } from './mutation.types.js';
 
 /**
- * Low-level primitive for mutations (POST/PUT/PATCH/DELETE), the write-side counterpart of
- * `resource()`, which only covers reads.
+ * Creates a mutation: a write (POST, PUT, PATCH, DELETE) whose state is exposed as signals, the
+ * write-side counterpart of `resource()`, which only covers reads. Each `mutate(input)` runs
+ * `mutationFn`. Calls never abort each other: the signals follow the latest one.
+ *
+ * Must run in an injection context, or receive `options.injector`. Destroying it aborts the calls
+ * in flight, like `reset()`.
+ *
+ * @example
+ * ```ts
+ * readonly createTodo = mutation<string, Todo>({
+ *   mutationFn: (title, abortSignal) => this.api.createTodo(title, abortSignal),
+ * });
+ * ```
+ *
+ * @see https://github.com/ngsignal/mutation#readme
  */
 export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   options: MutationOptions<TInput, TOutput, TError>,

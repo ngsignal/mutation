@@ -24,21 +24,13 @@ export type HttpMutationRequest = Omit<HttpResourceRequest, 'method' | 'transfer
 
 /** Last argument of `httpMutation()`'s `onSuccess`, `onError` and `onSettled`. */
 export interface HttpMutationCallbackContext extends MutationCallbackContext {
-  /**
-   * This call's response, whether or not it is the latest call: the `HttpResponse` on success or
-   * when `parse` throws, the `HttpErrorResponse` when the request fails (status `0` for a network
-   * error), `undefined` when no response came back (`request` or an interceptor threw).
-   */
+  /** This call's response or error response, `undefined` if none came back. */
   readonly response: HttpResponseBase | undefined;
 }
 
-/**
- * Rejects a call whose `parse` threw. The server answered with a success and has applied the
- * write: retrying would write twice.
- */
+/** Rejects a call whose `parse` threw: the write was applied, don't retry it. */
 export class HttpMutationParseError extends Error {
   override readonly name = 'HttpMutationParseError';
-  /** The successful response whose body `parse` rejected. */
   readonly response: HttpResponse<unknown>;
 
   constructor(response: HttpResponse<unknown>, cause: unknown) {
@@ -62,7 +54,7 @@ export interface HttpMutationOptions<TInput, TOutput, TError = unknown, TRaw = u
   /**
    * Transforms or validates the response body before it resolves the call, e.g. a schema's `parse`.
    * Receives `null` for a body-less response (`204`). If it throws, the call fails with an
-   * `HttpMutationParseError` whose `cause` is the thrown error: the server has applied the write.
+   * `HttpMutationParseError`.
    */
   parse?: (raw: TRaw) => TOutput;
 }
@@ -72,11 +64,7 @@ type HttpMutationRawBodyOptions<TInput, TOutput, TError, TRaw> =
   HttpMutationOptions<TInput, TOutput, TError, TRaw> &
   ([TRaw] extends [TOutput] ? unknown : { parse: (raw: TRaw) => TOutput });
 
-/**
- * Returned by `httpMutation()`: a `MutationRef` plus the HTTP metadata of the latest request sent,
- * cleared when a request starts and on `reset()`. With `concurrency: 'queue'`, that is the request
- * in flight, whose input is `pendingInputs()[0]`, not `input()`.
- */
+/** Returned by `httpMutation()`: a `MutationRef` plus the HTTP metadata of the latest request sent, cleared when a request starts and on `reset()`. */
 export interface HttpMutationRef<TInput, TOutput, TError = unknown, TValue = TOutput | undefined>
   extends MutationRef<TInput, TOutput, TError, TValue> {
   /** Latest upload progress event. Needs `reportProgress: true`, and `withXhr()` on Angular 22+ (`fetch` ignores it silently). */
@@ -249,13 +237,11 @@ function makeHttpMutationFn(responseType: ResponseType) {
           );
           return toAbortablePromise(body$, abortSignal, 'Request completed without an HttpResponse event');
         },
-        // reset() aborts the calls in flight first, so no event can land after this clears.
         onReset: responseState.clear,
       },
     );
 
-    // hasValue() is a type guard hard-wired to MutationRef (TypeScript resolves `this` where the
-    // guard is declared): re-declared so it narrows to HttpMutationRef.
+    // Re-declared so the type guard narrows to HttpMutationRef, not MutationRef.
     return {
       ...mutationRef,
       ...responseState.signals,

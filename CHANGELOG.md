@@ -2,19 +2,13 @@
 
 ## Unreleased
 
-- **Breaking**: `rxMutation()` resolves with the Observable's last value once it completes, like
-  `lastValueFrom()`, instead of the first value followed by an unsubscribe. `concat(save$, reload$)`
-  or a polled job no longer get cut short; an Observable that never completes keeps the call
-  pending until `reset()` or destroy. Same for `httpMutation()`, where `HttpClient` emits one
-  response and completes, so nothing changes in practice.
-- **Breaking**: when `parse` throws, `httpMutation()` rejects with an `HttpMutationParseError`
-  (exported from `@ngsignal/mutation/http`) instead of the thrown error, which becomes its
-  `cause`. Its `response` is the successful response: the server applied the write.
-- Feature: `httpMutation()`'s callbacks receive each call's `response` in their context
-  (`HttpMutationCallbackContext`), a superseded call's included: the `HttpResponse`, the
-  `HttpErrorResponse`, or `undefined` when no response came back.
-- Feature (types only): `MutationOptions` takes a fourth type parameter, `TContext`, for the
-  callbacks' context. It defaults to `MutationCallbackContext`.
+- **Breaking**: `rxMutation()` resolves with the last value, once the Observable completes, not
+  with the first one. An Observable that never completes stays pending until a reset or destroy.
+- **Breaking**: when `parse` throws, `httpMutation()` rejects with an `HttpMutationParseError`.
+  The original error is its `cause`.
+- Feature: `httpMutation()`'s callbacks receive each call's `response`.
+- Feature (types only): `MutationOptions` takes a `TContext` type parameter for the callbacks'
+  context.
 - Feature (types only): `TInput` defaults to `void` in `mutation()`, `rxMutation()` and
   `httpMutation()`, so a `mutationFn` or `request` without parameters gives a `mutate()` that
   takes no argument. It used to infer `unknown`, and `mutate()` required one. `TOutput` now
@@ -25,8 +19,7 @@
   `rxMutation()` and `httpMutation()`.
 - Feature: `concurrency: 'parallel'` names the default mode, for code that wants to state it.
   Leaving `concurrency` unset still means `'parallel'`.
-- Docs: with `concurrency: 'queue'`, `httpMutation()`'s HTTP metadata follows the request in
-  flight, whose input is `pendingInputs()[0]`.
+- Docs: in queue mode, `pendingInputs()[0]` is the input of the request in flight.
 - Docs: a [testing recipe](./docs/RECIPES.md#testing-a-component): `fixture.whenStable()` waits
   for the calls in flight, and with `HttpTestingController` the request must be flushed first.
 - Docs: a [Signal Forms recipe](./docs/RECIPES.md#submitting-a-signal-form) calling a mutation

@@ -1,10 +1,8 @@
 import type { Observable, Subscription } from 'rxjs';
 
 /**
- * Resolves with the last value of `source` once it completes, rejects on its error or if it
- * completes empty, and unsubscribes (rejecting with `abortSignal.reason`, an AbortError by
- * default) as soon as `abortSignal` aborts. Subscribes by hand because `lastValueFrom` is RxJS 7+,
- * like `rxResource()` does.
+ * `lastValueFrom()` that unsubscribes when `abortSignal` aborts. Written by hand because
+ * `lastValueFrom()` is RxJS 7+.
  */
 export function toAbortablePromise<T>(source: Observable<T>, abortSignal: AbortSignal, emptyMessage: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {

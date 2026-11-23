@@ -19,8 +19,7 @@ export interface MutationCallbackContext {
  * `TError` is an assertion, not a check: `error()` and `onError` receive whatever `mutationFn`
  * rejects with, an `AbortError` included.
  *
- * `TContext` is the callbacks' last argument: adapters extend it with what they know about each
- * call, such as `httpMutation()`'s `response`.
+ * `TContext` is the callbacks' last argument, extended by adapters (`httpMutation()` adds `response`).
  */
 export interface MutationOptions<
   TInput,

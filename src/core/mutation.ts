@@ -19,24 +19,19 @@ import type {
   MutationRef,
 } from './mutation.types.js';
 
-/** What an adapter's `run()` receives for one call. */
 export interface AdapterCall<TExtra> {
   readonly abortSignal: AbortSignal;
-  /** This call's additions to the callbacks' context: fill them before the call settles. */
+  /** Added to the callbacks' context: fill it before the call settles. */
   readonly context: TExtra;
 }
 
-/** How `createMutation()` performs each call: `mutation()` and `httpMutation()` each provide one. */
 export interface MutationAdapter<TInput, TOutput, TExtra extends object> {
-  /** A fresh `TExtra` per call, spread into the callbacks' context next to `isLatest`. */
   createContext(): TExtra;
-  /** Performs the write for one call, like `mutationFn`. */
   run(input: TInput, call: AdapterCall<TExtra>): Promise<TOutput>;
-  /** Runs on `reset()`, once the calls in flight are aborted. */
+  /** Runs after `reset()` has aborted the calls in flight. */
   onReset?(): void;
 }
 
-/** `mutation()`'s options without `mutationFn`, with callbacks that also receive `TExtra`. */
 export type MutationAdapterOptions<TInput, TOutput, TError, TExtra extends object> = Omit<
   MutationOptions<TInput, TOutput, TError, MutationCallbackContext & TExtra>,
   'mutationFn'
@@ -72,10 +67,7 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   });
 }
 
-/**
- * The machinery behind `mutation()` and its adapters: state, concurrency, latest-call tracking,
- * callbacks and cleanup. Callers check the injection context first, under their own name.
- */
+/** Shared by `mutation()` and its adapters, which check the injection context first. */
 export function createMutation<TInput, TOutput, TError, TExtra extends object>(
   options: MutationAdapterOptions<TInput, TOutput, TError, TExtra>,
   adapter: MutationAdapter<TInput, TOutput, TExtra>,

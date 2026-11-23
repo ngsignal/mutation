@@ -9,13 +9,10 @@ re-check them against the code: it is the source of truth, this file only summar
 
 ## Adapters
 
-`mutation()` only checks the injection context, then calls `createMutation(options, adapter)`,
-which holds everything below. `httpMutation()` calls it too (`rxMutation()` goes through
-`mutation()`). A `MutationAdapter` provides `run(input, call)` in place of `mutationFn`,
-`createContext()` for a fresh per-call object that `run` fills before the call settles (spread
-next to `isLatest` into the callbacks' context), and an optional `onReset()` that runs after
-`reset()` has aborted the calls in flight. An adapter needing more from the core gets a hook
-here, rather than wrapping the returned `MutationRef`.
+`mutation()` and `httpMutation()` both call `createMutation(options, adapter)`, which holds
+everything below. The adapter provides `run` (in place of `mutationFn`), `createContext` (extra
+callback context, filled during the call) and an optional `onReset`. An adapter that needs more
+gets a new hook here, not a wrapper around the returned ref.
 
 ## Lifecycle mechanisms
 

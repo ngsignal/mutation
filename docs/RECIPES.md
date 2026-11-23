@@ -161,16 +161,8 @@ readonly createUser = rxMutation<CreateUserDto, User>({
 });
 ```
 
-The call resolves with the last value once the Observable completes, like `lastValueFrom()`:
-`concat(save$, reload$)` or a job polled until done resolve when all the work is over.
-Completing without a value rejects. An Observable that never completes (a store selector, a
-`Subject`) keeps the call pending until `reset()` or destroy: with `concurrency: 'queue'`, the
-calls behind it wait too. With `observe: 'events'`, the last value is the `HttpResponse` — use
-`httpMutation()` for progress.
-
-If the source might not complete, bound the wait inside `mutationFn` with RxJS's `timeout()`:
-the call rejects with a `TimeoutError` and unsubscribes. The write may still reach the server,
-so don't retry it blindly (see [Retrying writes](#retrying-writes)):
+The call resolves with the last value, once the Observable completes. One that never completes
+stays pending until a reset or destroy. If that can happen, add a `timeout()`:
 
 ```ts
 import { timeout } from 'rxjs/operators';
@@ -227,20 +219,9 @@ readonly createUser = httpMutation({
 });
 ```
 
-If `parse` throws, the call fails with an `HttpMutationParseError`, because **the server has
-already applied the write**. Its `cause` is the error `parse` threw and its `response` the
-successful `HttpResponse`. Handle it as a contract mismatch, not as a failed write — retrying
-would write twice (see [Retrying writes](#retrying-writes)):
-
-```ts
-import { HttpMutationParseError } from '@ngsignal/mutation/http';
-
-onError: (error) => {
-  if (error instanceof HttpMutationParseError) {
-    this.reportContractMismatch(error.cause); // the user was created anyway
-  }
-},
-```
+If `parse` throws, the call fails with an `HttpMutationParseError`. **The server has already
+applied the write**: don't retry it (see [Retrying writes](#retrying-writes)). The original error
+is its `cause`.
 
 For a body-less response (`204`), `parse` receives `null`.
 
@@ -321,18 +302,13 @@ call: a superseded call's events are ignored (see [stale-response guarding](../R
 With `concurrency: 'queue'`, a request only starts once the previous one settles, and these
 signals follow the request actually in flight: while an older upload is still running with a
 newer call queued behind it, `uploadProgress` shows the older upload's progress (its outcome will
-still be ignored). They reset as soon as the queued request starts. `input()` follows the latest
-call, not the request in flight: read `pendingInputs()[0]` to label the progress bar.
+still be ignored). They reset as soon as the queued request starts. The input of the request in
+flight is `pendingInputs()[0]`.
 
-The signals only keep one call. For every call's response, a superseded one included, read
-`response` in the callbacks' context: the `HttpResponse` on success, the `HttpErrorResponse` when
-the request fails, `undefined` when no response came back.
+The signals keep only the latest call. Callbacks get each call's `response`:
 
 ```ts
-readonly createUser = httpMutation({
-  request: (dto: CreateUserDto) => ({ method: 'POST', url: '/api/users', body: dto }),
-  onSuccess: (user, dto, { response }) => this.created.push(response?.headers.get('Location')),
-});
+onSuccess: (user, dto, { response }) => this.created.push(response?.headers.get('Location')),
 ```
 
 `error()` is typed `unknown` by default. It is an `HttpErrorResponse` for HTTP failures, but an

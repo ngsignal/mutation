@@ -305,13 +305,11 @@ Like Angular's own RxJS interop, they live in secondary entry points, so the mai
 loads RxJS or Angular's HTTP client. They need RxJS (6.5+ or 7, like Angular 21) and, for the
 HTTP variant, `@angular/common`: both are optional peer dependencies.
  
-A call resolves with the Observable's last value once it completes, like `lastValueFrom()`. A
-reset or destroying the injection context unsubscribes, which aborts an `HttpClient` request.
+A call resolves with the last value, once the Observable completes. A reset or destroying the
+injection context unsubscribes, which aborts an `HttpClient` request.
 `httpMutation()` sends the request itself, so it also exposes the status code and headers as
 signals, plus upload and download progress when the request sets `reportProgress: true`. Upload
-progress needs the XHR backend: see [Upload progress](./docs/RECIPES.md#upload-progress). Its
-callbacks also receive each call's `response` in their context, and a `parse` that throws rejects
-with an `HttpMutationParseError`: the write was applied.
+progress needs the XHR backend: see [Upload progress](./docs/RECIPES.md#upload-progress).
  
 - [Reusing an Observable-returning service](./docs/RECIPES.md#reusing-an-observable-returning-service)
 - [Describing an HTTP request](./docs/RECIPES.md#describing-an-http-request)

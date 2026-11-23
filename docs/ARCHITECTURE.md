@@ -28,13 +28,9 @@ aborted by `reset()` or destroy run no callback: the caller asked to forget them
   has `reportProgress`, so both signals are fed by that one flag.
 - **A failed `parse` does not mean a failed write.** For a read, a `parse` error just means no
   value; for a write, the server has already applied it (see
-  [Validating the response](./RECIPES.md#validating-the-response)). So the call rejects with an
-  `HttpMutationParseError` carrying the successful response, not with the bare schema error. A
-  mutation primitive in Angular will have to surface that distinction too.
-- **Each call's response reaches the callbacks.** The `statusCode` and `headers` signals follow
-  one call; the callbacks' context carries every call's `response`, a superseded one included.
-  Adapters extend the context through `createMutation()`, the internal factory behind
-  `mutation()`: the core spreads what the adapter filled next to `isLatest`.
+  [Validating the response](./RECIPES.md#validating-the-response)), hence a dedicated
+  `HttpMutationParseError`. A mutation primitive in Angular will have to surface that
+  distinction too.
 
 ## Why not TanStack Query?
 

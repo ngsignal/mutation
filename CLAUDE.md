@@ -30,21 +30,21 @@ npm run test:rxjs6      # suite on RxJS 6 (CI job rxjs-compat), see agent_docs/t
 ## Layout
 
 ```
-src/index.ts            # main entry `@ngsignal/mutation`: mutation() and its types only
-src/rxjs-interop.ts     # entry `@ngsignal/mutation/rxjs-interop`: rxMutation()
-src/http.ts             # entry `@ngsignal/mutation/http`: httpMutation()
-src/mutation.ts         # the primitive
-src/concurrency.ts      # mutation()'s concurrency modes (ConcurrencyGate), not exported
-src/call-tracker.ts     # mutation()'s calls in flight and latest call, not exported
-src/mutation-state.ts   # mutation()'s state and its pure transitions, not exported
-src/abort-error.ts      # abortError(): the AbortError reasons, not exported
-src/mutation.types.ts   # public types, shipped as .d.ts: changing them is an API change
-src/rx-mutation.ts      # rxMutation() and its public types
-src/http-mutation.ts    # httpMutation() and its public types
-src/internal/           # helpers shared by the adapters, never exported from an entry point
-src/testing/            # spec helpers, excluded from the build
-src/*.spec.ts           # one spec file per source file
-src/*.integration.spec.ts  # real requests to src/testing/http-test-server.ts (see agent_docs/testing.md)
+src/index.ts                     # main entry `@ngsignal/mutation`: mutation() and its types only
+src/core/mutation.ts             # the primitive
+src/core/mutation.types.ts       # public types, shipped as .d.ts: changing them is an API change
+src/core/concurrency.ts          # mutation()'s concurrency modes (ConcurrencyGate), not exported
+src/core/call-tracker.ts         # mutation()'s calls in flight and latest call, not exported
+src/core/mutation-state.ts       # mutation()'s state and its pure transitions, not exported
+src/core/abort-error.ts          # abortError(): the AbortError reasons, not exported
+src/rxjs-interop/index.ts        # entry `@ngsignal/mutation/rxjs-interop`
+src/rxjs-interop/rx-mutation.ts  # rxMutation() and its public types
+src/http/index.ts                # entry `@ngsignal/mutation/http`
+src/http/http-mutation.ts        # httpMutation() and its public types
+src/internal/                    # helpers shared by the adapters, never exported from an entry point
+src/testing/                     # spec helpers, excluded from the build
+src/**/*.spec.ts                 # one spec file per source file, next to it
+src/http/*.integration.spec.ts   # real requests to src/testing/http-test-server.ts (see agent_docs/testing.md)
 docs/ARCHITECTURE.md    # design rationale, comparison with TanStack Query and NgRx Toolkit
 docs/RECIPES.md         # userland patterns (resource refresh, optimistic updates, …)
 docs/ROADMAP.md         # what is planned before 1.0, and what is out of scope
@@ -70,7 +70,7 @@ instead of copying the README.
 6. **Never log or attach `input` payloads** (they carry credentials/PII), and surface
    `error` to the caller as-is.
 7. Workflows, `.npmrc` and publish config are trust-sensitive: no drive-by changes.
-8. **One subpath per optional peer.** A new entry point needs its `src/<name>.ts` barrel and
+8. **One subpath per optional peer.** A new entry point needs its `src/<name>/index.ts` barrel and
    an `exports` entry in `package.json`; never re-export it from `src/index.ts`
    (`src/index.spec.ts` guards the main entry). Don't rely
    on `sideEffects` to keep optional peers out: unbundled consumers (Vitest, Jest, Node,
@@ -87,7 +87,7 @@ instead of copying the README.
 
 Any change to options, returned signals, exported types or semantics:
 
-- add a test in the matching `src/*.spec.ts`: new behavior without a test is not done;
+- add a test in the matching `*.spec.ts`: new behavior without a test is not done;
 - update `README.md` and, if affected, `docs/`;
 - add a `CHANGELOG.md` entry (`0.x`: patch = fixes only, minor may break; breaking first);
 - never bump the version or publish (`.github/workflows/publish.yml` does that).
@@ -101,6 +101,6 @@ Any change to options, returned signals, exported types or semantics:
 
 ## Read when relevant
 
-- `agent_docs/editing-mutation.md` before touching `src/mutation.ts`, `src/concurrency.ts` or `src/call-tracker.ts`: lifecycle
+- `agent_docs/editing-mutation.md` before touching `src/core/mutation.ts`, `concurrency.ts` or `call-tracker.ts`: lifecycle
   invariants and what to argue in a review
 - `agent_docs/testing.md` before writing or changing tests

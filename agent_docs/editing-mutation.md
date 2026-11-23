@@ -1,6 +1,6 @@
-# Editing `src/mutation.ts`
+# Editing `src/core/mutation.ts`
 
-Also covers `src/concurrency.ts` (the concurrency modes) and `src/call-tracker.ts` (the calls
+Also covers `src/core/concurrency.ts` (the concurrency modes) and `src/core/call-tracker.ts` (the calls
 in flight), split out of it.
 
 `mutation()` is modelled on Angular core's `resource.ts`. The bugs that matter here are

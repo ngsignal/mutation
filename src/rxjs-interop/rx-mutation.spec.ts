@@ -2,9 +2,9 @@ import { EnvironmentInjector, createEnvironmentInjector, provideZonelessChangeDe
 import { TestBed } from '@angular/core/testing';
 import { Subject, of } from 'rxjs';
 import { expectTypeOf } from 'vitest';
-import type { MutationRef } from './mutation.types';
+import type { MutationRef } from '../core/mutation.types';
+import { failWith, isObserved } from '../testing/rxjs';
 import { rxMutation } from './rx-mutation';
-import { failWith, isObserved } from './testing/rxjs';
 
 beforeEach(() => {
   TestBed.configureTestingModule({

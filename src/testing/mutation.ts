@@ -1,7 +1,7 @@
 import { PendingTasks } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Mock } from 'vitest';
-import { mutation } from '../mutation';
+import { mutation } from '../core/mutation';
 
 /** Spies on PendingTasks.add() so each returned cleanup fn can be asserted on individually. */
 export function spyOnPendingTasks(): Mock<() => void>[] {

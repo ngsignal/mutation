@@ -2,10 +2,10 @@ import * as mainEntry from './index';
 
 // The main entry must not load the Observable/HttpClient variants: they import `rxjs` and
 // `@angular/common/http`, both optional peers.
-vi.mock('./rx-mutation.js', () => {
+vi.mock('./rxjs-interop/rx-mutation.js', () => {
   throw new Error('the main entry must not import rx-mutation');
 });
-vi.mock('./http-mutation.js', () => {
+vi.mock('./http/http-mutation.js', () => {
   throw new Error('the main entry must not import http-mutation');
 });
 

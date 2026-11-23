@@ -23,7 +23,7 @@ Coverage must stay at 100%: CI fails on any uncovered line or branch.
 
 - Keep `mutation()` low-level and dependency-free. RxJS and `HttpClient` belong only in the
   secondary entry points (`@ngsignal/mutation/rxjs-interop`, `@ngsignal/mutation/http`).
-- New behavior and bug fixes must come with a test in the matching `src/*.spec.ts`.
+- New behavior and bug fixes must come with a test in the matching `*.spec.ts`.
 - Match the existing code style.
 - **No Angular decorators** (`@Injectable`, `@Directive`, `@Component`, `@Pipe`, `@NgModule`,
   parameter decorators, etc.) anywhere in `src/`. This package is built with plain `tsc`

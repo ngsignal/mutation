@@ -32,12 +32,12 @@
       "default": "./dist/index.js"
     },
     "./rxjs-interop": {
-      "types": "./dist/rxjs-interop.d.ts",
-      "default": "./dist/rxjs-interop.js"
+      "types": "./dist/rxjs-interop/index.d.ts",
+      "default": "./dist/rxjs-interop/index.js"
     },
     "./http": {
-      "types": "./dist/http.d.ts",
-      "default": "./dist/http.js"
+      "types": "./dist/http/index.d.ts",
+      "default": "./dist/http/index.js"
     },
     "./package.json": "./package.json"
   },

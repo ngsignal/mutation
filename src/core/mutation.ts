@@ -19,6 +19,31 @@ import type {
   MutationRef,
 } from './mutation.types.js';
 
+/** What an adapter's `run()` receives for one call. */
+export interface AdapterCall<TExtra> {
+  readonly abortSignal: AbortSignal;
+  /** This call's additions to the callbacks' context: fill them before the call settles. */
+  readonly context: TExtra;
+}
+
+/** How `createMutation()` performs each call: `mutation()` and `httpMutation()` each provide one. */
+export interface MutationAdapter<TInput, TOutput, TExtra extends object> {
+  /** A fresh `TExtra` per call, spread into the callbacks' context next to `isLatest`. */
+  createContext(): TExtra;
+  /** Performs the write for one call, like `mutationFn`. */
+  run(input: TInput, call: AdapterCall<TExtra>): Promise<TOutput>;
+  /** Runs on `reset()`, once the calls in flight are aborted. */
+  onReset?(): void;
+}
+
+/** `mutation()`'s options without `mutationFn`, with callbacks that also receive `TExtra`. */
+export type MutationAdapterOptions<TInput, TOutput, TError, TExtra extends object> = Omit<
+  MutationOptions<TInput, TOutput, TError, MutationCallbackContext & TExtra>,
+  'mutationFn'
+>;
+
+type NoExtra = Record<never, never>;
+
 /**
  * Creates a mutation: a write (POST, PUT, PATCH, DELETE) whose state is exposed as signals, the
  * write-side counterpart of `resource()`, which only covers reads. Calls never abort each other:
@@ -41,6 +66,20 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   if (!options.injector) {
     assertInInjectionContext(mutation);
   }
+  return createMutation<TInput, TOutput, TError, NoExtra>(options, {
+    createContext: () => ({}),
+    run: (input, call) => options.mutationFn(input, call.abortSignal),
+  });
+}
+
+/**
+ * The machinery behind `mutation()` and its adapters: state, concurrency, latest-call tracking,
+ * callbacks and cleanup. Callers check the injection context first, under their own name.
+ */
+export function createMutation<TInput, TOutput, TError, TExtra extends object>(
+  options: MutationAdapterOptions<TInput, TOutput, TError, TExtra>,
+  adapter: MutationAdapter<TInput, TOutput, TExtra>,
+): MutationRef<TInput, TOutput, TError> {
   const injector = options.injector ?? inject(Injector);
   const destroyRef = injector.get(DestroyRef);
   const pendingTasks = injector.get(PendingTasks);
@@ -67,14 +106,15 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
   function reset(): void {
     calls.abortAll();
     state.set(IDLE);
+    adapter.onReset?.();
   }
 
-  function settledCallContext(call: Call<TInput>): MutationCallbackContext | undefined {
-    return call.abortSignal.aborted ? undefined : { isLatest: calls.isLatest(call) };
+  function settledCallContext(call: Call<TInput>, extra: TExtra): (MutationCallbackContext & TExtra) | undefined {
+    return call.abortSignal.aborted ? undefined : { ...extra, isLatest: calls.isLatest(call) };
   }
 
-  function commitSuccess(call: Call<TInput>, result: TOutput): void {
-    const context = settledCallContext(call);
+  function commitSuccess(call: Call<TInput>, extra: TExtra, result: TOutput): void {
+    const context = settledCallContext(call, extra);
     if (!context) {
       return;
     }
@@ -85,8 +125,8 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
     runCallback(() => options.onSettled?.(result, undefined, call.input, context));
   }
 
-  function commitError(call: Call<TInput>, err: TError): void {
-    const context = settledCallContext(call);
+  function commitError(call: Call<TInput>, extra: TExtra, err: TError): void {
+    const context = settledCallContext(call, extra);
     if (!context) {
       return;
     }
@@ -129,16 +169,17 @@ export function mutation<TInput = void, TOutput = unknown, TError = unknown>(
       return calls.start(input);
     });
 
+    const extra = adapter.createContext();
     try {
       const result = await gate.run(
-        () => untracked(() => options.mutationFn(input, call.abortSignal)),
+        () => untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra })),
         call.abortSignal,
       );
-      commitSuccess(call, result);
+      commitSuccess(call, extra, result);
       return result;
 
     } catch (err) {
-      commitError(call, err as TError);
+      commitError(call, extra, err as TError);
       throw err;
 
     } finally {

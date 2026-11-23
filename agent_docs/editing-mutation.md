@@ -7,6 +7,16 @@ in flight), split out of it.
 ordering bugs, not logic bugs. Argue every edit in terms of the mechanisms below, and
 re-check them against the code: it is the source of truth, this file only summarizes it.
 
+## Adapters
+
+`mutation()` only checks the injection context, then calls `createMutation(options, adapter)`,
+which holds everything below. `httpMutation()` calls it too (`rxMutation()` goes through
+`mutation()`). A `MutationAdapter` provides `run(input, call)` in place of `mutationFn`,
+`createContext()` for a fresh per-call object that `run` fills before the call settles (spread
+next to `isLatest` into the callbacks' context), and an optional `onReset()` that runs after
+`reset()` has aborted the calls in flight. An adapter needing more from the core gets a hook
+here, rather than wrapping the returned `MutationRef`.
+
 ## Lifecycle mechanisms
 
 - **Latest call** (`Call`, `createCallTracker` in `call-tracker.ts`). Each admitted `mutate()` is a `Call` object

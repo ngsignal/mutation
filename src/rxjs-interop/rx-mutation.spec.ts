@@ -25,10 +25,41 @@ describe('lifecycle', () => {
     expect(m.status()).toBe('pending');
 
     subject.next('ok');
+    subject.complete();
     await call;
 
     expect(m.status()).toBe('success');
     expect(m.value()).toBe('ok');
+  });
+  it('resolves with the last value once the Observable completes, staying subscribed until then', async () => {
+    const subject = new Subject<string>();
+    const m = TestBed.runInInjectionContext(() => rxMutation<void, string>({ mutationFn: () => subject }));
+
+    const call = m.mutate();
+    subject.next('job queued');
+    await Promise.resolve();
+    expect(m.status()).toBe('pending');
+    expect(isObserved(subject)).toBe(true);
+
+    subject.next('job done');
+    subject.complete();
+
+    await expect(call).resolves.toBe('job done');
+    expect(m.value()).toBe('job done');
+  });
+  it('stays pending while the Observable does not complete, until reset() unsubscribes', async () => {
+    const subject = new Subject<string>();
+    const m = TestBed.runInInjectionContext(() => rxMutation<void, string>({ mutationFn: () => subject }));
+
+    const call = m.mutate();
+    subject.next('value');
+    await Promise.resolve();
+    expect(m.isPending()).toBe(true);
+
+    m.reset();
+
+    await expect(call).rejects.toMatchObject({ name: 'AbortError' });
+    expect(isObserved(subject)).toBe(false);
   });
   it('goes into error state when the Observable errors', async () => {
     const failure = new Error('boom');
@@ -82,6 +113,7 @@ describe('cleanup', () => {
     expect(isObserved(subject)).toBe(true);
 
     subject.next('ok');
+    subject.complete();
     await call;
 
     expect(isObserved(subject)).toBe(false);
@@ -164,10 +196,12 @@ describe('options forwarded to mutation()', () => {
     expect(started).toEqual([0]);
 
     subjects[0].next('first');
+    subjects[0].complete();
     await first;
     expect(started).toEqual([0, 1]);
 
     subjects[1].next('second');
+    subjects[1].complete();
     await second;
     expect(m.value()).toBe('second');
   });

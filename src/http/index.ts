@@ -1,5 +1,6 @@
-export { httpMutation } from './http-mutation.js';
+export { httpMutation, HttpMutationParseError } from './http-mutation.js';
 export type {
+  HttpMutationCallbackContext,
   HttpMutationFn,
   HttpMutationOptions,
   HttpMutationRef,

@@ -2,8 +2,8 @@
   <code>rxMutation()</code>, from <code>&#64;ngsignal/mutation/rxjs-interop</code>, is the
   counterpart of <code>rxResource()</code>: <code>mutationFn</code> returns an
   <code>Observable</code>, typically an existing service method such as
-  <code>http.post()</code>. The first emitted value resolves the call; <code>reset()</code> or
-  destroying the component unsubscribes.
+  <code>http.post()</code>. The last emitted value resolves the call once the Observable
+  completes; <code>reset()</code> or destroying the component unsubscribes.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/rx-mutation-page/rx-mutation-page.ts">Source</a>
 </p>
 

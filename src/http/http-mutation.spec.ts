@@ -13,7 +13,13 @@ import { TestBed } from '@angular/core/testing';
 import { EMPTY, of } from 'rxjs';
 import { expectTypeOf } from 'vitest';
 import { failWith } from '../testing/rxjs';
-import { httpMutation, type HttpMutationRef, type HttpMutationRequest } from './http-mutation';
+import {
+  HttpMutationParseError,
+  httpMutation,
+  type HttpMutationCallbackContext,
+  type HttpMutationRef,
+  type HttpMutationRequest,
+} from './http-mutation';
 
 interface User {
   id: number;
@@ -94,7 +100,10 @@ describe('request', () => {
     httpTesting.expectOne('/api/users').flush({ id: 1, name: 'Ada' });
     await call;
 
-    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada' }, 'Ada', { isLatest: true });
+    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada' }, 'Ada', {
+      isLatest: true,
+      response: expect.any(HttpResponse),
+    });
   });
 
   it('goes into error state with the HttpErrorResponse', async () => {
@@ -165,10 +174,13 @@ describe('parse', () => {
 
     await expect(call).resolves.toEqual({ id: 1, name: 'Ada', createdAt: new Date(0) });
     expect(m.value()).toEqual({ id: 1, name: 'Ada', createdAt: new Date(0) });
-    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada', createdAt: new Date(0) }, 'Ada', { isLatest: true });
+    expect(onSuccess).toHaveBeenCalledWith({ id: 1, name: 'Ada', createdAt: new Date(0) }, 'Ada', {
+      isLatest: true,
+      response: expect.any(HttpResponse),
+    });
   });
 
-  it('fails the call with the parse error, keeping the status code of the applied write', async () => {
+  it('fails the call with an HttpMutationParseError carrying the thrown error and the applied response', async () => {
     const invalid = new Error('invalid body');
     const m = TestBed.runInInjectionContext(() =>
       httpMutation<string, User>({
@@ -182,10 +194,97 @@ describe('parse', () => {
     const call = m.mutate('Ada');
     httpTesting.expectOne('/api/users').flush({ unexpected: true }, { status: 201, statusText: 'Created' });
 
-    await expect(call).rejects.toBe(invalid);
+    const error: unknown = await call.catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(HttpMutationParseError);
+    expect(error).toMatchObject({
+      name: 'HttpMutationParseError',
+      cause: invalid,
+      response: { status: 201, ok: true, body: { unexpected: true } },
+    });
     expect(m.status()).toBe('error');
-    expect(m.error()).toBe(invalid);
+    expect(m.error()).toBe(error);
     expect(m.statusCode()).toBe(201);
+  });
+
+  it('passes the applied response to onError when parse throws', async () => {
+    const onError = vi.fn();
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation<string, User>({
+        request: (name) => ({ method: 'POST', url: '/api/users', body: { name } }),
+        parse: () => {
+          throw new Error('invalid body');
+        },
+        onError,
+      }),
+    );
+
+    const call = m.mutate('Ada').catch(() => undefined);
+    httpTesting.expectOne('/api/users').flush({}, { status: 201, statusText: 'Created' });
+    await call;
+
+    const [error, , context] = onError.mock.calls[0] as [HttpMutationParseError, string, HttpMutationCallbackContext];
+    expect(context.response).toBe(error.response);
+    expect(context.response?.ok).toBe(true);
+  });
+});
+
+describe('callback context', () => {
+  it("gives every call its own response, a superseded call's included", async () => {
+    const locations: [string, string | null | undefined, boolean][] = [];
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation<string, User>({
+        request: (name) => ({ method: 'POST', url: '/api/users', body: { name } }),
+        onSuccess: (_user, name, { isLatest, response }) =>
+          locations.push([name, response?.headers.get('Location'), isLatest]),
+      }),
+    );
+
+    const first = m.mutate('Ada');
+    const second = m.mutate('Grace');
+    const [firstReq, secondReq] = httpTesting.match('/api/users');
+    secondReq.flush({ id: 2, name: 'Grace' }, { status: 201, statusText: 'Created', headers: { Location: '/api/users/2' } });
+    firstReq.flush({ id: 1, name: 'Ada' }, { status: 201, statusText: 'Created', headers: { Location: '/api/users/1' } });
+    await Promise.all([first, second]);
+
+    expect(locations).toEqual([
+      ['Grace', '/api/users/2', true],
+      ['Ada', '/api/users/1', false],
+    ]);
+    expect(m.headers()?.get('Location')).toBe('/api/users/2');
+  });
+
+  it('passes the HttpErrorResponse as the response when the request fails', async () => {
+    const onError = vi.fn();
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation<string, User>({
+        request: (name) => ({ method: 'POST', url: '/api/users', body: { name } }),
+        onError,
+      }),
+    );
+
+    const call = m.mutate('Ada').catch(() => undefined);
+    httpTesting.expectOne('/api/users').flush(null, { status: 409, statusText: 'Conflict' });
+    await call;
+
+    const [error, , context] = onError.mock.calls[0] as [HttpErrorResponse, string, HttpMutationCallbackContext];
+    expect(context.response).toBe(error);
+    expect(context.response?.ok).toBe(false);
+  });
+
+  it('passes no response when none came back', async () => {
+    const onSettled = vi.fn();
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation<string, User>({
+        request: () => {
+          throw new Error('invalid input');
+        },
+        onSettled,
+      }),
+    );
+
+    await m.mutate('Ada').catch(() => undefined);
+
+    expect(onSettled).toHaveBeenCalledWith(undefined, expect.any(Error), 'Ada', { isLatest: true, response: undefined });
   });
 });
 

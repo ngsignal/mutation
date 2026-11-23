@@ -161,14 +161,12 @@ readonly createUser = rxMutation<CreateUserDto, User>({
 });
 ```
 
-Unlike `rxResource()`, only the first value counts: it resolves the call, then `rxMutation()`
-unsubscribes. Completing without a value rejects. With `observe: 'events'`, that first value is
-`Sent`, not the body — use `httpMutation()` for progress.
-
-That unsubscribe cancels whatever the Observable would have done next. A value emitted before
-the request (`startWith(placeholder)`, `concat(of(placeholder), request$)`) resolves the call and
-cancels the request, which may already have been sent. For an optimistic value, see
-[Optimistic updates](#optimistic-updates) instead.
+The call resolves with the last value once the Observable completes, like `lastValueFrom()`:
+`concat(save$, reload$)` or a job polled until done resolve when all the work is over.
+Completing without a value rejects. An Observable that never completes (a store selector, a
+`Subject`) keeps the call pending until `reset()` or destroy: with `concurrency: 'queue'`, the
+calls behind it wait too. With `observe: 'events'`, the last value is the `HttpResponse` — use
+`httpMutation()` for progress.
 
 ### Describing an HTTP request
 
@@ -217,11 +215,22 @@ readonly createUser = httpMutation({
 });
 ```
 
-If `parse` throws, the call fails with that error: `status()` is `'error'` while `statusCode()`
-still holds the success code (e.g. `201`), because **the server has already applied the write**.
-Handle it as a contract mismatch, not as a failed write — retrying would write twice (see
-[Retrying writes](#retrying-writes)). For a
-body-less response (`204`), `parse` receives `null`.
+If `parse` throws, the call fails with an `HttpMutationParseError`, because **the server has
+already applied the write**. Its `cause` is the error `parse` threw and its `response` the
+successful `HttpResponse`. Handle it as a contract mismatch, not as a failed write — retrying
+would write twice (see [Retrying writes](#retrying-writes)):
+
+```ts
+import { HttpMutationParseError } from '@ngsignal/mutation/http';
+
+onError: (error) => {
+  if (error instanceof HttpMutationParseError) {
+    this.reportContractMismatch(error.cause); // the user was created anyway
+  }
+},
+```
+
+For a body-less response (`204`), `parse` receives `null`.
 
 ### Non-JSON responses
 
@@ -302,6 +311,17 @@ signals follow the request actually in flight: while an older upload is still ru
 newer call queued behind it, `uploadProgress` shows the older upload's progress (its outcome will
 still be ignored). They reset as soon as the queued request starts. `input()` follows the latest
 call, not the request in flight: read `pendingInputs()[0]` to label the progress bar.
+
+The signals only keep one call. For every call's response, a superseded one included, read
+`response` in the callbacks' context: the `HttpResponse` on success, the `HttpErrorResponse` when
+the request fails, `undefined` when no response came back.
+
+```ts
+readonly createUser = httpMutation({
+  request: (dto: CreateUserDto) => ({ method: 'POST', url: '/api/users', body: dto }),
+  onSuccess: (user, dto, { response }) => this.created.push(response?.headers.get('Location')),
+});
+```
 
 `error()` is typed `unknown` by default. It is an `HttpErrorResponse` for HTTP failures, but an
 interceptor may throw anything else — pass `TError` explicitly if you rely on it:

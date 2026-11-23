@@ -38,7 +38,7 @@ src/core/concurrency.ts          # mutation()'s concurrency modes (ConcurrencyGa
 src/core/mutation-queue.ts       # mutationQueue(), exported, and the write queue behind 'queue' and shared queues
 src/core/call-tracker.ts         # mutation()'s calls in flight and latest call, not exported
 src/core/mutation-state.ts       # mutation()'s state and its pure transitions, not exported
-src/core/abort-error.ts          # abortError(), the AbortError reasons, not exported; wasNeverSent(), exported
+src/core/abort-error.ts          # neverSentError(), abortedError(), not exported; wasNeverSent(), exported
 src/rxjs-interop/index.ts        # entry `@ngsignal/mutation/rxjs-interop`
 src/rxjs-interop/rx-mutation.ts  # rxMutation() and its public types
 src/http/index.ts                # entry `@ngsignal/mutation/http`

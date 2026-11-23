@@ -1,4 +1,3 @@
-import { abortError } from './abort-error.js';
 import type { MutationQueue } from './mutation.types.js';
 
 /** What a `MutationQueue` is at runtime. Not exported from any entry point. */
@@ -8,7 +7,7 @@ export interface WriteQueue {
   /**
    * Runs `task` once every call queued before it under `key` has settled. A call without a key
    * (`undefined`) is a barrier: it waits for the calls of every key, and every call queued after
-   * it waits for it.
+   * it waits for it. Aborting a waiting call rejects only at its turn: `mutate()` rejects at once.
    */
   run<T>(key: unknown, task: () => Promise<T>, abortSignal: AbortSignal): Promise<T>;
 }
@@ -55,26 +54,17 @@ export function createWriteQueue(): WriteQueue {
   return {
     tails,
     run<T>(key: unknown, task: () => Promise<T>, abortSignal: AbortSignal): Promise<T> {
-      return new Promise<T>((resolve, reject) => {
-        // Aborted while waiting: reject now rather than when its turn comes.
-        const leaveQueue = () => reject(abortError('NotStarted'));
-        abortSignal.addEventListener('abort', leaveQueue, { once: true });
-
-        const ahead = key === undefined ? Array.from(tails.values()) : [tails.get(undefined), tails.get(key)];
-        const call = allSettled(ahead).then(() => {
-          abortSignal.removeEventListener('abort', leaveQueue);
-          return abortSignal.aborted ? Promise.reject(abortError('NotStarted')) : task();
-        });
-        // The next call waits for this one even if it left the queue: writes stay in order.
-        const tail = call.catch(() => undefined);
-        tails.set(key, tail);
-        void tail.then(() => {
-          if (tails.get(key) === tail) {
-            tails.delete(key);
-          }
-        });
-        call.then(resolve, reject);
+      const ahead = key === undefined ? Array.from(tails.values()) : [tails.get(undefined), tails.get(key)];
+      // A call aborted while waiting never runs, but keeps its turn: writes stay in order.
+      const call = allSettled(ahead).then(() => (abortSignal.aborted ? Promise.reject(abortSignal.reason) : task()));
+      const tail = call.catch(() => undefined);
+      tails.set(key, tail);
+      void tail.then(() => {
+        if (tails.get(key) === tail) {
+          tails.delete(key);
+        }
       });
+      return call;
     },
   };
 }

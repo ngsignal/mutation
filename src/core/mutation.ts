@@ -9,7 +9,7 @@ import {
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
-import { abortError, markMaybeSent } from './abort-error.js';
+import { markMaybeSent, neverSentError } from './abort-error.js';
 import { createCallTracker, type Call } from './call-tracker.js';
 import { createConcurrencyGate } from './concurrency.js';
 import {
@@ -20,7 +20,6 @@ import {
 } from './mutation-adapter.js';
 import { IDLE, failed, started, succeeded, type MutationState } from './mutation-state.js';
 import type {
-  MutationCallbackContext,
   MutationOptions,
   MutationRef,
 } from './mutation.types.js';
@@ -65,7 +64,8 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
 
   const named = (member: string) =>
     options.debugName === undefined ? undefined : { debugName: `${options.debugName}.${member}` };
-  const state = signal<MutationState<TInput, TOutput, TError>>(IDLE, named('state'));
+  type State = MutationState<TInput, TOutput, TError>;
+  const state = signal<State>(IDLE, named('state'));
   const snapshot = computed(() => state().snapshot, named('snapshot'));
   const status = computed(() => snapshot().status, named('status'));
   const value = computed(() => snapshot().value, named('value'));
@@ -76,10 +76,8 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
   const isError = computed(() => status() === 'error');
 
   const gate = createConcurrencyGate(options.concurrency);
-  const calls = createCallTracker<TInput>(pendingTasks, named('pendingInputs'));
+  const calls = createCallTracker<TInput>(pendingTasks, destroyRef, named('pendingInputs'));
   const isPending = computed(() => calls.pendingInputs().length > 0);
-
-  destroyRef.onDestroy(() => calls.abortAll());
 
   // Back to idle before aborting, so a call that an abort listener starts keeps its state.
   function reset(): void {
@@ -88,32 +86,21 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
     calls.abortAll();
   }
 
-  function settledCallContext(call: Call<TInput>, extra: TExtra): (MutationCallbackContext & TExtra) | undefined {
-    return call.abortSignal.aborted ? undefined : { ...extra, isLatest: calls.isLatest(call) };
-  }
-
-  function commitSuccess(call: Call<TInput>, extra: TExtra, result: TOutput): void {
-    const context = settledCallContext(call, extra);
-    if (!context) {
-      return;
-    }
-    if (context.isLatest) {
-      state.update((current) => succeeded(current, result));
-    }
-    runCallback(() => options.onSuccess?.(result, call.input, context));
-    runCallback(() => options.onSettled?.(result, undefined, call.input, context));
-  }
-
-  function commitError(call: Call<TInput>, extra: TExtra, err: TError): void {
-    const context = settledCallContext(call, extra);
-    if (!context) {
-      return;
-    }
-    if (context.isLatest) {
-      state.update((current) => failed(current, err));
-    }
-    runCallback(() => options.onError?.(err, call.input, context));
-    runCallback(() => options.onSettled?.(undefined, err, call.input, context));
+  /**
+   * Settles `call`: its state, if it is the latest, then its callbacks. A call aborted by `reset()`
+   * or destroy commits nothing: the caller asked to forget it.
+   */
+  function commit(call: Call<TInput>, settle: (current: State) => State, notify: (isLatest: boolean) => void): void {
+    call.finish(() => {
+      if (call.abortSignal.aborted) {
+        return;
+      }
+      const isLatest = calls.isLatest(call);
+      if (isLatest) {
+        state.update(settle);
+      }
+      notify(isLatest);
+    });
   }
 
   // Like OutputEmitterRef.emit(): a throwing callback is reported, it never rewrites the call's outcome.
@@ -134,10 +121,10 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
 
   function admitCall(input: TInput): Promise<TOutput> {
     if (destroyRef.destroyed) {
-      return Promise.reject(abortError('Destroyed'));
+      return Promise.reject(neverSentError('Destroyed'));
     }
     if (!gate.admit()) {
-      return Promise.reject(abortError('Dropped'));
+      return Promise.reject(neverSentError('Dropped'));
     }
     return runCall(input);
   }
@@ -155,15 +142,24 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
         mutationFnStarted = true;
         return untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra }));
       }, call);
-      const result = await rejectOnAbortOnceStarted(task, call.abortSignal, () => mutationFnStarted);
-      call.finish(() => commitSuccess(call, extra, result));
+      // Still queued when aborted, the call never ran; once started, its write may have left.
+      const abortReason = () => (mutationFnStarted ? call.abortSignal.reason : neverSentError('NotStarted'));
+      const result = await rejectOnAbort(task, call.abortSignal, abortReason);
+      commit(call, (current) => succeeded(current, result), (isLatest) => {
+        const context = { ...extra, isLatest };
+        runCallback(() => options.onSuccess?.(result, call.input, context));
+        runCallback(() => options.onSettled?.(result, undefined, call.input, context));
+      });
       return result;
-
     } catch (err) {
       if (mutationFnStarted) {
         markMaybeSent(err);
       }
-      call.finish(() => commitError(call, extra, err as TError));
+      commit(call, (current) => failed(current, err as TError), (isLatest) => {
+        const context = { ...extra, isLatest };
+        runCallback(() => options.onError?.(err as TError, call.input, context));
+        runCallback(() => options.onSettled?.(undefined, err as TError, call.input, context));
+      });
       throw err;
     }
   }
@@ -188,18 +184,13 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
 }
 
 /**
- * Settles like `task`, or rejects with the abort reason as soon as `abortSignal` aborts, like
- * `fetch()`: a `mutationFn` that ignores the signal can't keep `mutate()` pending. Before the call
- * has started, its gate rejects it (`'NotStarted'`). `task` keeps running, so a queue still waits
- * for the write.
+ * Settles like `task`, or rejects with `abortReason()` as soon as `abortSignal` aborts, like
+ * `fetch()`: neither a `mutationFn` that ignores the signal nor a queue holding the call can keep
+ * `mutate()` pending. `task` keeps running, so a queue still waits for the write.
  */
-function rejectOnAbortOnceStarted<T>(task: Promise<T>, abortSignal: AbortSignal, hasStarted: () => boolean): Promise<T> {
+function rejectOnAbort<T>(task: Promise<T>, abortSignal: AbortSignal, abortReason: () => unknown): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const onAbort = () => {
-      if (hasStarted()) {
-        reject(abortSignal.reason);
-      }
-    };
+    const onAbort = () => reject(abortReason());
     abortSignal.addEventListener('abort', onAbort, { once: true });
     void task.then(resolve, reject).finally(() => abortSignal.removeEventListener('abort', onAbort));
   });

@@ -36,7 +36,7 @@ gets a new hook here, not a wrapper around the returned ref.
   `abort-error.ts`: `neverSentError()` for a call rejected before `mutationFn` ran (only
   `mutation.ts` creates them, and they make `wasNeverSent()` true), `abortedError()` for a call
   aborted in flight. `runCall` clears the never-sent mark from any error `mutationFn` rejects
-  with (`markMaybeSent`). The reasons are the README's Cancellations table.
+  with (`markMaybeSent`). The reasons are the Cancellations table in `docs/API.md`.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
   run to completion and their outcome is ignored. Only `reset()` and destroy abort
   (`createCallTracker`'s `abortAll`): they abort every in-flight

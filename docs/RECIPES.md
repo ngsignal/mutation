@@ -60,7 +60,7 @@ removeUser(user: User) {
 ```
 
 Roll back the failed item, not a snapshot of the list: deletes can overlap (see
-[stale-response guarding](../README.md#stale-response-guarding)), and a snapshot would also bring
+[stale-response guarding](./API.md#calls-in-flight)), and a snapshot would also bring
 back users whose delete succeeds. The restored user comes back at the end of the list.
 
 ## Ordering writes across mutations
@@ -279,9 +279,9 @@ await `mutate()`.
 
 ## Using Observables and HttpClient
 
-Pick the variant matching what you already have (see [the table](../README.md#rxmutation--httpmutation)).
+Pick the variant matching what you already have (see [the table](./API.md#rxmutation--httpmutation)).
 Both accept the same `onSuccess`/`onError`/`onSettled`/`concurrency`/`injector` options as
-`mutation()` — see [the main README](../README.md#features) for what each does.
+`mutation()` — see the [API reference](./API.md) for what each does.
 
 ### Reusing an Observable-returning service
 
@@ -439,7 +439,7 @@ lists them in `Access-Control-Expose-Headers`: `headers()?.get('Location')` is `
 
 `uploadProgress`, `downloadProgress`, `statusCode` and `headers` reset to `undefined` when a
 call's request starts, and on `reset()`, and — like `value`/`status` — only reflect the current
-call: a superseded call's events are ignored (see [stale-response guarding](../README.md#stale-response-guarding)).
+call: a superseded call's events are ignored (see [calls in flight](./API.md#calls-in-flight)).
 
 With `concurrency: 'queue'`, a request only starts once the previous one settles, and these
 signals follow the request actually in flight: while an older upload is still running with a

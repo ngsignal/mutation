@@ -23,11 +23,22 @@ POST · PUT · PATCH · DELETE
 
 ## Why
 
-Angular's `resource()` and `httpResource()` are
-[meant for reads](https://angular.dev/api/core/resource): they abort an in-flight load when a
-new one starts, which would kill a write. Without them, a POST · PUT · PATCH · DELETE means a
-hand-rolled "saving" flag that a double click gets wrong: the first call to finish clears it
+Angular now models state with signals: `signal()` and `computed()` for sync state,
+`resource()` and `httpResource()` for async reads. Writes have no equivalent, and `resource()`
+is [meant for reads](https://angular.dev/api/core/resource): it aborts an in-flight load when a
+new one starts, which would kill a write. A POST · PUT · PATCH · DELETE still means a
+hand-rolled "saving" flag, which a double click gets wrong: the first call to finish clears it
 while the second one is still in flight.
+
+`mutation()` fills that gap with the same contract as `resource()`'s loader: an async function
+that gets an `AbortSignal` and returns a promise, its state exposed as signals. A write settles
+once, so it needs a promise rather than a stream, and `await save.mutate(x)` reads naturally in
+a submit handler. It works with `fetch()` or any client; `rxMutation()` and `httpMutation()`
+cover Observables and `HttpClient`.
+
+It stays a primitive: no cache, no retry, no automatic `resource()` refresh. For those, see the
+[recipes](./docs/RECIPES.md), or use TanStack Query
+([comparison](./docs/ARCHITECTURE.md#why-not-tanstack-query)).
 
 ## Install
 
@@ -124,10 +135,8 @@ readonly uploadAvatar = httpMutation<File, User>({
 - **SSR-ready, no dependencies**: calls in flight hold `PendingTasks`. RxJS and
   `@angular/common` are optional peers, loaded only by the secondary entry points.
 
-Every option and member is in the [API reference](./docs/API.md). It stays a primitive: no
-cache, no retry, no automatic `resource()` refresh; the [recipes](./docs/RECIPES.md) cover
-these, plus optimistic updates, Signal Forms and testing.
-[Architecture](./docs/ARCHITECTURE.md) compares it with TanStack Query and NgRx Toolkit.
+Every option and member is in the [API reference](./docs/API.md). The [recipes](./docs/RECIPES.md)
+cover optimistic updates, Signal Forms, testing and more.
 
 ## Status
 

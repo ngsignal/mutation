@@ -30,7 +30,10 @@ Educational first: the library API must stay visible, never hidden behind archit
 ## Commands
 
 - `npm start` — dev server on http://localhost:4200
-- `npm run build` — must pass before a task is done
+- `npm run build` — must pass before a task is done; builds English (root) and French (`fr/`)
+- `npm start -- --configuration fr` — dev server in French (`npm start` serves English only)
+- `npm run extract-i18n` — writes `src/locale/messages.json`, the English source of
+  `messages.fr.json`
 - Try the library of the current branch: `npm run build && npm pack` at the root, then
   `npm install --no-save ../../ngsignal-mutation-<version>.tgz` here (as CI does).
 

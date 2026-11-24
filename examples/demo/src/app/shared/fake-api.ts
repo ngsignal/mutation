@@ -82,13 +82,13 @@ export function createFakeUserServer() {
     createUser: (name: string, abortSignal: AbortSignal): Promise<User> =>
       requests.track(`createUser("${name}")`, abortSignal, async () => {
         if (name.trim().length === 0) {
-          throw new ApiError('invalid-name', 'Name must not be empty');
+          throw new ApiError('invalid-name', $localize`Name must not be empty`);
         }
         const unavailable = failNextCall();
         failNextCall.set(false);
         const user = await delay({ id: String(nextId++), name }, 2000, abortSignal);
         if (unavailable) {
-          throw new ApiError('unavailable', 'Service unavailable, try again');
+          throw new ApiError('unavailable', $localize`Service unavailable, try again`);
         }
         users = [...users, user];
         return user;
@@ -98,7 +98,7 @@ export function createFakeUserServer() {
       requests.track(`deleteUser("${user.name}")`, abortSignal, async () => {
         await delay(undefined, 2000, abortSignal);
         if (user.name === 'Grace Hopper') {
-          throw new Error(`Server refused to delete ${user.name}`);
+          throw new Error($localize`Server refused to delete ${user.name}:name:`);
         }
         users = users.filter((u) => u.id !== user.id);
       }),
@@ -156,7 +156,7 @@ export function createFakeTodoServer() {
       requests.track(`PATCH /todos/1 "${newTitle}"`, abortSignal, async () => {
         await delay(undefined, 1200, abortSignal);
         if (title() === undefined) {
-          throw new Error('404: todo not found');
+          throw new Error($localize`404: todo not found`);
         }
         title.set(newTitle);
         return newTitle;
@@ -228,7 +228,7 @@ export function createFakeProfileServer() {
       asObservable((abortSignal) =>
         requests.track(`saveProfile("${name}")`, abortSignal, async () => {
           if (name.trim().length === 0) {
-            throw new ApiError('invalid-name', 'Name must not be empty');
+            throw new ApiError('invalid-name', $localize`Name must not be empty`);
           }
           return delay({ name }, 1500, abortSignal);
         }),
@@ -256,7 +256,7 @@ export function createFakeSeatServer() {
         requests.track(`lockSeat(${seat})`, abortSignal, async () => {
           await delay(undefined, delayMs, abortSignal);
           if (seat === takenSeat) {
-            throw new Error(`Seat ${seat} is already taken`);
+            throw new Error($localize`Seat ${seat}:seat: is already taken`);
           }
           return seat;
         }),

@@ -1,38 +1,42 @@
 <label>
-  Title
+  <ng-container i18n>Title</ng-container>
   <input #title value="Buy milk" (blur)="rename(title.value)" />
 </label>
-<button type="button" class="danger" (click)="remove()">Delete</button>
-<p class="hint">
+<button type="button" class="danger" (click)="remove()" i18n>Delete</button>
+<p class="hint" i18n>
   Edit the title, then click Delete: the click blurs the input first, so the rename always leaves
   just before the delete. Each action runs on two fake servers, which take 1.2 s to rename and
   0.3 s to delete (artificial delays).
 </p>
 
 <section class="state">
-  <h3>Two mutations, no shared queue</h3>
+  <h3 i18n>Two mutations, no shared queue</h3>
   <dl>
     <dt>rename: status() / error()</dt>
     <dd>{{ renameParallel.status() }} {{ renameParallel.error()?.message }}</dd>
     <dt>remove: status()</dt>
     <dd>{{ removeParallel.status() }}</dd>
-    <dt>server</dt>
-    <dd>{{ parallelServer.title() ?? 'deleted' }}</dd>
+    <dt i18n>server</dt>
+    <dd i18n>
+      {parallelServer.title() === undefined, select, true {deleted} other {{{ parallelServer.title() }}}}
+    </dd>
   </dl>
-  <p class="hint">The DELETE lands first: the PATCH fails with a 404.</p>
-  <app-activity-log heading="Server" [entries]="parallelServer.requests()" />
+  <p class="hint" i18n>The DELETE lands first: the PATCH fails with a 404.</p>
+  <app-activity-log heading="Server" i18n-heading [entries]="parallelServer.requests()" />
 </section>
 
 <section class="state">
-  <h3>Same mutationQueue()</h3>
+  <h3 i18n>Same mutationQueue()</h3>
   <dl>
     <dt>rename: status() / error()</dt>
     <dd>{{ renameQueued.status() }} {{ renameQueued.error()?.message }}</dd>
     <dt>remove: status()</dt>
     <dd>{{ removeQueued.status() }}</dd>
-    <dt>server</dt>
-    <dd>{{ queuedServer.title() ?? 'deleted' }}</dd>
+    <dt i18n>server</dt>
+    <dd i18n>
+      {queuedServer.title() === undefined, select, true {deleted} other {{{ queuedServer.title() }}}}
+    </dd>
   </dl>
-  <p class="hint">The DELETE leaves once the PATCH has settled: both succeed, in order.</p>
-  <app-activity-log heading="Server" [entries]="queuedServer.requests()" />
+  <p class="hint" i18n>The DELETE leaves once the PATCH has settled: both succeed, in order.</p>
+  <app-activity-log heading="Server" i18n-heading [entries]="queuedServer.requests()" />
 </section>

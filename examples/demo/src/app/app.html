@@ -8,6 +8,16 @@
           <span class="version">v{{ libraryVersion }}</span>
         </span>
       </p>
+      @if (otherLanguage; as language) {
+        <a
+          class="language-switch"
+          [href]="otherLanguageUrl()"
+          [attr.lang]="language.code"
+          [attr.hreflang]="language.code"
+          [attr.aria-label]="language.name"
+          >{{ language.code.toUpperCase() }}</a
+        >
+      }
       <button
         type="button"
         class="menu-button"
@@ -15,7 +25,7 @@
         [attr.aria-expanded]="menuOpen()"
         (click)="menuOpen.set(!menuOpen())"
       >
-        {{ menuOpen() ? 'Close' : 'Menu' }}
+        <ng-container i18n>{menuOpen(), select, true {Close} other {Menu}}</ng-container>
       </button>
     </div>
 
@@ -43,15 +53,16 @@
     <router-outlet />
 
     @if (previousPage() || nextPage()) {
-      <nav class="pager" aria-label="Previous and next demos">
+      <nav class="pager" i18n-aria-label
+        aria-label="Previous and next demos">
         @if (previousPage(); as page) {
           <a class="pager-previous" [routerLink]="page.path">
-            <span class="pager-direction">Previous</span>{{ page.label }}
+            <span class="pager-direction" i18n>Previous</span>{{ page.label }}
           </a>
         }
         @if (nextPage(); as page) {
           <a class="pager-next" [routerLink]="page.path">
-            <span class="pager-direction">Next</span>{{ page.label }}
+            <span class="pager-direction" i18n>Next</span>{{ page.label }}
           </a>
         }
       </nav>

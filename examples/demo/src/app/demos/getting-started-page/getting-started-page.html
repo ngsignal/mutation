@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   Each write is one <code>mutation()</code>: call <code>mutate(input)</code>, read
   <code>status</code>, <code>value</code> and <code>error</code> as signals. React to the result
   either in callbacks (<code>createUser</code>) or by awaiting <code>mutate()</code>
@@ -7,19 +7,19 @@
 </p>
 
 <section>
-  <h2>Users</h2>
+  <h2 i18n>Users</h2>
   <ul>
     @for (user of users(); track user.id) {
       @let deleting = deleteUser.pendingInputs().includes(user);
       <li>
         {{ user.name }}
-        <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting">
-          {{ deleting ? 'Deleting…' : 'Delete' }}
+        <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting" i18n>
+          {deleting, select, true {Deleting…} other {Delete}}
         </button>
       </li>
     }
   </ul>
-  <p class="hint">
+  <p class="hint" i18n>
     Deleting "Grace Hopper" always fails. The row label reads
     <code>deleteUser.pendingInputs()</code>, the inputs of every call in flight: see
     <a routerLink="/concurrent">concurrent calls</a>.
@@ -27,30 +27,32 @@
 </section>
 
 <section>
-  <h2>Quick add</h2>
+  <h2 i18n>Quick add</h2>
   @if (panelOpen()) {
     <form class="card" (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
       <input
         #nameInput
         type="text"
         aria-label="New user name"
+        i18n-aria-label
         placeholder="New user name (empty fails validation)"
+        i18n-placeholder
       />
-      <button type="submit" [disabled]="createUser.isPending()">
-        {{ createUser.isPending() ? 'Adding…' : 'Add' }}
+      <button type="submit" [disabled]="createUser.isPending()" i18n>
+        {createUser.isPending(), select, true {Adding…} other {Add}}
       </button>
     </form>
   } @else {
     <div class="actions">
-      <button type="button" (click)="panelOpen.set(true)">Add user</button>
+      <button type="button" (click)="panelOpen.set(true)" i18n>Add user</button>
       @if (createUser.error(); as error) {
-        <span class="error-text" role="alert">
+        <span class="error-text" role="alert" i18n>
           Could not add "{{ createUser.input() }}": {{ error.message }}
         </span>
       }
     </div>
   }
-  <p class="hint">
+  <p class="hint" i18n>
     <code>onSuccess</code> adds the user, <code>onSettled</code> closes the panel either way, like
     a modal. The error stays readable after it closes. The promise <code>mutate()</code> returns
     can be ignored: a failure shows up in <code>error()</code>, never as an unhandled rejection.
@@ -71,8 +73,8 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
   </dl>
-  <button type="button" (click)="createUser.reset()">Reset</button>
-  <p class="hint">
+  <button type="button" (click)="createUser.reset()" i18n>Reset</button>
+  <p class="hint" i18n>
     Create a user, then submit an empty name: <code>value</code> keeps the last success.
   </p>
 </section>
@@ -89,5 +91,5 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ deleteUser.error()?.message }}</dd>
   </dl>
-  <button type="button" (click)="deleteUser.reset()">Reset</button>
+  <button type="button" (click)="deleteUser.reset()" i18n>Reset</button>
 </section>

@@ -42,6 +42,7 @@
 .brand {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 0.6rem;
   font-size: 1rem;
   font-weight: 700;
@@ -74,6 +75,27 @@
   font-weight: 600;
   color: var(--color-text-subtle);
   letter-spacing: 0.02em;
+}
+
+/* Links to the same page in the other language, built separately */
+.language-switch {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.language-switch:hover {
+  border-color: var(--color-accent-border);
+  color: var(--color-accent-strong);
 }
 
 .menu-button {
@@ -250,6 +272,14 @@ main {
 
   .menu-button {
     display: none;
+  }
+
+  .language-switch {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    min-height: 0;
+    padding: 0.2rem 0.6rem;
   }
 
   nav#site-nav {

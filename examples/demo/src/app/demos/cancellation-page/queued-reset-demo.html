@@ -1,14 +1,14 @@
 <div class="actions">
-  <button type="button" (click)="createTwo()" [disabled]="createUser.isPending()">
+  <button type="button" (click)="createTwo()" [disabled]="createUser.isPending()" i18n>
     Create "First" and "Second"
   </button>
-  <button type="button" (click)="createUser.reset()">Reset</button>
+  <button type="button" (click)="createUser.reset()" i18n>Reset</button>
 </div>
-<p class="hint">
+<p class="hint" i18n>
   With <code>concurrency: 'queue'</code>, "Second" waits for "First". Reset before "First"
   settles: both reject, and "Second" never appears in the server log. Its
   <code>mutationFn</code> never ran, so <code>wasNeverSent(error)</code> is true; "First" may
   have reached the server, so it is false.
 </p>
 <app-activity-log heading="mutate()" [entries]="log.entries()" />
-<app-activity-log heading="Server" [entries]="server.requests()" />
+<app-activity-log heading="Server" i18n-heading [entries]="server.requests()" />

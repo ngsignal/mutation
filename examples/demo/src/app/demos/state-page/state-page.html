@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   The ways to read a mutation's state: <code>status()</code> and its boolean flags,
   <code>hasValue()</code> to narrow <code>value()</code>, <code>snapshot()</code> for an exhaustive
   <code>&#64;switch</code>, <code>input()</code> to know what was submitted, and a typed
@@ -7,20 +7,22 @@
 </p>
 
 <section>
-  <h2>Create user</h2>
+  <h2 i18n>Create user</h2>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
       type="text"
       aria-label="New user name"
+      i18n-aria-label
       placeholder="New user name (empty fails validation)"
+      i18n-placeholder
     />
-    <button type="submit" [disabled]="createUser.isPending()">
-      {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+    <button type="submit" [disabled]="createUser.isPending()" i18n>
+      {createUser.isPending(), select, true {Creating…} other {Create user}}
     </button>
-    <button type="button" (click)="createUser.reset()">Reset</button>
+    <button type="button" (click)="createUser.reset()" i18n>Reset</button>
   </form>
-  <label>
+  <label i18n>
     <input
       #failNext
       type="checkbox"
@@ -29,11 +31,11 @@
     />
     Fail the next call (the fake server answers 'unavailable' once)
   </label>
-  <p class="hint">Create a user, then submit an empty name, then reset.</p>
+  <p class="hint" i18n>Create a user, then submit an empty name, then reset.</p>
 </section>
 
 <section class="state">
-  <h2>status() and the flags</h2>
+  <h2 i18n>status() and the flags</h2>
   <dl>
     <dt>status</dt>
     <dd>
@@ -57,9 +59,9 @@
       <span>#{{ createUser.value().id }}</span>
     </div>
   } @else {
-    <p class="hint">No user created yet.</p>
+    <p class="hint" i18n>No user created yet.</p>
   }
-  <p class="hint">
+  <p class="hint" i18n>
     Inside the <code>&#64;if</code>, <code>value()</code> is <code>User</code>, not
     <code>User | undefined</code>; the same guard works in <code>computed()</code>
     (last created: {{ lastCreatedName() ?? '—' }}). The card stays after an error: only a new
@@ -72,22 +74,22 @@
   @let snap = createUser.snapshot();
   @switch (snap.status) {
     @case ('idle') {
-      <p class="hint">Idle.</p>
+      <p class="hint" i18n>Idle.</p>
     }
     @case ('pending') {
-      <p class="hint">Pending, previous value: {{ snap.value?.name ?? 'none' }}.</p>
+      <p class="hint" i18n>Pending, previous value: {{ snap.value?.name ?? 'none' }}.</p>
     }
     @case ('success') {
-      <p class="hint">Created {{ snap.value.name }}.</p>
+      <p class="hint" i18n>Created {{ snap.value.name }}.</p>
     }
     @case ('error') {
-      <p class="hint">
+      <p class="hint" i18n>
         <span class="error-text">{{ snap.error.message }}</span>, previous value:
         {{ snap.value?.name ?? 'none' }}.
       </p>
     }
   }
-  <p class="hint">
+  <p class="hint" i18n>
     One read narrows <code>value</code> and <code>error</code> together: in the
     <code>'success'</code> branch <code>snap.value</code> is a <code>User</code>, in
     <code>'error'</code> <code>snap.error</code> is defined.
@@ -95,21 +97,21 @@
 </section>
 
 <section>
-  <h2>input() and a typed error</h2>
+  <h2 i18n>input() and a typed error</h2>
   @if (createUser.error(); as error) {
-    <p class="error-text" role="alert">
+    <p class="error-text" role="alert" i18n>
       Could not create "{{ createUser.input() }}": {{ error.message }} (code:
       <code>{{ error.code }}</code>)
     </p>
     @if (error.code === 'unavailable') {
-      <button type="button" (click)="retry()">Retry "{{ createUser.input() }}"</button>
+      <button type="button" (click)="retry()" i18n>Retry "{{ createUser.input() }}"</button>
     }
   } @else if (createUser.isPending()) {
-    <p class="hint">Creating "{{ createUser.input() }}"…</p>
+    <p class="hint" i18n>Creating "{{ createUser.input() }}"…</p>
   } @else {
-    <p class="hint">No error.</p>
+    <p class="hint" i18n>No error.</p>
   }
-  <p class="hint">
+  <p class="hint" i18n>
     Check "Fail the next call", create a user, then retry: <code>retry()</code> re-sends
     <code>createUser.input()</code>, what the latest <code>mutate()</code> was called with.
     <code>error.code</code> compiles because the mutation is declared as

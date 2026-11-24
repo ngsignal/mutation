@@ -1,18 +1,20 @@
 @if (users.isLoading()) {
-  <p class="hint" role="status">Loading users…</p>
+  <p class="hint" role="status" i18n>Loading users…</p>
 }
 <ul>
   @for (user of visibleUsers(); track user.id) {
     <li>
       {{ user.name }}
-      <button type="button" class="danger" (click)="deleteUser.mutate(user)">Delete</button>
+      <button type="button" class="danger" (click)="deleteUser.mutate(user)" i18n>
+        Delete
+      </button>
     </li>
   }
 </ul>
 @if (deleteUser.error(); as error) {
   <p class="error-text" role="alert">{{ error.message }}</p>
 }
-<p class="hint">
+<p class="hint" i18n>
   A row is hidden while its delete is in <code>pendingInputs()</code>, and removed from the
   resource by <code>onSuccess</code>. A failed delete, as always for "Grace Hopper", just shows the
   row again, in place: nothing to roll back. Delete Grace, then quickly Ada.

@@ -5,7 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "extract-i18n": "ng extract-i18n"
   },
   "prettier": {
     "printWidth": 100,
@@ -25,6 +26,7 @@
     "@angular/compiler": "^22.2.6",
     "@angular/core": "^22.2.6",
     "@angular/forms": "^22.2.6",
+    "@angular/localize": "^22.2.6",
     "@angular/platform-browser": "^22.2.6",
     "@angular/router": "^22.2.6",
     "@ngsignal/mutation": "0.7.0",

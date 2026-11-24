@@ -1,17 +1,17 @@
 <div class="actions">
-  <button type="button" (click)="create('Ada')" [disabled]="createUser.isPending()">
+  <button type="button" (click)="create('Ada')" [disabled]="createUser.isPending()" i18n>
     Create "Ada"
   </button>
-  <button type="button" (click)="createUser.reset()">Reset</button>
+  <button type="button" (click)="createUser.reset()" i18n>Reset</button>
   <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
     createUser.status()
   }}</span>
 </div>
-<p class="hint">
+<p class="hint" i18n>
   Reset while pending: no <code>onSuccess</code>, the status goes back to idle, and
   <code>mutate()</code> rejects with <code>'Aborted'</code>, the abort reason the fake API rejects
   with, as <code>fetch()</code> does. The server log shows the request was received: on
   a real server, the user may have been created anyway.
 </p>
-<app-activity-log heading="Callbacks and mutate()" [entries]="log.entries()" />
-<app-activity-log heading="Server" [entries]="server.requests()" />
+<app-activity-log heading="Callbacks and mutate()" i18n-heading [entries]="log.entries()" />
+<app-activity-log heading="Server" i18n-heading [entries]="server.requests()" />

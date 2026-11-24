@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   <code>reset()</code> and destroying the injection context abort the calls in flight: their
   <code>AbortSignal</code> fires, they run no callback, and <code>mutate()</code> rejects with an
   <code>AbortError</code>. Aborting never undoes a write the server already received.
@@ -11,21 +11,21 @@
 </p>
 
 <section>
-  <h2>reset() during a call</h2>
+  <h2 i18n>reset() during a call</h2>
   <app-restartable>
     <ng-template><app-reset-demo /></ng-template>
   </app-restartable>
 </section>
 
 <section>
-  <h2>reset() while a call is queued</h2>
+  <h2 i18n>reset() while a call is queued</h2>
   <app-restartable>
     <ng-template><app-queued-reset-demo /></ng-template>
   </app-restartable>
 </section>
 
 <section>
-  <h2>Destroy</h2>
+  <h2 i18n>Destroy</h2>
   <app-restartable>
     <ng-template><app-destroy-demo /></ng-template>
   </app-restartable>

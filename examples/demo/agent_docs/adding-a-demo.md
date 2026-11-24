@@ -11,7 +11,11 @@
    page has several).
 4. Add the route in `src/app/app.routes.ts` and the link in the right nav group of
    `src/app/app.html` (`mutation()` or "Adapters").
-5. `npm run build`.
+5. Translate: write the text in English with `i18n` on each sentence or label (`i18n-<attr>`
+   for attributes, an ICU `select` instead of a text ternary, `$localize` in TS). Run
+   `npm run extract-i18n`, then add or update each changed entry of
+   `src/locale/messages.fr.json`. Logs of `log.add()` stay in English: they are code traces.
+6. `npm run build`: it builds both languages and fails on a missing French translation.
 
 ## What a demo should answer
 

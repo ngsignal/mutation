@@ -69,7 +69,7 @@ export const fakeHttpBackend: HttpInterceptorFn = (req, next) => {
       const name = readName(req.body);
       if (name.trim().length === 0) {
         return throwError(
-          () => new HttpErrorResponse({ status: 422, statusText: 'Name must not be empty', url: req.url }),
+          () => new HttpErrorResponse({ status: 422, statusText: $localize`Name must not be empty`, url: req.url }),
         ).pipe(delay(2000));
       }
       return of(created({ id: String(nextId++), name })).pipe(delay(2000));

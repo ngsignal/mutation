@@ -2,41 +2,41 @@
   @for (item of queuedServer.items; track item) {
     <li>
       {{ item }}
-      <button type="button" (click)="moveToTop(item)">Move to top</button>
+      <button type="button" (click)="moveToTop(item)" i18n>Move to top</button>
     </li>
   }
 </ul>
-<p class="hint">
+<p class="hint" i18n>
   Each click moves the item with two mutations, one per fake server. "Charlie" answers slower
   than the others (an artificial delay): click Charlie, then quickly Alpha.
 </p>
 
 <section class="state">
-  <h3>Default (parallel)</h3>
+  <h3 i18n>Default (parallel)</h3>
   <dl>
-    <dt>value(): latest call's response</dt>
+    <dt i18n>value(): latest call's response</dt>
     <dd>{{ moveParallel.hasValue() ? moveParallel.value().join(', ') : '—' }}</dd>
-    <dt>server order</dt>
+    <dt i18n>server order</dt>
     <dd>{{ parallelServer.order().join(', ') }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     Both requests reach the server at once, and Charlie's ends last: the server ends with Charlie
     first although Alpha was clicked last, and <code>value()</code> doesn't match it.
   </p>
-  <app-activity-log heading="Server" [entries]="parallelServer.requests()" />
+  <app-activity-log heading="Server" i18n-heading [entries]="parallelServer.requests()" />
 </section>
 
 <section class="state">
   <h3>concurrency: 'queue'</h3>
   <dl>
-    <dt>value(): latest call's response</dt>
+    <dt i18n>value(): latest call's response</dt>
     <dd>{{ moveQueued.hasValue() ? moveQueued.value().join(', ') : '—' }}</dd>
-    <dt>server order</dt>
+    <dt i18n>server order</dt>
     <dd>{{ queuedServer.order().join(', ') }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     Alpha's request only leaves once Charlie's has settled: the server ends with Alpha first, and
     <code>value()</code> matches it.
   </p>
-  <app-activity-log heading="Server" [entries]="queuedServer.requests()" />
+  <app-activity-log heading="Server" i18n-heading [entries]="queuedServer.requests()" />
 </section>

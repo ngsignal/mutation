@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   <code>rxMutation()</code>, from <code>&#64;ngsignal/mutation/rxjs-interop</code>, is the
   counterpart of <code>rxResource()</code>: <code>mutationFn</code> returns an
   <code>Observable</code>, typically an existing service method such as
@@ -8,20 +8,22 @@
 </p>
 
 <section>
-  <h2>Create user</h2>
+  <h2 i18n>Create user</h2>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
       type="text"
       aria-label="New user name"
+      i18n-aria-label
       placeholder="New user name (empty answers 422)"
+      i18n-placeholder
     />
-    <button type="submit" [disabled]="createUser.isPending()">
-      {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+    <button type="submit" [disabled]="createUser.isPending()" i18n>
+      {createUser.isPending(), select, true {Creating…} other {Create user}}
     </button>
-    <button type="button" (click)="createUser.reset()">Reset</button>
+    <button type="button" (click)="createUser.reset()" i18n>Reset</button>
   </form>
-  <p class="hint">
+  <p class="hint" i18n>
     Reset while pending: the request is unsubscribed, which cancels it. The fake backend answers
     after an artificial 2&nbsp;s delay.
   </p>
@@ -43,7 +45,7 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     <code>rxMutation()</code> only sees the emitted value: for the status code, headers or upload
     progress, use <code>httpMutation()</code>.
   </p>

@@ -1,20 +1,20 @@
-<button type="button" (click)="pay()">Pay 50 €</button>
-<p class="hint">
+<button type="button" (click)="pay()" i18n>Pay 50 €</button>
+<p class="hint" i18n>
   Double-click "Pay". The button is not disabled while pending, to show what each mutation does
   with the second click.
 </p>
 
 <section class="state">
   <dl>
-    <dt>Clicks</dt>
+    <dt i18n>Clicks</dt>
     <dd>{{ clicks() }}</dd>
-    <dt>Default: charges on the server</dt>
+    <dt i18n>Default: charges on the server</dt>
     <dd>{{ defaultServer.charges() }}</dd>
-    <dt>'drop': charges on the server</dt>
+    <dt i18n>'drop': charges on the server</dt>
     <dd>{{ droppingServer.charges() }}</dd>
   </dl>
 </section>
-<p class="hint">
+<p class="hint" i18n>
   By default every click reaches the server: the card is charged twice. With
   <code>'drop'</code>, a click made while a charge is in flight makes <code>mutate()</code> reject
   with an <code>AbortError</code> whose message is <code>'Dropped'</code>, without calling

@@ -13,16 +13,20 @@ import { StatePage } from './demos/state-page/state-page';
 import { WithoutMutationPage } from './demos/without-mutation-page/without-mutation-page';
 
 export const routes: Routes = [
-  { path: '', component: GettingStartedPage, title: 'Getting started' },
-  { path: 'manual', component: WithoutMutationPage, title: 'Without mutation()' },
-  { path: 'concurrent', component: ConcurrentPage, title: 'Concurrent calls' },
-  { path: 'state', component: StatePage, title: 'Reading state' },
-  { path: 'concurrency', component: ConcurrencyPage, title: "concurrency: 'queue', 'drop' and mutationQueue()" },
-  { path: 'cancellation', component: CancellationPage, title: 'Cancellation and reset()' },
-  { path: 'resource', component: ResourcePage, title: 'Working with resource()' },
-  { path: 'form-submit', component: FormSubmitPage, title: 'Form submit' },
-  { path: 'lists', component: ListsPage, title: 'Lists and bulk actions' },
+  { path: '', component: GettingStartedPage, title: $localize`Getting started` },
+  { path: 'manual', component: WithoutMutationPage, title: $localize`Without mutation()` },
+  { path: 'concurrent', component: ConcurrentPage, title: $localize`Concurrent calls` },
+  { path: 'state', component: StatePage, title: $localize`Reading state` },
+  {
+    path: 'concurrency',
+    component: ConcurrencyPage,
+    title: $localize`concurrency: 'queue', 'drop' and mutationQueue()`,
+  },
+  { path: 'cancellation', component: CancellationPage, title: $localize`Cancellation and reset()` },
+  { path: 'resource', component: ResourcePage, title: $localize`Working with resource()` },
+  { path: 'form-submit', component: FormSubmitPage, title: $localize`Form submit` },
+  { path: 'lists', component: ListsPage, title: $localize`Lists and bulk actions` },
   { path: 'rx', component: RxMutationPage, title: 'rxMutation()' },
   { path: 'http', component: HttpMutationPage, title: 'httpMutation()' },
-  { path: 'http-responses', component: HttpResponsesPage, title: 'httpMutation(): response bodies' },
+  { path: 'http-responses', component: HttpResponsesPage, title: $localize`httpMutation(): response bodies` },
 ];

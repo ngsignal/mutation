@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   A second <code>mutate()</code> does <strong>not</strong> abort the first: a write may already
   have reached the server, so both run to completion. Every call runs its callbacks, with
   <code>{{ '{' }} isLatest {{ '}' }}</code>; only the latest call writes <code>status</code>,
@@ -7,7 +7,7 @@
 </p>
 
 <section>
-  <h2>Users</h2>
+  <h2 i18n>Users</h2>
   <ul>
     @for (user of users(); track user.id) {
       @let deleting = deleteUser.pendingInputs().includes(user);
@@ -18,13 +18,14 @@
           class="danger"
           (click)="deleteUser.mutate(user)"
           [disabled]="deleting"
+          i18n
         >
-          {{ deleting ? 'Deleting…' : 'Delete' }}
+          {deleting, select, true {Deleting…} other {Delete}}
         </button>
       </li>
     }
   </ul>
-  <p class="hint">
+  <p class="hint" i18n>
     Delete Ada, then quickly Grace (who always fails): Ada disappears through her
     <code>onSuccess</code> with <code>isLatest: false</code>, and Grace's failure lands in
     <code>status</code>. Both rows show "Deleting…" until their own call settles:
@@ -34,23 +35,25 @@
 </section>
 
 <section>
-  <h2>Create user</h2>
+  <h2 i18n>Create user</h2>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
       type="text"
       aria-label="New user name"
+      i18n-aria-label
       placeholder="New user name (empty fails validation)"
+      i18n-placeholder
     />
-    <button type="submit">Create user</button>
+    <button type="submit" i18n>Create user</button>
   </form>
-  <p class="hint">
+  <p class="hint" i18n>
     The button stays enabled on purpose: submit two names quickly, both users are created.
   </p>
 </section>
 
 <section class="state">
-  <h2>Latest call only</h2>
+  <h2 i18n>Latest call only</h2>
   <dl>
     <dt>createUser.status</dt>
     <dd>
@@ -73,7 +76,9 @@
 
 <app-activity-log
   heading="Callbacks"
+  i18n-heading
   [entries]="log.entries()"
   emptyText="Nothing yet: delete two users quickly."
+  i18n-emptyText
 />
-<app-activity-log heading="Server" [entries]="server.requests()" />
+<app-activity-log heading="Server" i18n-heading [entries]="server.requests()" />

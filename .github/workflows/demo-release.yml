@@ -66,9 +66,22 @@ jobs:
       - name: Build the demo
         working-directory: examples/demo
         run: |
-          npm run build -- --base-href "/${GITHUB_REPOSITORY#*/}/"
-          # Pages serves 404.html for unknown paths: let the router handle deep links.
-          cp dist/ngsignal-mutation-demo/browser/index.html dist/ngsignal-mutation-demo/browser/404.html
+          base="/${GITHUB_REPOSITORY#*/}/"
+          # One build per language: English at the root, French under fr/.
+          npm run build -- --base-href "$base"
+          # Pages serves the root 404.html for any unknown path, French ones included. It keeps the
+          # deep link and loads its language's index, which restores it (see src/index.html).
+          cat > dist/ngsignal-mutation-demo/browser/404.html <<HTML
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>@ngsignal/mutation demo</title>
+          <script>
+            const path = location.pathname;
+            const language = path.startsWith('${base}fr/') ? 'fr/' : '';
+            try { sessionStorage.setItem('deep-link', path + location.search + location.hash); } catch {}
+            location.replace('${base}' + language);
+          </script>
+          HTML
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   The <a routerLink="/">getting-started page</a> without <code>mutation()</code>: state signals, a
   generation counter, an <code>AbortController</code> per call, <code>PendingTasks</code> and
   <code>DestroyRef</code> cleanup, written out for each write.
@@ -6,40 +6,42 @@
 </p>
 
 <section>
-  <h2>Users</h2>
+  <h2 i18n>Users</h2>
   <ul>
     @for (user of users(); track user.id) {
       @let deleting = deleteUserIsPending() && deleteUserInput()?.id === user.id;
       <li>
         {{ user.name }}
-        <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting">
-          {{ deleting ? 'Deleting…' : 'Delete' }}
+        <button type="button" class="danger" (click)="remove(user)" [disabled]="deleting" i18n>
+          {deleting, select, true {Deleting…} other {Delete}}
         </button>
       </li>
     }
   </ul>
-  <p class="hint">Deleting "Grace Hopper" always fails.</p>
+  <p class="hint" i18n>Deleting "Grace Hopper" always fails.</p>
 </section>
 
 <section>
-  <h2>Quick add</h2>
+  <h2 i18n>Quick add</h2>
   @if (panelOpen()) {
     <form class="card" (submit)="$event.preventDefault(); createUser(nameInput.value)">
       <input
         #nameInput
         type="text"
         aria-label="New user name"
+        i18n-aria-label
         placeholder="New user name (empty fails validation)"
+        i18n-placeholder
       />
-      <button type="submit" [disabled]="createUserIsPending()">
-        {{ createUserIsPending() ? 'Adding…' : 'Add' }}
+      <button type="submit" [disabled]="createUserIsPending()" i18n>
+        {createUserIsPending(), select, true {Adding…} other {Add}}
       </button>
     </form>
   } @else {
     <div class="actions">
-      <button type="button" (click)="panelOpen.set(true)">Add user</button>
+      <button type="button" (click)="panelOpen.set(true)" i18n>Add user</button>
       @if (createUserError(); as error) {
-        <span class="error-text" role="alert">
+        <span class="error-text" role="alert" i18n>
           Could not add "{{ createUserInput() }}": {{ error.message }}
         </span>
       }
@@ -61,7 +63,7 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ createUserError()?.message }}</dd>
   </dl>
-  <button type="button" (click)="resetCreateUser()">Reset</button>
+  <button type="button" (click)="resetCreateUser()" i18n>Reset</button>
 </section>
 
 <section class="state">
@@ -76,5 +78,5 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ deleteUserError()?.message }}</dd>
   </dl>
-  <button type="button" (click)="resetDeleteUser()">Reset</button>
+  <button type="button" (click)="resetDeleteUser()" i18n>Reset</button>
 </section>

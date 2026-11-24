@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   <code>httpMutation()</code>, from <code>&#64;ngsignal/mutation/http</code>, is the counterpart of
   <code>httpResource()</code>: <code>request</code> returns a request description
   (<code>{{ '{' }} method, url, body {{ '}' }}</code>) and the library sends it through
@@ -9,18 +9,20 @@
 </p>
 
 <section>
-  <h2>Create user</h2>
+  <h2 i18n>Create user</h2>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
       type="text"
       aria-label="New user name"
+      i18n-aria-label
       placeholder="New user name (empty answers 422)"
+      i18n-placeholder
     />
-    <button type="submit" [disabled]="createUser.isPending()">
-      {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
+    <button type="submit" [disabled]="createUser.isPending()" i18n>
+      {createUser.isPending(), select, true {Creating…} other {Create user}}
     </button>
-    <button type="button" (click)="createUser.reset()">Reset</button>
+    <button type="button" (click)="createUser.reset()" i18n>Reset</button>
   </form>
 </section>
 
@@ -40,37 +42,37 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     <code>statusCode</code> and <code>headers</code> come from the response, or from the
     <code>HttpErrorResponse</code>: submit an empty name to see the 422.
   </p>
 </section>
 
 <section>
-  <h2>Upload with progress</h2>
+  <h2 i18n>Upload with progress</h2>
   <div class="actions">
-    <input #fileInput type="file" aria-label="Avatar file" />
-    <button type="button" [disabled]="uploadAvatar.isPending()" (click)="upload(fileInput.files)">
-      {{ uploadAvatar.isPending() ? 'Uploading…' : 'Upload' }}
+    <input #fileInput type="file" aria-label="Avatar file" i18n-aria-label />
+    <button type="button" [disabled]="uploadAvatar.isPending()" (click)="upload(fileInput.files)" i18n>
+      {uploadAvatar.isPending(), select, true {Uploading…} other {Upload}}
     </button>
-    <button type="button" (click)="uploadAvatar.reset()">Reset</button>
+    <button type="button" (click)="uploadAvatar.reset()" i18n>Reset</button>
   </div>
 
   @if (uploadAvatar.isPending() && uploadAvatar.uploadProgress(); as p) {
     <div class="actions">
-      <progress [value]="p.loaded" [max]="p.total ?? p.loaded" aria-label="Upload progress"></progress>
-      <span>{{ p.total ? ((p.loaded / p.total) * 100 | number: '1.0-0') + '%' : p.loaded + ' bytes' }}</span>
+      <progress [value]="p.loaded" [max]="p.total ?? p.loaded" aria-label="Upload progress" i18n-aria-label></progress>
+      <span i18n>{!!p.total, select, true {{{ (p.loaded / p.total!) * 100 | number: '1.0-0' }}%} other {{{ p.loaded }} bytes}}</span>
     </div>
   }
   @if (uploadAvatar.hasValue()) {
-    <p class="hint" role="status">
+    <p class="hint" role="status" i18n>
       Uploaded {{ uploadAvatar.value().fileName }} ({{ uploadAvatar.value().size }} bytes).
     </p>
   }
   @if (uploadAvatar.error(); as error) {
     <p class="error-text" role="alert">{{ error.message }}</p>
   }
-  <p class="hint">
+  <p class="hint" i18n>
     The request sends the file in a <code>FormData</code> with <code>reportProgress: true</code>,
     which feeds <code>uploadProgress</code>. Angular 22's default <code>fetch</code> backend
     reports no upload progress: this app adds <code>withXhr()</code> to

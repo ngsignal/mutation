@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   Three ways <code>httpMutation()</code> reads a response body: <code>parse</code> to validate
   or transform it, <code>httpMutation.blob()</code> / <code>.text()</code> for non-JSON bodies,
   and <code>downloadProgress</code> while it arrives. A fake <code>HttpInterceptorFn</code>
@@ -9,28 +9,30 @@
 </p>
 
 <section>
-  <h2>Validating the response with <code>parse</code></h2>
+  <h2 i18n>Validating the response with <code>parse</code></h2>
   <form (submit)="$event.preventDefault(); createUser.mutate({ name: nameInput.value, outdated: false })">
     <input
       #nameInput
       type="text"
       aria-label="New user name"
+      i18n-aria-label
       placeholder="New user name (empty answers 422)"
+      i18n-placeholder
     />
-    <button type="submit" [disabled]="createUser.isPending()">Create user</button>
-    <button type="button" [disabled]="createUser.isPending()" (click)="createUser.mutate({ name: nameInput.value, outdated: true })">
+    <button type="submit" [disabled]="createUser.isPending()" i18n>Create user</button>
+    <button type="button" [disabled]="createUser.isPending()" (click)="createUser.mutate({ name: nameInput.value, outdated: true })" i18n>
       Create user (outdated response)
     </button>
-    <button type="button" (click)="createUser.reset()">Reset</button>
+    <button type="button" (click)="createUser.reset()" i18n>Reset</button>
   </form>
-  <p class="hint">
+  <p class="hint" i18n>
     "Create user (outdated response)" hits an endpoint that answers <code>201</code> with an old
     body shape (<code>{{ '{' }} userId, fullName {{ '}' }}</code>), so <code>parse</code> throws.
   </p>
 </section>
 
 <section class="state">
-  <h2>createUser: state</h2>
+  <h2 i18n>createUser: state</h2>
   <dl>
     <dt>status</dt>
     <dd>
@@ -51,7 +53,7 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     With the outdated response, <code>status</code> is <code>error</code> while
     <code>statusCode</code> is still <code>201</code> and <code>error</code> is an
     <code>HttpMutationParseError</code>: <strong>the server has already applied the
@@ -61,21 +63,21 @@
 </section>
 
 <section>
-  <h2>A file in the response: <code>httpMutation.blob()</code> + <code>downloadProgress</code></h2>
+  <h2 i18n>A file in the response: <code>httpMutation.blob()</code> + <code>downloadProgress</code></h2>
   <div class="actions">
-    <button type="button" [disabled]="exportUsers.isPending()" (click)="exportUsers.mutate()">
-      {{ exportUsers.isPending() ? 'Exporting…' : 'Export users as CSV' }}
+    <button type="button" [disabled]="exportUsers.isPending()" (click)="exportUsers.mutate()" i18n>
+      {exportUsers.isPending(), select, true {Exporting…} other {Export users as CSV}}
     </button>
-    <button type="button" [disabled]="!exportUsers.hasValue()" (click)="saveExport()">
+    <button type="button" [disabled]="!exportUsers.hasValue()" (click)="saveExport()" i18n>
       Save users.csv
     </button>
-    <button type="button" (click)="exportUsers.reset()">Reset</button>
+    <button type="button" (click)="exportUsers.reset()" i18n>Reset</button>
   </div>
 
   @if (exportUsers.downloadProgress(); as p) {
     <div class="actions">
-      <progress [value]="p.loaded" [max]="p.total ?? 100" aria-label="Download progress"></progress>
-      <span>{{ p.total ? ((p.loaded / p.total) * 100 | number: '1.0-0') + '%' : p.loaded + ' bytes' }}</span>
+      <progress [value]="p.loaded" [max]="p.total ?? 100" aria-label="Download progress" i18n-aria-label></progress>
+      <span i18n>{!!p.total, select, true {{{ (p.loaded / p.total!) * 100 | number: '1.0-0' }}%} other {{{ p.loaded }} bytes}}</span>
     </div>
   }
 
@@ -89,7 +91,7 @@
     <dt>value</dt>
     <dd>
       @if (exportUsers.hasValue()) {
-        Blob, {{ exportUsers.value().size }} bytes, type {{ exportUsers.value().type }}
+        <ng-container i18n>Blob, {{ exportUsers.value().size }} bytes, type {{ exportUsers.value().type }}</ng-container>
       } @else {
         —
       }
@@ -97,7 +99,7 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ exportUsers.error()?.message }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     The request description sets <code>reportProgress: true</code>; the fake backend then emits
     <code>DownloadProgress</code> events (artificial 400&nbsp;ms each) before the file.
     The request itself has no body: the file comes back in the <em>response</em>, so it's a
@@ -107,12 +109,12 @@
 </section>
 
 <section>
-  <h2>Plain text in the response: <code>httpMutation.text()</code></h2>
+  <h2 i18n>Plain text in the response: <code>httpMutation.text()</code></h2>
   <div class="actions">
-    <button type="button" [disabled]="purgeInactive.isPending()" (click)="purgeInactive.mutate()">
-      {{ purgeInactive.isPending() ? 'Purging…' : 'Purge inactive users' }}
+    <button type="button" [disabled]="purgeInactive.isPending()" (click)="purgeInactive.mutate()" i18n>
+      {purgeInactive.isPending(), select, true {Purging…} other {Purge inactive users}}
     </button>
-    <button type="button" (click)="purgeInactive.reset()">Reset</button>
+    <button type="button" (click)="purgeInactive.reset()" i18n>Reset</button>
   </div>
 
   <dl>
@@ -125,7 +127,7 @@
     <dt>value</dt>
     <dd>
       @if (purgeInactive.hasValue()) {
-        {{ purgeInactive.value() }} user(s) purged
+        <ng-container i18n>{{ purgeInactive.value() }} user(s) purged</ng-container>
       } @else {
         —
       }
@@ -133,7 +135,7 @@
     <dt>error</dt>
     <dd class="error-text" role="alert">{{ purgeInactive.error()?.message }}</dd>
   </dl>
-  <p class="hint">
+  <p class="hint" i18n>
     The server answers with the plain-text body <code>"2"</code> (artificial 2&nbsp;s delay).
     Since <code>TOutput</code> is <code>number</code>, not <code>string</code>, the typings make
     <code>parse</code> required: <code>parse: (raw) =&gt; Number(raw)</code>.

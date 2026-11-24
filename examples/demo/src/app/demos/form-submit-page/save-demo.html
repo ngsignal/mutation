@@ -3,18 +3,20 @@
     #nameInput
     type="text"
     aria-label="Display name"
+    i18n-aria-label
     placeholder="Display name (empty fails validation)"
+    i18n-placeholder
   />
-  <button type="submit">Save</button>
+  <button type="submit" i18n>Save</button>
 </form>
-<p class="hint">
+<p class="hint" i18n>
   Each save goes to both versions, one fake server each (1.5 s artificial delay). The button stays
   enabled so a second click shows the guard: press Enter twice.
 </p>
 
 <div class="compare">
   <section class="state">
-    <h3>Hand-written</h3>
+    <h3 i18n>Hand-written</h3>
     <dl>
       <dt>isSaving()</dt>
       <dd>{{ isSaving() }}</dd>
@@ -23,7 +25,7 @@
       <dt>saveError()</dt>
       <dd class="error-text" role="alert">{{ saveError()?.message }}</dd>
     </dl>
-    <app-activity-log heading="Server" [entries]="handWrittenServer.requests()" />
+    <app-activity-log heading="Server" i18n-heading [entries]="handWrittenServer.requests()" />
   </section>
 
   <section class="state">
@@ -42,11 +44,11 @@
       <dt>input()</dt>
       <dd>{{ saveProfile.input() ?? '—' }}</dd>
     </dl>
-    <app-activity-log heading="Server" [entries]="mutationServer.requests()" />
+    <app-activity-log heading="Server" i18n-heading [entries]="mutationServer.requests()" />
   </section>
 </div>
 
-<p class="hint">
+<p class="hint" i18n>
   Both behave the same: a second save while one is in flight is ignored, and leaving the page
   aborts the request. The hand-written version is correct. What <code>rxMutation()</code> removes is
   the bookkeeping: three signals, the guard, the flag reset in each branch and

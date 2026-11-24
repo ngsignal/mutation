@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { PlatformLocation } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  isDevMode,
+  LOCALE_ID,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   ActivatedRoute,
@@ -25,33 +34,39 @@ const NAV_GROUPS: readonly { heading: string; links: readonly NavLink[] }[] = [
   {
     heading: 'mutation()',
     links: [
-      { path: '/', label: 'Getting started', api: 'mutation' },
-      { path: '/manual', label: 'Without mutation()', api: 'mutation' },
-      { path: '/concurrent', label: 'Concurrent calls', api: 'mutation' },
-      { path: '/state', label: 'Reading state', api: 'mutation' },
+      { path: '/', label: $localize`Getting started`, api: 'mutation' },
+      { path: '/manual', label: $localize`Without mutation()`, api: 'mutation' },
+      { path: '/concurrent', label: $localize`Concurrent calls`, api: 'mutation' },
+      { path: '/state', label: $localize`Reading state`, api: 'mutation' },
       { path: '/concurrency', label: "'queue', 'drop', mutationQueue()", api: 'mutation' },
-      { path: '/cancellation', label: 'Cancellation and reset()', api: 'mutation' },
-      { path: '/resource', label: 'Working with resource()', api: 'mutation' },
+      { path: '/cancellation', label: $localize`Cancellation and reset()`, api: 'mutation' },
+      { path: '/resource', label: $localize`Working with resource()`, api: 'mutation' },
     ],
   },
   {
-    heading: 'Use cases',
+    heading: $localize`Use cases`,
     links: [
-      { path: '/form-submit', label: 'Form submit' },
-      { path: '/lists', label: 'Lists and bulk actions' },
+      { path: '/form-submit', label: $localize`Form submit` },
+      { path: '/lists', label: $localize`Lists and bulk actions` },
     ],
   },
   {
-    heading: 'Adapters',
+    heading: $localize`Adapters`,
     links: [
       { path: '/rx', label: 'rxMutation()', api: 'rx' },
       { path: '/http', label: 'httpMutation()', api: 'http' },
-      { path: '/http-responses', label: 'Response bodies', api: 'http' },
+      { path: '/http-responses', label: $localize`Response bodies`, api: 'http' },
     ],
   },
 ];
 
 const NAV_LINKS = NAV_GROUPS.flatMap((group) => group.links);
+
+/** Each language is its own build: English at the root of the site, French under fr/. */
+const LANGUAGES = {
+  en: { code: 'en', name: 'English', subPath: '' },
+  fr: { code: 'fr', name: 'Français', subPath: 'fr/' },
+} as const;
 
 @Component({
   selector: 'app-root',
@@ -67,6 +82,19 @@ export class App {
 
   protected readonly libraryVersion = libraryVersion;
   protected readonly navGroups = NAV_GROUPS;
+
+  private readonly language = inject(LOCALE_ID).startsWith('fr') ? LANGUAGES.fr : LANGUAGES.en;
+  /** The base href without this language's sub-path, e.g. /mutation/ for /mutation/fr/. */
+  private readonly siteRoot = inject(PlatformLocation)
+    .getBaseHrefFromDOM()
+    .slice(0, this.language.subPath ? -this.language.subPath.length : undefined);
+
+  /** The same page in the other language. The dev server serves one language only: no switch there. */
+  protected readonly otherLanguage = isDevMode()
+    ? undefined
+    : this.language === LANGUAGES.fr
+      ? LANGUAGES.en
+      : LANGUAGES.fr;
 
   /** Only used on narrow screens, where the menu is collapsed behind a button. */
   protected readonly menuOpen = signal(false);
@@ -88,6 +116,10 @@ export class App {
   );
 
   protected readonly pageTitle = computed(() => this.navigation().title);
+
+  protected readonly otherLanguageUrl = computed(
+    () => this.siteRoot + (this.otherLanguage?.subPath ?? '') + this.navigation().path.slice(1),
+  );
 
   private readonly pageIndex = computed(() =>
     NAV_LINKS.findIndex((link) => link.path === this.navigation().path),

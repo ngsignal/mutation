@@ -31,6 +31,6 @@ export function createActivityLog() {
 })
 export class ActivityLog {
   readonly entries = input.required<string[]>();
-  readonly heading = input('Activity log');
-  readonly emptyText = input('Nothing yet.');
+  readonly heading = input($localize`Activity log`);
+  readonly emptyText = input($localize`Nothing yet.`);
 }

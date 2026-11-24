@@ -1,4 +1,4 @@
-<p class="pitch">
+<p class="pitch" i18n>
   What a second <code>mutate()</code> does while a call is in flight. By default it runs in
   parallel. <code>concurrency: 'queue'</code> waits for the previous call, so writes reach the
   server in order. <code>concurrency: 'drop'</code> rejects it at once. A
@@ -13,28 +13,28 @@
 </p>
 
 <section>
-  <h2>'queue': move an item to the top</h2>
+  <h2 i18n>'queue': move an item to the top</h2>
   <app-restartable>
     <ng-template><app-queue-demo /></ng-template>
   </app-restartable>
 </section>
 
 <section>
-  <h2>'drop': pay</h2>
+  <h2 i18n>'drop': pay</h2>
   <app-restartable>
     <ng-template><app-drop-demo /></ng-template>
   </app-restartable>
 </section>
 
 <section>
-  <h2>mutationQueue(): rename, then delete</h2>
+  <h2 i18n>mutationQueue(): rename, then delete</h2>
   <app-restartable>
     <ng-template><app-shared-queue-demo /></ng-template>
   </app-restartable>
 </section>
 
 <section>
-  <h2>{{ '{' }} queue, key {{ '}' }}: save per document</h2>
+  <h2 i18n>{{ '{' }} queue, key {{ '}' }}: save per document</h2>
   <app-restartable>
     <ng-template><app-keyed-queue-demo /></ng-template>
   </app-restartable>

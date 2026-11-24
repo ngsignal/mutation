@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <title>@ngsignal/mutation demo</title>
   <base href="/">
+  <script>
+    // GitHub Pages serves 404.html for a deep link: it stores the URL and redirects to the
+    // right language's index. Restore the URL before the router reads it.
+    try {
+      const deepLink = sessionStorage.getItem('deep-link');
+      sessionStorage.removeItem('deep-link');
+      if (deepLink?.startsWith(new URL(document.baseURI).pathname)) {
+        history.replaceState(null, '', deepLink);
+      }
+    } catch {}
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="description" content="Interactive demo of @ngsignal/mutation, a Signal-based primitive for Angular mutations (POST/PUT/PATCH/DELETE).">

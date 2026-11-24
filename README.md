@@ -23,14 +23,13 @@ POST · PUT · PATCH · DELETE
 
 ## Why
 
-Angular now models state with signals, and `resource()` covers async reads. Writes have no
-equivalent: `resource()` [aborts](https://angular.dev/api/core/resource) an in-flight load when
-a new one starts, which would kill a write.
+With signals, Angular turns async work into state you read in templates: `resource()` exposes a
+read's status, value and error. Writes, the side effects on the server, have no equivalent:
+`resource()` is [meant for reads](https://angular.dev/api/core/resource) and would abort them.
 
-`mutation()` fills that gap with the contract of `resource()`'s loader: an async function that
-gets an `AbortSignal` and returns a promise, since a write settles once. Observables and
-`HttpClient` work too. No cache, no retry: see the [recipes](./docs/RECIPES.md), or
-[TanStack Query](./docs/ARCHITECTURE.md#why-not-tanstack-query).
+`mutation()` brings the same model to writes: each call goes through a small state machine
+(idle, pending, success or error) exposed as signals, and returns a promise. It stays a
+primitive: no cache, no retry, and [recipes](./docs/RECIPES.md) for the rest.
 
 ## Install
 

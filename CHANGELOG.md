@@ -2,8 +2,8 @@
 
 ## 0.9.2
 
-- Docs: the README's Why explains the gap signals leave for writes, why a mutation returns a
-  promise rather than an Observable, and what it leaves to TanStack Query.
+- Docs: the README's Why explains the gap signals leave for writes, and how a mutation fills it
+  with a state machine exposed as signals.
 
 ## 0.9.1
 

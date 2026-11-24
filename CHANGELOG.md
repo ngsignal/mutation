@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2
+
+- Docs: the README's Why explains the gap signals leave for writes, and how a mutation fills it
+  with a state machine exposed as signals.
+- Package: the npm description matches the README tagline, and new keywords help find it on npm
+  (angular-signals, httpresource, rxjs, optimistic-updates, ssr).
+
 ## 0.9.1
 
 - Docs: shorter README with the main features at a glance, an animated logo and a GIF of

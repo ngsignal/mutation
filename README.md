@@ -23,11 +23,13 @@ POST · PUT · PATCH · DELETE
 
 ## Why
 
-Angular's `resource()` and `httpResource()` are
-[meant for reads](https://angular.dev/api/core/resource): they abort an in-flight load when a
-new one starts, which would kill a write. Without them, a POST · PUT · PATCH · DELETE means a
-hand-rolled "saving" flag that a double click gets wrong: the first call to finish clears it
-while the second one is still in flight.
+With signals, Angular turns async work into state you read in templates: `resource()` exposes a
+read's status, value and error. Writes, the side effects on the server, have no equivalent:
+`resource()` is [meant for reads](https://angular.dev/api/core/resource) and would abort them.
+
+`mutation()` brings the same model to writes: each call goes through a small state machine
+(idle, pending, success or error) exposed as signals, and returns a promise. It stays a
+primitive: no cache, no retry, and [recipes](./docs/RECIPES.md) for the rest.
 
 ## Install
 
@@ -124,10 +126,8 @@ readonly uploadAvatar = httpMutation<File, User>({
 - **SSR-ready, no dependencies**: calls in flight hold `PendingTasks`. RxJS and
   `@angular/common` are optional peers, loaded only by the secondary entry points.
 
-Every option and member is in the [API reference](./docs/API.md). It stays a primitive: no
-cache, no retry, no automatic `resource()` refresh; the [recipes](./docs/RECIPES.md) cover
-these, plus optimistic updates, Signal Forms and testing.
-[Architecture](./docs/ARCHITECTURE.md) compares it with TanStack Query and NgRx Toolkit.
+Every option and member is in the [API reference](./docs/API.md). The [recipes](./docs/RECIPES.md)
+cover optimistic updates, Signal Forms, testing and more.
 
 ## Status
 

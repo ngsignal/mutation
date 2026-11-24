@@ -5,6 +5,8 @@
 - Docs: shorter README with the main features at a glance, an animated logo and a GIF of
   concurrent calls; every option, member and behavior detail moves to
   [docs/API.md](./docs/API.md).
+- Docs: recipes rewritten shorter, without repeating the API reference. The optimistic update
+  rollback now restores only writes that were never sent or that the server refused.
 
 ## 0.9.0
 

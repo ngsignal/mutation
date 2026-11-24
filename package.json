@@ -4,11 +4,15 @@
   "description": "An Angular low-level Signal-based primitive for mutations (POST · PUT · PATCH · DELETE), the write side of resource() and httpResource()",
   "keywords": [
     "angular",
+    "angular-signals",
     "signals",
     "mutation",
     "resource",
+    "httpresource",
     "http",
-    "reactive"
+    "rxjs",
+    "optimistic-updates",
+    "ssr"
   ],
   "license": "MIT",
   "author": "Erwan Raulo <erwan.raulo@outlook.fr>",

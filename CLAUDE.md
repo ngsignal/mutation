@@ -3,7 +3,7 @@
 ## What this project is
 
 `@ngsignal/mutation` is a **low-level, Signal-based Angular primitive for mutations**
-(POST/PUT/DELETE). Angular's `resource()` / `httpResource()` cover reads only: they abort
+(POST · PUT · PATCH · DELETE). Angular's `resource()` / `httpResource()` cover reads only: they abort
 in-flight loads, which would kill a write. This package fills that gap with one core
 function, `mutation()`, plus two thin adapters mirroring `rxResource()` / `httpResource()`:
 `rxMutation()` and `httpMutation()`, in secondary entry points. Keeping it small is the
@@ -51,6 +51,7 @@ src/internal/                    # helpers shared by the adapters, never exporte
 src/testing/                     # spec helpers, excluded from the build
 src/**/*.spec.ts                 # one spec file per source file, next to it
 src/http/*.integration.spec.ts   # real requests to src/testing/http-test-server.ts (see agent_docs/testing.md)
+docs/API.md             # API reference: options, members, concurrency, cancellations
 docs/ARCHITECTURE.md    # design rationale, comparison with TanStack Query and NgRx Toolkit
 docs/RECIPES.md         # userland patterns (resource refresh, optimistic updates, …)
 docs/ROADMAP.md         # what is planned before 1.0, and what is out of scope
@@ -94,7 +95,7 @@ instead of copying the README.
 Any change to options, returned signals, exported types or semantics:
 
 - add a test in the matching `*.spec.ts`: new behavior without a test is not done;
-- update `README.md` and, if affected, `docs/`;
+- update `docs/API.md`, the README's feature list if affected, and the other `docs/`;
 - add or update its page in `examples/demo` (see its `CLAUDE.md`): a changed recipe changes its
   demo too;
 - add a `CHANGELOG.md` entry (`0.x`: patch = fixes only, minor may break; breaking first);

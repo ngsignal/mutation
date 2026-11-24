@@ -1,8 +1,11 @@
 # Recipes
 
+Patterns built on top of the primitive. What each option and member does is in the
+[API reference](./API.md).
+
 ## Working with resource
 
-`mutation()` has no cache and won't touch a `resource()`/`httpResource()` for you. Two common patterns:
+A mutation has no cache and never touches a resource for you.
 
 ### Refreshing a resource after a mutation
 
@@ -12,22 +15,21 @@ readonly usersResource = resource({
 });
 
 readonly createUser = mutation<string, User>({
-  mutationFn: (name, signal) => this.api.createUser(name, signal),
+  mutationFn: (name, abortSignal) => this.api.createUser(name, abortSignal),
   onSuccess: () => this.usersResource.reload(),
 });
 ```
 
-`onSuccess` runs for every successful call, superseded or not, so the last reload always follows
-the last write to land.
+Every successful call reloads, superseded or not, so the last reload follows the last write.
 
 ### Optimistic updates
 
-`pendingInputs()` lists the calls in flight, so the optimistic view is a `computed`: hide the
-users being deleted, and remove each one from the resource once its delete succeeds:
+The simplest optimistic view is a `computed` that hides the users being deleted, read from
+`pendingInputs()`, and removes each one from the resource once its delete succeeds:
 
 ```ts
 readonly deleteUser = mutation<User, void>({
-  mutationFn: (user, signal) => this.api.deleteUser(user.id, signal),
+  mutationFn: (user, abortSignal) => this.api.deleteUser(user.id, abortSignal),
   onSuccess: (_output, user) => this.usersResource.update((users) => users.filter((u) => u.id !== user.id)),
 });
 
@@ -37,38 +39,35 @@ readonly visibleUsers = computed(() => {
 });
 ```
 
-There is nothing to roll back: a failed delete leaves `pendingInputs()` and the user shows again,
-in place. Overlapping deletes each hide their own user. A call leaves `pendingInputs()` just
-before `onSuccess` runs, in the same task, so the user never flashes back on screen. For a create,
-render `pendingInputs()` as extra rows the same way. React's `useOptimistic` and TanStack Query's
-optimistic updates "via the UI" follow the same idea.
+Nothing to roll back: a failed delete leaves the pending list and the user shows again, in place.
+The user never flashes back on success, because a call leaves the pending list in the same task
+as its success callback. For a create, render the pending inputs as extra rows. React's
+`useOptimistic` follows the same idea.
 
-When other code reads the resource itself, update it instead. `resource().value` is a
-`WritableSignal`: update it immediately, roll back in `.catch()` (`mutate()` always rejects like
-`mutationFn` does, for that specific call):
+When other code reads the resource itself, update it right away and roll back on failure. Roll
+back only a write that can't have been applied: one that was never sent, or one the server
+refused. A call aborted in flight may have reached the server.
 
 ```ts
-readonly deleteUser = mutation<User, void>({
-  mutationFn: (user, signal) => this.api.deleteUser(user.id, signal),
-});
-
-removeUser(user: User) {
+removeUser(user: User): void {
   this.usersResource.update((users) => users.filter((u) => u.id !== user.id));
 
-  this.deleteUser.mutate(user).catch(() => this.usersResource.update((users) => [...users, user]));
+  this.deleteUser.mutate(user).catch((error: unknown) => {
+    const refused = error instanceof HttpErrorResponse && error.status >= 400;
+    if (wasNeverSent(error) || refused) this.usersResource.update((users) => [...users, user]);
+  });
 }
 ```
 
-Roll back the failed item, not a snapshot of the list: deletes can overlap (see
-[stale-response guarding](./API.md#calls-in-flight)), and a snapshot would also bring
-back users whose delete succeeds. The restored user comes back at the end of the list.
+Restore the failed user, not a snapshot of the list: deletes overlap, and a snapshot would bring
+back users whose delete succeeded. The restored user comes back at the end of the list.
 
 ## Ordering writes across mutations
 
-`concurrency: 'queue'` orders the calls of one mutation. Writes to the same data often come from
-different mutations: renaming a todo on blur, then deleting it. Clicking the delete button blurs
-the input first, so the `PATCH` always leaves just before the `DELETE`. Sent in parallel, the
-`DELETE` can land first and the `PATCH` fails with a `404`. Give both mutations the same queue:
+The queue mode orders the calls of one mutation, but writes to the same data often come from
+several: renaming a todo on blur, then deleting it. The click on delete blurs the input first, so
+the PATCH leaves just before the DELETE; sent in parallel, the DELETE can land first and the
+PATCH fails with a 404. Give both mutations the same queue:
 
 ```ts
 @Injectable({ providedIn: 'root' })
@@ -91,42 +90,35 @@ export class TodoList {
 }
 ```
 
-Calls then run one at a time, in call order, whichever mutation makes them, and each mutation
-keeps its own signals. The queue lives in a service so that every component writing todos shares
-it; a queue at module level would also be shared by every SSR request.
+The queue lives in a service so every component writing todos shares it. At module level, it
+would also be shared by every SSR request.
 
-To order writes per entity rather than all together, give a key. Here the saves of one document
-stay in order, while the other documents save at once:
-
-```ts
-@Injectable({ providedIn: 'root' })
-export class DocumentSaver {
-  private readonly docWrites = mutationQueue();
-
-  readonly save = httpMutation<{ docId: string; content: string }, Doc>({
-    request: ({ docId, content }) => ({ method: 'PUT', url: `/api/docs/${docId}`, body: { content } }),
-    concurrency: { queue: this.docWrites, key: (draft) => draft.docId },
-  });
-}
-```
-
-A mutation given the queue without a key is a barrier for the keyed ones: a "delete all
-documents" waits for the saves in flight, and the saves made after it wait for it:
+To order writes per entity, give a key: the saves of one document stay in order, the other
+documents save at once. A mutation on the same queue without a key waits for every key, like a
+"delete all":
 
 ```ts
+private readonly docWrites = mutationQueue();
+
+readonly save = httpMutation<{ docId: string; content: string }, Doc>({
+  request: ({ docId, content }) => ({ method: 'PUT', url: `/api/docs/${docId}`, body: { content } }),
+  concurrency: { queue: this.docWrites, key: (draft) => draft.docId },
+});
+
 readonly removeAll = httpMutation<void, void>({
   request: () => ({ method: 'DELETE', url: '/api/docs' }),
   concurrency: this.docWrites,
 });
 ```
 
-- Never call a mutation of the same queue from a `mutationFn` and wait for it: that call queues
-  behind the one waiting for it, and neither ever settles (nor does SSR). Chain it from
-  `onSuccess`, or call both and let the queue order them.
-- A call that never settles holds the queue for every mutation sharing it, even after its own
-  mutation is reset or destroyed: writes stay in order. Pass the `AbortSignal` on to the request
-  (`httpMutation()` and `rxMutation()` do), and bound the request with a timeout:
-  `timeout: 10_000` in `httpMutation()`'s `request()`, or with `fetch()`:
+Pitfalls:
+
+- **Deadlock**: a `mutationFn` that calls a mutation of its own queue and waits for it never
+  settles, and neither does SSR. Chain it from `onSuccess` instead, or call both and let the queue
+  order them.
+- **Hung request**: a call that never settles holds the queue for every mutation sharing it, even
+  after a reset. Pass the abort signal on to the request and bound it with a timeout: `timeout` in
+  the request description, or with `fetch()`:
 
   ```ts
   mutationFn: async (draft, abortSignal) => {
@@ -139,51 +131,49 @@ readonly removeAll = httpMutation<void, void>({
     if (!response.ok) throw new Error(`PUT failed with ${response.status}`);
   },
   ```
-- `request()`, and an `rxMutation()`'s `mutationFn`, run when the call leaves the queue: a
-  `PATCH` queued behind the `POST` that creates its entity can read the id that the `POST`'s
-  `onSuccess` stored.
-- A failed call doesn't block the queue: the next one runs. If it depends on the failed one, make
-  its `request()` or `mutationFn` throw.
-- `reset()` and destroy only reject the mutation's own calls; the calls of the other mutations
-  stay in the queue.
-- A queue only orders the writes of one browser tab. For several tabs or users, have the server
-  check a version (`ETag` and `If-Match`).
+
+- **Dependent writes**: a failed call doesn't block the queue. When the next one depends on it,
+  make its request throw. Since the request is built when the call leaves the queue, a PATCH
+  queued behind the POST that creates its entity can read the id the POST stored on success.
+- **Reset**: a reset only rejects the mutation's own calls; the other mutations' calls stay
+  queued.
+- **Several tabs or users**: a queue only orders the writes of one tab. Have the server check a
+  version (`ETag` and `If-Match`).
 
 ## Choosing settings by HTTP method
 
 [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods) calls a method
-idempotent when sending the same request twice leaves the server as sending it once. That decides
-what to do when a write may have been applied without its response coming back (a timeout, a
-`502`/`504`, or an `'Aborted'` call), not whether to use a mutation: an idempotent write still
-changes the server, so `resource()` would still abort it.
+idempotent when sending a request twice leaves the server as sending it once. That decides what
+to do when a write may have been applied without a response coming back (a timeout, a 502 or 504,
+an aborted call). Idempotent writes still change the server, so they still need a mutation.
 
-| Method   | Idempotent | `concurrency`                                                              | When the write may have been applied   |
-| -------- | ---------- | -------------------------------------------------------------------------- | -------------------------------------- |
-| `PUT`    | Yes        | `'queue'`, or `{ queue, key }` per entity                                   | Send it again                          |
-| `DELETE` | Yes        | `'parallel'`: a duplicate only gets a `404`                                 | Send it again, and count a `404` as done |
-| `POST`   | No         | `'drop'` for a form submit, `'parallel'` for independent creations          | Only with an idempotency key           |
-| `PATCH`  | It depends | `'queue'`, or `{ queue, key }` per entity                                   | Only if the patch sets values rather than adding to them, or with an idempotency key |
+| Method | Idempotent | Concurrency                                                     | When the write may have been applied |
+| ------ | ---------- | --------------------------------------------------------------- | ------------------------------------ |
+| PUT    | Yes        | `'queue'`, or a keyed queue per entity                          | Send it again                        |
+| DELETE | Yes        | `'parallel'`: a duplicate only gets a 404                       | Send it again, count a 404 as done   |
+| POST   | No         | `'drop'` for a form submit, `'parallel'` for independent creations | Only with an idempotency key      |
+| PATCH  | It depends | `'queue'`, or a keyed queue per entity                          | Only if it sets values rather than adding to them, or with an idempotency key |
 
-Idempotent doesn't mean the order doesn't matter: two `PUT`s with different bodies are each
-idempotent, yet the one that lands last wins. Queue the writes to the same data, even idempotent
-ones.
+Idempotent doesn't mean order-free: of two PUTs with different bodies, the last one to land wins.
+Queue the writes to the same data, idempotent or not.
 
 ## Retrying writes
 
-There is no `retry` option: whether a failed write is safe to retry depends on its method and on
-your API. A `429` or `503` means the server refused the request, so retrying is safe; wait for the
-delay its `Retry-After` header gives when there is one (a number of seconds or a date). A timeout
-or a `502`/`504` may come after the write was applied: a `PUT` or a `DELETE` can be sent again, a
-`POST` needs an idempotency key on the server side (see
-[Choosing settings by HTTP method](#choosing-settings-by-http-method)).
+There is no retry option, because whether a write is safe to retry depends on its method and your
+API:
 
-If you retry inside `mutationFn`, pass its `AbortSignal` to the wait between attempts, otherwise
-`reset()` and destroy won't stop the loop. Retrying a `PUT` in parallel mode can overwrite a newer
-one sent in the meantime: with `concurrency: 'queue'`, the next call waits for the retries.
+- A 429 or 503 means the server refused the request: retry, after the `Retry-After` delay when
+  there is one.
+- A timeout, a 502 or a 504 may come after the write was applied: send a PUT or DELETE again, but
+  a POST only with an idempotency key (see [the table above](#choosing-settings-by-http-method)).
 
-With `httpMutation()`, put the idempotency key in `input` rather than generating it in
-`request()`: `request()` runs on every `mutate()`, so a key generated there changes when the user
-clicks again.
+When retrying inside `mutationFn`, pass the abort signal to the wait between attempts, or a reset
+won't stop the loop. In parallel mode, a retried PUT can overwrite a newer one: in queue mode, the
+next call waits for the retries.
+
+With `httpMutation()`, put the idempotency key in the input, not in the request description: the
+description is built again on every call, so a key generated there changes when the user clicks
+again.
 
 ## Submitting a Signal Form
 
@@ -198,10 +188,10 @@ readonly signUpForm = form(this.model, (path) => {
 });
 
 readonly signUp = mutation<SignUp, User>({
-  mutationFn: (dto, signal) => this.api.signUp(dto, signal),
+  mutationFn: (dto, abortSignal) => this.api.signUp(dto, abortSignal),
 });
 
-save() {
+save(): void {
   void submit(this.signUpForm, async (f) => {
     try {
       await this.signUp.mutate(f().value());
@@ -230,43 +220,36 @@ save() {
 </form>
 ```
 
-The form owns the submission: `submitting()` disables the button, and each returned error shows
-on the field it names, or on the form if it names none. The mutation owns the write: it aborts
-on destroy, holds SSR until it settles, and exposes the result and the error to the rest of the
-page.
-
-Return errors, don't throw them: the return value is how the form learns what failed. The form
-already blocks a second submit, so `concurrency: 'drop'` only matters if the mutation is also
+The form owns the submission: it disables the button and shows each returned error on its field.
+The mutation owns the write: it aborts on destroy, holds SSR and exposes the result to the rest of
+the page. Return errors rather than throwing them, since that's how the form learns what failed.
+The form already blocks a second submit, so the drop mode only matters if the mutation is also
 called from elsewhere.
 
-With `httpMutation()`, a failed request rejects with an `HttpErrorResponse`: the server's error
-body, e.g. a `422`'s field errors, is in its `error` property, typed `any`. Check its shape before
-mapping it to fields.
+With `httpMutation()`, the server's error body (e.g. a 422's field errors) is the `error` property
+of the `HttpErrorResponse`, typed `any`: check its shape before mapping it to fields.
 
-Signal Forms are stable since Angular 22. On Angular 21 they are experimental and the API may
-differ.
-
-<a id="using-httpclient"></a>
+Signal Forms are stable since Angular 22, experimental on Angular 21.
 
 ## Testing a component
 
-Every call in flight registers with Angular's `PendingTasks`, so `fixture.whenStable()` waits
-for it to settle and for the view to update. No fake timers, no polling:
+A call in flight keeps the app unstable, so `fixture.whenStable()` waits for it to settle and for
+the view to update. No fake timers, no polling:
 
 ```ts
-it('shows the created todo', async () => {
-  const fixture = TestBed.createComponent(NewTodoComponent);
+it('shows the created user', async () => {
+  const fixture = TestBed.createComponent(NewUserComponent);
   await fixture.whenStable();
 
   fixture.nativeElement.querySelector('button').click();
   await fixture.whenStable();
 
-  expect(fixture.nativeElement.textContent).toContain('Milk');
+  expect(fixture.nativeElement.textContent).toContain('Ada');
 });
 ```
 
-With `httpMutation()` and `HttpTestingController`, flush the request **before** awaiting
-`whenStable()`: the pending request keeps the app unstable, so awaiting first never resolves.
+With `HttpTestingController`, flush the request **before** awaiting stability, which would
+otherwise never come:
 
 ```ts
 fixture.nativeElement.querySelector('button').click();
@@ -274,19 +257,21 @@ TestBed.inject(HttpTestingController).expectOne('/api/users').flush({ name: 'Ada
 await fixture.whenStable();
 ```
 
-To test a mutation without a component, create it with `TestBed.runInInjectionContext()` and
-await `mutate()`.
+To test a mutation without a component, create it in `TestBed.runInInjectionContext()` and await
+`mutate()`.
+
+<a id="using-httpclient"></a>
 
 ## Using Observables and HttpClient
 
-Pick the variant matching what you already have (see [the table](./API.md#rxmutation--httpmutation)).
-Both accept the same `onSuccess`/`onError`/`onSettled`/`concurrency`/`injector` options as
-`mutation()` — see the [API reference](./API.md) for what each does.
+Pick the variant matching what you already have (see
+[the table](./API.md#rxmutation--httpmutation)). Both take the same callbacks and concurrency
+options as `mutation()`.
 
 ### Reusing an Observable-returning service
 
-`rxMutation()` takes any Observable — an existing service, a generated API client, or a raw
-`HttpClient` call. Same shape as `mutation()`, but `mutationFn` returns an `Observable`:
+`rxMutation()` takes any Observable: an existing service, a generated API client, a raw
+`HttpClient` call.
 
 ```ts
 import { rxMutation } from '@ngsignal/mutation/rxjs-interop';
@@ -296,8 +281,8 @@ readonly createUser = rxMutation<CreateUserDto, User>({
 });
 ```
 
-The call resolves with the last value, once the Observable completes. One that never completes
-stays pending until a reset or destroy. If that can happen, add a `timeout()`:
+The call resolves with the last value once the Observable completes. If it may never complete,
+add a timeout, or it stays pending until a reset:
 
 ```ts
 import { timeout } from 'rxjs/operators';
@@ -309,9 +294,8 @@ readonly saveSettings = rxMutation({
 
 ### Describing an HTTP request
 
-`httpMutation()` takes a request description instead — the same shape as `httpResource()`'s
-(`url`, `body`, `headers`, `params`, `context`, `reportProgress`, ...), except `method` is
-required. It sends the request itself through `HttpClient`, so interceptors apply as usual:
+`httpMutation()` takes the same request description as `httpResource()`, with a required
+`method`. It sends it through `HttpClient`, so interceptors apply. Requires `provideHttpClient()`.
 
 ```ts
 import { httpMutation } from '@ngsignal/mutation/http';
@@ -321,31 +305,17 @@ readonly createUser = httpMutation<CreateUserDto, User>({
 });
 ```
 
-A response without a body (e.g. `204 No Content` on a DELETE) resolves with `null`, as with
-`httpResource()`: `HttpClient` returns `null` and it is typed `TOutput` as-is. Declare the
-output type accordingly:
+A response without a body (a 204 on a DELETE) resolves with `null`, as with `httpResource()`:
+declare the output type as `null`, or `User | null`.
 
-```ts
-readonly deleteUser = httpMutation<string, null>({
-  request: (id) => ({ method: 'DELETE', url: `/api/users/${id}` }),
-});
-```
-
-`hasValue()` only checks for `undefined`, so it returns `true` after a `204`: `null` is the
-value. Declaring `TOutput` as `null` (or `User | null`) keeps the narrowed type honest.
-
-`request(input)` runs when the request is sent, outside any reactive context: with the default
-concurrency that is inside `mutate()`, but with `concurrency: 'queue'` it is when the queued
-request starts. Signals it reads (an auth token, an `ETag` for `If-Match`) are read at that
-moment, not when `mutate()` was called — pass values through `input` to freeze them earlier.
-
-Requires `provideHttpClient()`.
+The description is built when the request is sent, not when `mutate()` is called: in queue mode,
+that's when the call leaves the queue. Signals it reads (an auth token, an `ETag`) are read then;
+pass values through the input to freeze them earlier.
 
 ### Validating the response
 
-`parse` transforms or validates the response body before it resolves the call — the same option
-as `httpResource()`'s. It receives the raw body (`unknown` for JSON) and its return type becomes
-`TOutput`, so it pairs well with a schema library:
+`parse` validates or transforms the body before it resolves the call, like `httpResource()`'s.
+Its return type becomes the output type, so it pairs with a schema library:
 
 ```ts
 readonly createUser = httpMutation({
@@ -354,16 +324,14 @@ readonly createUser = httpMutation({
 });
 ```
 
-If `parse` throws, the call fails with an `HttpMutationParseError`. **The server has already
-applied the write**: don't retry it (see [Retrying writes](#retrying-writes)). The original error
-is its `cause`.
-
-For a body-less response (`204`), `parse` receives `null`.
+If `parse` throws, the call fails with an `HttpMutationParseError` whose `cause` is the original
+error. **The server has already applied the write**: don't retry it. For a 204, `parse` receives
+`null`.
 
 ### Non-JSON responses
 
-Like `httpResource()`, three variants read the response body differently. Typical for a write
-that returns a generated file:
+Like `httpResource()`, three variants read the body differently, e.g. for a write that returns a
+generated file:
 
 ```ts
 readonly exportInvoice = httpMutation.blob<number>({
@@ -371,27 +339,23 @@ readonly exportInvoice = httpMutation.blob<number>({
 }); // value: Signal<Blob | undefined>
 ```
 
-| Variant                      | Response body | `parse`                                   |
+| Variant                      | Body          | `parse`                                   |
 | ---------------------------- | ------------- | ----------------------------------------- |
 | `httpMutation()`             | JSON          | optional                                  |
-| `httpMutation.text()`        | `string`      | required if `TOutput` isn't `string`      |
-| `httpMutation.blob()`        | `Blob`        | required if `TOutput` isn't `Blob`        |
-| `httpMutation.arrayBuffer()` | `ArrayBuffer` | required if `TOutput` isn't `ArrayBuffer` |
+| `httpMutation.text()`        | `string`      | required unless the output is a `string`  |
+| `httpMutation.blob()`        | `Blob`        | required unless the output is a `Blob`    |
+| `httpMutation.arrayBuffer()` | `ArrayBuffer` | required unless the output is an `ArrayBuffer` |
 
 ### Requests that must outlive the component
 
-Like `mutation()`, `httpMutation()` aborts its in-flight requests when its injection context is
-destroyed: navigating away from a component unsubscribes, which cancels the HTTP request.
-`keepalive: true` does not prevent that — it only lets a request survive a full page unload,
-and here the request is cancelled by the app itself. For a write that must complete anyway
-(a "save on leave"), create the mutation with a longer-lived injector, e.g. in a
-`providedIn: 'root'` service, or with `injector: inject(EnvironmentInjector)`.
+Destroying the injection context cancels the requests in flight, so navigating away from a
+component cancels its writes. `keepalive: true` doesn't help: it only survives a page unload, and here the app itself
+cancels. For a write that must complete anyway (a "save on leave"), create the mutation in a
+root service, or with `injector: inject(EnvironmentInjector)`.
 
 ### Upload progress
 
-Set `reportProgress: true` in the request description to feed the `uploadProgress` and
-`downloadProgress` signals (kept apart on purpose, see
-[ARCHITECTURE](./ARCHITECTURE.md#httpmutation-vs-httpresource)).
+Set `reportProgress: true` to fill the upload and download progress signals:
 
 ```ts
 readonly uploadAvatar = httpMutation<File, User>({
@@ -409,20 +373,19 @@ readonly uploadAvatar = httpMutation<File, User>({
 }
 ```
 
-Upload progress needs the XHR backend, the default on Angular 21. Angular 22 switched
-`provideHttpClient()` to `fetch`, which ignores `reportProgress` for uploads: without
-`withXhr()`, `uploadProgress` silently stays `undefined`. (Angular 22's `reportUploadProgress`
-would throw NG02824 instead, but the request description only accepts `reportProgress`.)
+Upload progress needs the XHR backend, the default on Angular 21. Angular 22 switched to `fetch`,
+which ignores it for uploads: the signal silently stays `undefined` unless you opt back in.
+(Angular 22's `reportUploadProgress` would throw NG02824 instead, but the request description only
+accepts `reportProgress`.)
 
 ```ts
-provideHttpClient(withXhr()) // Angular 22+, only if you need upload progress
+provideHttpClient(withXhr()) // Angular 22+, only for upload progress
 ```
 
 ### Status code and headers
 
-`httpMutation()` also exposes `statusCode` and `headers`, read from the `HttpResponse` — or
-from the `HttpErrorResponse` when the request fails. Useful for a `201 Created` with a
-`Location` header, or to branch on a `409`/`422` error:
+The status code and headers come from the response, or from the error response when the request
+fails. Useful for a 201 with a `Location` header, or to branch on a 409 or 422:
 
 ```html
 @if (createUser.statusCode() === 201) {
@@ -430,29 +393,13 @@ from the `HttpErrorResponse` when the request fails. Useful for a `201 Created` 
 }
 ```
 
-A `202 Accepted` is a success too, though the server has only queued the write for later
-([RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-202-accepted)): check
-`statusCode()` before telling the user it's done.
+- A 202 is a success, but the server has only
+  [queued the write](https://www.rfc-editor.org/rfc/rfc9110.html#name-202-accepted): check the
+  status before telling the user it's done.
+- Cross-origin, the browser hides most headers, `Location` included, unless the server lists them
+  in `Access-Control-Expose-Headers`.
+- The signals keep only the latest call. The callbacks get each call's response:
 
-Cross-origin, the browser hides most response headers, `Location` included, unless the server
-lists them in `Access-Control-Expose-Headers`: `headers()?.get('Location')` is `null` otherwise.
-
-`uploadProgress`, `downloadProgress`, `statusCode` and `headers` reset to `undefined` when a
-call's request starts, and on `reset()`, and — like `value`/`status` — only reflect the current
-call: a superseded call's events are ignored (see [calls in flight](./API.md#calls-in-flight)).
-
-With `concurrency: 'queue'`, a request only starts once the previous one settles, and these
-signals follow the request actually in flight: while an older upload is still running with a
-newer call queued behind it, `uploadProgress` shows the older upload's progress (its outcome will
-still be ignored). They reset as soon as the queued request starts. The input of the request in
-flight is `pendingInputs()[0]`.
-
-The signals keep only the latest call. Callbacks get each call's `response`:
-
-```ts
-onSuccess: (user, dto, { response }) => this.created.push(response?.headers.get('Location')),
-```
-
-`error()` is typed `unknown` by default. It is an `HttpErrorResponse` for HTTP failures, but an
-interceptor may throw anything else — pass `TError` explicitly if you rely on it:
-`httpMutation<CreateUserDto, User, HttpErrorResponse>(...)`.
+  ```ts
+  onSuccess: (user, dto, { response }) => this.created.push(response?.headers.get('Location')),
+  ```

@@ -23,22 +23,14 @@ POST · PUT · PATCH · DELETE
 
 ## Why
 
-Angular now models state with signals: `signal()` and `computed()` for sync state,
-`resource()` and `httpResource()` for async reads. Writes have no equivalent, and `resource()`
-is [meant for reads](https://angular.dev/api/core/resource): it aborts an in-flight load when a
-new one starts, which would kill a write. A POST · PUT · PATCH · DELETE still means a
-hand-rolled "saving" flag, which a double click gets wrong: the first call to finish clears it
-while the second one is still in flight.
+Angular now models state with signals, and `resource()` covers async reads. Writes have no
+equivalent: `resource()` [aborts](https://angular.dev/api/core/resource) an in-flight load when
+a new one starts, which would kill a write.
 
-`mutation()` fills that gap with the same contract as `resource()`'s loader: an async function
-that gets an `AbortSignal` and returns a promise, its state exposed as signals. A write settles
-once, so it needs a promise rather than a stream, and `await save.mutate(x)` reads naturally in
-a submit handler. It works with `fetch()` or any client; `rxMutation()` and `httpMutation()`
-cover Observables and `HttpClient`.
-
-It stays a primitive: no cache, no retry, no automatic `resource()` refresh. For those, see the
-[recipes](./docs/RECIPES.md), or use TanStack Query
-([comparison](./docs/ARCHITECTURE.md#why-not-tanstack-query)).
+`mutation()` fills that gap with the contract of `resource()`'s loader: an async function that
+gets an `AbortSignal` and returns a promise, since a write settles once. Observables and
+`HttpClient` work too. No cache, no retry: see the [recipes](./docs/RECIPES.md), or
+[TanStack Query](./docs/ARCHITECTURE.md#why-not-tanstack-query).
 
 ## Install
 

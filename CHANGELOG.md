@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Docs: the optimistic updates recipe covers renames, folding `pendingInputs()` over the resource
+  with a pure function so the latest call wins, a mutation with one call in flight with `input()`,
+  and why `onSuccess` should update the resource rather than reload it. Its demo adds a rename.
+
 ## 0.9.2
 
 - Docs: the README's Why explains the gap signals leave for writes, and how a mutation fills it

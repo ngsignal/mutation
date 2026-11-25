@@ -44,6 +44,39 @@ The user never flashes back on success, because a call leaves the pending list i
 as its success callback. For a create, render the pending inputs as extra rows. React's
 `useOptimistic` follows the same idea.
 
+Update the resource in `onSuccess` rather than `reload()` it: the user leaves the pending list as
+soon as the delete succeeds, so it would show again until the reload ends.
+
+For an update, fold the pending inputs over the resource with a pure function. `pendingInputs()`
+is in call order, so the latest rename of a user wins:
+
+```ts
+const rename = (users: User[], { id, name }: User) => users.map((u) => (u.id === id ? { ...u, name } : u));
+
+readonly renameUser = mutation<User, User>({
+  mutationFn: (user, abortSignal) => this.api.renameUser(user, abortSignal),
+  onSuccess: (renamed) => this.usersResource.update((users) => rename(users, renamed)),
+  concurrency: 'queue',
+});
+
+readonly visibleUsers = computed(() => this.renameUser.pendingInputs().reduce(rename, this.usersResource.value()));
+```
+
+Queue the writes to the same user: in parallel, a rename that lands last would write an older
+name in `onSuccess`. `rename` is what the server will do, testable without Angular.
+
+When a mutation has one call in flight at most (`'drop'`, or a button disabled while it's
+pending), `input()` is enough. It keeps the latest call's input after the call settles, so check
+`status()` too:
+
+```ts
+readonly title = computed(() =>
+  this.rename.status() === 'pending' ? this.rename.input()!.title : this.todo.value().title,
+);
+```
+
+With concurrent calls, `input()` only shows the latest one: use `pendingInputs()`.
+
 When other code reads the resource itself, update it right away and roll back on failure. Roll
 back only a write that can't have been applied: one that was never sent, or one the server
 refused. A call aborted in flight may have reached the server.

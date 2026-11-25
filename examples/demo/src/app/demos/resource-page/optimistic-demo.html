@@ -4,7 +4,13 @@
 <ul>
   @for (user of visibleUsers(); track user.id) {
     <li>
-      {{ user.name }}
+      <input
+        #name
+        type="text"
+        aria-label="Name"
+        [value]="user.name"
+        (change)="renameUser.mutate({ id: user.id, name: name.value })"
+      />
       <button type="button" class="danger" (click)="deleteUser.mutate(user)">Delete</button>
     </li>
   }
@@ -12,8 +18,17 @@
 @if (deleteUser.error(); as error) {
   <p class="error-text" role="alert">{{ error.message }}</p>
 }
+@if (renameUser.error(); as error) {
+  <p class="error-text" role="alert">{{ error.message }}</p>
+}
 <p class="hint">
   A row is hidden while its delete is in <code>pendingInputs()</code>, and removed from the
   resource by <code>onSuccess</code>. A failed delete, as always for "Grace Hopper", just shows the
   row again, in place: nothing to roll back. Delete Grace, then quickly Ada.
+</p>
+<p class="hint">
+  A rename shows at once: the pending renames are folded over the resource with
+  <code>reduce</code>, in call order, so the latest one wins. Each takes 2 s (an artificial delay).
+  Rename Ada twice quickly, or clear a name: the server rejects an empty name, and the old one
+  shows again.
 </p>

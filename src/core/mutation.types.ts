@@ -62,13 +62,16 @@ export interface MutationOptions<
   ) => void;
   /**
    * `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`:
-   * a call made while one is in flight rejects at once (`'Dropped'`).
+   * a call made while one is in flight rejects at once (`'Dropped'`). `'queue-latest'`: like
+   * `'queue'`, but a call keeps only the latest one waiting behind it: a newer call replaces the
+   * waiting one, which rejects at once (`'Replaced'`) and is never sent. For writes that each carry
+   * the whole state (autosave with `PUT`): a replaced delta would be lost.
    *
    * A `mutationQueue()`: one at a time, in call order, with the calls of every mutation given the
    * same queue. `{ queue, key }`: the same, per key, e.g. one queue per entity id; a call given the
    * queue without a key waits for every key, and the calls after it wait for it.
    */
-  concurrency?: 'parallel' | 'queue' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
+  concurrency?: 'parallel' | 'queue' | 'queue-latest' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
   /** Names the state signals in Angular DevTools: `'save'` gives `save.status`, `save.value`, … */

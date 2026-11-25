@@ -710,6 +710,30 @@ describe('concurrency: "queue"', () => {
   });
 });
 
+describe('concurrency: "queue-latest"', () => {
+  const nextTask = () => new Promise((resolve) => setTimeout(resolve));
+
+  it('sends the request in flight, then only the latest one, and never calls request() for a replaced call', async () => {
+    const request = vi.fn((doc: string) => ({ method: 'PUT', url: '/api/doc', body: doc }));
+    const m = TestBed.runInInjectionContext(() => httpMutation<string, string>({ concurrency: 'queue-latest', request }));
+
+    const first = m.mutate('v1');
+    const replaced = m.mutate('v2');
+    const latest = m.mutate('v3');
+    await expect(replaced).rejects.toMatchObject({ name: 'AbortError', message: 'Replaced' });
+
+    httpTesting.expectOne('/api/doc').flush('saved v1');
+    await first;
+    await nextTask();
+
+    const latestReq = httpTesting.expectOne('/api/doc');
+    expect(latestReq.request.body).toBe('v3');
+    latestReq.flush('saved v3');
+    await expect(latest).resolves.toBe('saved v3');
+    expect(request.mock.calls.map(([doc]) => doc)).toEqual(['v1', 'v3']);
+  });
+});
+
 describe('concurrency: "drop"', () => {
   it('does not clear the signals of the request in flight when a call is dropped', async () => {
     const m = TestBed.runInInjectionContext(() =>

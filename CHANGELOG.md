@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Feature: `concurrency: 'queue-latest'` queues like `'queue'`, but keeps only the latest call
+  waiting behind the one in flight: a newer call replaces it, and the replaced call rejects at
+  once with a `'Replaced'` `AbortError`, never sent (`wasNeverSent()` is true), without callbacks.
+  For writes that each carry the whole state, such as an autosave. See
+  [Autosaving](./docs/RECIPES.md#autosaving).
+
 ## 0.9.2
 
 - Docs: the README's Why explains the gap signals leave for writes, and how a mutation fills it

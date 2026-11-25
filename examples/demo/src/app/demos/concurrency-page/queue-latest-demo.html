@@ -1,0 +1,41 @@
+<label>
+  Document
+  <input #doc type="text" (input)="autosave(doc.value)" />
+</label>
+<p class="hint">
+  Each keystroke saves the whole document with two mutations, one per fake server, which takes
+  1.5 s to save (an artificial delay). Type a word quickly.
+</p>
+
+<section class="state">
+  <h3>concurrency: 'queue'</h3>
+  <dl>
+    <dt>saveQueued.pendingInputs()</dt>
+    <dd>{{ saveQueued.pendingInputs().length }} call(s)</dd>
+    <dt>server</dt>
+    <dd>"{{ queuedServer.documents().A }}"</dd>
+  </dl>
+  <p class="hint">Every intermediate version waits its turn and is sent: the server lags behind.</p>
+  <app-activity-log heading="Server" [entries]="queuedServer.requests()" />
+</section>
+
+<section class="state">
+  <h3>concurrency: 'queue-latest'</h3>
+  <dl>
+    <dt>saveLatest.pendingInputs()</dt>
+    <dd>
+      @for (content of saveLatest.pendingInputs(); track $index) {
+        "{{ content }}"{{ $last ? '' : ', ' }}
+      } @empty {
+        —
+      }
+    </dd>
+    <dt>server</dt>
+    <dd>"{{ latestServer.documents().A }}"</dd>
+  </dl>
+  <p class="hint">
+    At most two calls: the one in flight and the latest keystroke. Each new keystroke replaces the
+    waiting call, which rejects with <code>'Replaced'</code> and is never sent.
+  </p>
+  <app-activity-log heading="Server" [entries]="latestServer.requests()" />
+</section>

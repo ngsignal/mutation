@@ -21,12 +21,14 @@ gets a new hook here, not a wrapper around the returned ref.
   `reset()` and destroy forget it. `commit` writes the signals only when the call is still the
   latest (`calls.isLatest(call)`).
 - **Callbacks run for every settled call.** `commit` passes them `{ isLatest }`, and does nothing
-  when the call was aborted (by `reset()` / destroy, which abort every call in flight): then no
+  when the call was aborted (by `reset()` / destroy, which abort every call in flight, or replaced
+  by `'queue-latest'`): then no
   signal write and no `onSuccess` / `onError` / `onSettled`. A superseded
   call still runs its callbacks with `isLatest: false`. The promise returned by `mutate()`
   settles with the call's own outcome, superseded or not, or rejects with the abort reason as
   soon as `reset()` / destroy aborts the call (`rejectOnAbort`), even if `mutationFn` ignores
-  its signal: `'NotStarted'` if the call was still queued, the signal's `'Aborted'` once
+  its signal: `'NotStarted'` if the call was still queued (`'Replaced'`, the gate's reason, for a
+  replaced call), the signal's `'Aborted'` once
   `mutationFn` ran. Only the core rejects on abort: the queue keeps an aborted call's turn and
   skips its task then, and still waits for a real write, so it stays ordered. Each callback runs through `runCallback`: an
   exception goes to `ErrorHandler`, as in `OutputEmitterRef.emit()`, and must never reach the
@@ -34,11 +36,12 @@ gets a new hook here, not a wrapper around the returned ref.
 - **After destroy** (`destroyRef.destroyed`), `mutate()` rejects with `neverSentError('Destroyed')`
   before touching any signal or calling `mutationFn`. Every `AbortError` comes from
   `abort-error.ts`: `neverSentError()` for a call rejected before `mutationFn` ran (only
-  `mutation.ts` creates them, and they make `wasNeverSent()` true), `abortedError()` for a call
+  `mutation.ts` and the `'queue-latest'` gate create them, and they make `wasNeverSent()` true), `abortedError()` for a call
   aborted in flight. `runCall` clears the never-sent mark from any error `mutationFn` rejects
   with (`markMaybeSent`). The reasons are the Cancellations table in `docs/API.md`.
 - **Supersession does not abort.** A new `mutate()` does not abort earlier calls: they
-  run to completion and their outcome is ignored. Only `reset()` and destroy abort
+  run to completion and their outcome is ignored. Only `'queue-latest'`, which aborts the one call
+  it replaces before it ever ran, and `reset()` and destroy abort
   (`createCallTracker`'s `abortAll`): they abort every in-flight
   call's controller, release its pending task and forget it. The tracker listens to destroy only while calls are
   in flight, so an idle mutation leaves no reference in a long-lived injector. Don't call supersession
@@ -53,8 +56,8 @@ gets a new hook here, not a wrapper around the returned ref.
 - **`reset()` order.** It writes `IDLE` and runs `onReset` before `abortAll()`, and `abortAll()`
   forgets the calls before aborting them: a call that an abort listener starts is a new call,
   kept with its state.
-- **`untracked()`.** The start-of-call write (the `started` transition) and the
-  `mutationFn` invocation are wrapped so that calling `mutate()` from a reactive context
+- **`untracked()`.** The start-of-call write (the `started` transition), the gate's `run()` (a
+  `'queue-latest'` replacement writes `pendingInputs()`) and the `mutationFn` invocation are wrapped so that calling `mutate()` from a reactive context
   never creates a dependency. Keep new signal writes on that path inside `untracked`.
 - **`mutate()` → `admitCall()` → `runCall()`.** `admitCall()` rejects at once after destroy
   or when the gate refuses the call; `runCall()` runs an admitted call. `mutate()` attaches a no-op `.catch` so that ignoring the
@@ -82,6 +85,13 @@ branches on the mode and never unlocks a gate.
   `mutationFn`. Only the latest submitted
   call commits. `reset()` does not clear the tail: a call made after it still waits for an
   aborted call whose `mutationFn` ignores its `AbortSignal`, so writes stay ordered.
+- `'queue-latest'` (`createQueueLatestGate`): `'queue'` over a write queue of its own, keeping one
+  waiting call at most. A call made while the line isn't empty replaces the waiting call: the gate
+  aborts it alone (`Call.abort(neverSentError('Replaced'))`), so it leaves `pendingInputs()` and
+  releases its task at once, rejects with `'Replaced'`, fires no callback, and keeps its turn in
+  the queue, skipped like any aborted call. The gate counts the calls in line itself, settled
+  before `mutation()` resumes its caller, so a call made once the line is empty is the head and is
+  never replaced. A waiting call aborted by `reset()` / destroy leaves the line at once.
 - `'drop'` (`createDropGate`): while locked, `admit()` returns false and `mutate()` rejects
   immediately with `DOMException('Dropped', 'AbortError')`, with no state change.
   `run()` unlocks it when the call settles, before `mutation()` commits (so a callback can

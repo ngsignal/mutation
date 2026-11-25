@@ -6,6 +6,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
 import { spyOnPendingTasks, createDeferred, createMutation, nextTask, outcomeAfterATask, sequencedMutationFn, queueTurn } from '../testing/mutation';
+import { wasNeverSent } from './abort-error';
 import { mutation } from './mutation';
 
 beforeEach(() => {
@@ -410,6 +411,119 @@ describe("concurrency: 'drop'", () => {
   });
 });
 
+describe("concurrency: 'queue-latest'", () => {
+  /** A mutationFn that records each input and settles each call when the test says so. */
+  function controlledMutationFn() {
+    const started: string[] = [];
+    const calls = new Map<string, ReturnType<typeof createDeferred<string>>>();
+    const mutationFn = (input: string) => {
+      started.push(input);
+      const call = createDeferred<string>();
+      calls.set(input, call);
+      return call.promise;
+    };
+    const settle = (input: string) => calls.get(input)?.resolve(`${input}-done`);
+    return { mutationFn, started, settle };
+  }
+
+  it('sends the call in flight, then only the latest call made meanwhile', async () => {
+    const { mutationFn, started, settle } = controlledMutationFn();
+    const m = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn });
+
+    const a = m.mutate('a');
+    const b = m.mutate('b');
+    const c = m.mutate('c');
+    const d = m.mutate('d');
+    await queueTurn();
+    expect(started).toEqual(['a']);
+
+    for (const replaced of [b, c]) {
+      const outcome = await outcomeAfterATask(replaced);
+      expect(outcome).toEqual({ rejected: expect.objectContaining({ name: 'AbortError', message: 'Replaced' }) });
+      expect(wasNeverSent((outcome as { rejected: unknown }).rejected)).toBe(true);
+    }
+
+    settle('a');
+    await a;
+    await nextTask();
+    expect(started).toEqual(['a', 'd']);
+    expect(m.status()).toBe('pending');
+
+    settle('d');
+    await expect(d).resolves.toBe('d-done');
+    expect(started).toEqual(['a', 'd']);
+    expect(m.value()).toBe('d-done');
+  });
+
+  it('takes a replaced call out of pendingInputs() and releases its pending task at once, without callbacks', async () => {
+    const removeFns = spyOnPendingTasks();
+    const { mutationFn, settle } = controlledMutationFn();
+    const onSuccess = vi.fn();
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const m = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn, onSuccess, onError, onSettled });
+
+    const a = m.mutate('a');
+    void m.mutate('b');
+    expect(m.pendingInputs()).toEqual(['a', 'b']);
+
+    const c = m.mutate('c');
+    expect(m.pendingInputs()).toEqual(['a', 'c']);
+    expect(m.input()).toBe('c');
+    expect(removeFns[1]).toHaveBeenCalledTimes(1);
+
+    await queueTurn();
+    settle('a');
+    await a;
+    await nextTask();
+    settle('c');
+    await c;
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSuccess.mock.calls.map(([, input]) => input)).toEqual(['a', 'c']);
+    expect(onSettled.mock.calls.map(([, , input]) => input)).toEqual(['a', 'c']);
+    expect(m.isPending()).toBe(false);
+  });
+
+  it('runs a call made once the line is empty, even right after the previous call settles', async () => {
+    const m = createMutation<string, string>({
+      concurrency: 'queue-latest',
+      mutationFn: (input) => Promise.resolve(input),
+    });
+
+    await m.mutate('a');
+    const b = m.mutate('b');
+    const c = m.mutate('c');
+
+    await expect(b).resolves.toBe('b');
+    await expect(c).resolves.toBe('c');
+  });
+
+  it("rejects the waiting call with 'NotStarted' on reset(), and a later call waits behind a call that ignores its AbortSignal", async () => {
+    const { mutationFn, started, settle } = controlledMutationFn();
+    const m = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn });
+
+    const a = m.mutate('a');
+    const b = m.mutate('b');
+    await queueTurn();
+
+    m.reset();
+    await expect(a).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
+    await expect(b).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
+
+    const c = m.mutate('c');
+    const d = m.mutate('d');
+    await expect(c).rejects.toMatchObject({ name: 'AbortError', message: 'Replaced' });
+    expect(started).toEqual(['a']);
+
+    settle('a');
+    await nextTask();
+    expect(started).toEqual(['a', 'd']);
+    settle('d');
+    await expect(d).resolves.toBe('d-done');
+  });
+});
+
 describe('properties', () => {
   interface Call {
     id: number;
@@ -514,6 +628,39 @@ describe('properties', () => {
             reason: { name: 'AbortError', message: 'Dropped' },
           });
         }
+      }),
+    );
+  });
+  it("'queue-latest' runs calls one at a time, in call order, and always sends the last one", async () => {
+    const stepsArb = fc.array(fc.record({ succeeds: fc.boolean(), settleFirst: fc.boolean() }), {
+      minLength: 1,
+      maxLength: 8,
+    });
+
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), stepsArb, async (scheduler, steps) => {
+        const { mutationFn, started, maxInFlight } = scheduledMutationFn(scheduler);
+        const m = createMutation<Call, number>({ mutationFn, concurrency: 'queue-latest' });
+        const promises: Promise<number>[] = [];
+
+        for (const [id, step] of steps.entries()) {
+          if (step.settleFirst) {
+            await scheduler.waitFor(Promise.allSettled(promises));
+          }
+          promises.push(m.mutate({ id, succeeds: step.succeeds }));
+        }
+        const results = await scheduler.waitFor(Promise.allSettled(promises));
+
+        const lastId = steps.length - 1;
+        expect(maxInFlight()).toBe(1);
+        expect(started).toEqual([...started].sort((x, y) => x - y));
+        expect(started[0]).toBe(0);
+        expect(started.at(-1)).toBe(lastId);
+        const replaced = results.filter((_, id) => !started.includes(id));
+        for (const result of replaced) {
+          expect(result).toMatchObject({ status: 'rejected', reason: { name: 'AbortError', message: 'Replaced' } });
+        }
+        expect(m.status()).toBe(steps[lastId].succeeds ? 'success' : 'error');
       }),
     );
   });

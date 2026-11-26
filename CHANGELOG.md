@@ -5,6 +5,8 @@
 - Feature: `concurrency: 'queue-latest'`, for autosave: like `'queue'`, but a newer call replaces
   the one waiting. The replaced call rejects at once with `'Replaced'` (`wasNeverSent()` is true)
   and runs no callback. See [Autosaving](./docs/RECIPES.md#autosaving).
+- Docs: optimistic updates cover renames (`pendingInputs()` folded over the resource) and
+  `input()` for one call in flight. The demo adds a rename.
 
 ## 0.9.2
 

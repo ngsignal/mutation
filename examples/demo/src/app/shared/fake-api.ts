@@ -57,7 +57,7 @@ function createRequestLog() {
 
 /**
  * An in-memory user API, one per page so pages don't affect each other. An empty name is
- * rejected, and deleting "Grace Hopper" always fails.
+ * rejected, a rename takes 2 s, and deleting "Grace Hopper" always fails.
  */
 export function createFakeUserServer() {
   const requests = createRequestLog();
@@ -91,6 +91,16 @@ export function createFakeUserServer() {
           throw new ApiError('unavailable', 'Service unavailable, try again');
         }
         users = [...users, user];
+        return user;
+      }),
+
+    renameUser: (user: User, abortSignal: AbortSignal): Promise<User> =>
+      requests.track(`renameUser("${user.name}")`, abortSignal, async () => {
+        if (user.name.trim().length === 0) {
+          throw new ApiError('invalid-name', 'Name must not be empty');
+        }
+        await delay(undefined, 2000, abortSignal);
+        users = users.map((u) => (u.id === user.id ? user : u));
         return user;
       }),
 

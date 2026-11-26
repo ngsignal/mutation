@@ -44,6 +44,38 @@ The user never flashes back on success, because a call leaves the pending list i
 as its success callback. For a create, render the pending inputs as extra rows. React's
 `useOptimistic` follows the same idea.
 
+Update the resource in `onSuccess` rather than `reload()` it: the row would show again until the
+reload ends.
+
+For an update, fold the pending inputs over the resource. They are in call order, so the latest
+rename wins:
+
+```ts
+const rename = (users: User[], { id, name }: User) => users.map((u) => (u.id === id ? { ...u, name } : u));
+
+readonly renameUser = mutation<User, User>({
+  mutationFn: (user, abortSignal) => this.api.renameUser(user, abortSignal),
+  onSuccess: (renamed) => this.usersResource.update((users) => rename(users, renamed)),
+  concurrency: 'queue',
+});
+
+readonly visibleUsers = computed(() =>
+  this.renameUser.pendingInputs().reduce(rename, this.usersResource.value()),
+);
+```
+
+Queue the renames: in parallel, one landing last would write an older name in `onSuccess`.
+
+With one call in flight at most (`'drop'`, a disabled button), `input()` is enough. It outlives
+the call, so check `status()`:
+
+```ts
+readonly title = computed(() => {
+  const pending = this.rename.status() === 'pending' ? this.rename.input() : undefined;
+  return pending?.title ?? this.todo.value().title;
+});
+```
+
 When other code reads the resource itself, update it right away and roll back on failure. Roll
 back only a write that can't have been applied: one that was never sent, or one the server
 refused. A call aborted in flight may have reached the server.

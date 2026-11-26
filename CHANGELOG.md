@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0
 
 - Feature: `concurrency: 'queue-latest'`, for autosave: like `'queue'`, but a newer call replaces
   the one waiting. The replaced call rejects at once with `'Replaced'` (`wasNeverSent()` is true)

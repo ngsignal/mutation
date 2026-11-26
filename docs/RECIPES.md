@@ -172,6 +172,24 @@ Pitfalls:
 - **Several tabs or users**: a queue only orders the writes of one tab. Have the server check a
   version (`ETag` and `If-Match`).
 
+## Autosaving
+
+`'queue'` sends every version typed while a save is in flight. `'queue-latest'` sends the save in
+flight, then only the latest version:
+
+```ts
+readonly save = httpMutation<Doc, Doc>({
+  request: (doc) => ({ method: 'PUT', url: `/api/docs/${doc.id}`, body: doc }),
+  concurrency: 'queue-latest',
+});
+```
+
+- Send the whole document: a replaced call is never sent, so a delta would be lost.
+- Don't roll back a replaced call, even though `wasNeverSent()` is true: the newer call carries a
+  more recent state.
+- A debounce still cuts the calls made while nothing is in flight.
+- No shared queue or key: use one mutation per document (a keyed queue sends every version).
+
 ## Choosing settings by HTTP method
 
 [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods) calls a method
@@ -181,7 +199,7 @@ an aborted call). Idempotent writes still change the server, so they still need 
 
 | Method | Idempotent | Concurrency                                                     | When the write may have been applied |
 | ------ | ---------- | --------------------------------------------------------------- | ------------------------------------ |
-| PUT    | Yes        | `'queue'`, or a keyed queue per entity                          | Send it again                        |
+| PUT    | Yes        | `'queue'`, a keyed queue per entity, `'queue-latest'` for autosave | Send it again                     |
 | DELETE | Yes        | `'parallel'`: a duplicate only gets a 404                       | Send it again, count a 404 as done   |
 | POST   | No         | `'drop'` for a form submit, `'parallel'` for independent creations | Only with an idempotency key      |
 | PATCH  | It depends | `'queue'`, or a keyed queue per entity                          | Only if it sets values rather than adding to them, or with an idempotency key |

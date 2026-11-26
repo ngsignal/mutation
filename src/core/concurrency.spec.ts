@@ -6,6 +6,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import fc from 'fast-check';
 import { spyOnPendingTasks, createDeferred, createMutation, nextTask, outcomeAfterATask, sequencedMutationFn, queueTurn } from '../testing/mutation';
+import { wasNeverSent } from './abort-error';
 import { mutation } from './mutation';
 
 beforeEach(() => {
@@ -410,6 +411,148 @@ describe("concurrency: 'drop'", () => {
   });
 });
 
+describe("concurrency: 'queue-latest'", () => {
+  /** A server whose saves settle when the test says so. */
+  function controlledServer() {
+    const started: string[] = [];
+    const saves = new Map<string, ReturnType<typeof createDeferred<string>>>();
+    return {
+      started,
+      mutationFn: (doc: string) => {
+        started.push(doc);
+        const save = createDeferred<string>();
+        saves.set(doc, save);
+        return save.promise;
+      },
+      succeed: (doc: string) => saves.get(doc)?.resolve(`saved ${doc}`),
+      fail: (doc: string) => saves.get(doc)?.reject(new Error(`failed ${doc}`)),
+    };
+  }
+
+  function createAutosave(options: Partial<Parameters<typeof mutation<string, string>>[0]> = {}) {
+    const server = controlledServer();
+    const save = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn: server.mutationFn, ...options });
+    return { server, save };
+  }
+
+  it('sends the call in flight, then only the latest call made meanwhile', async () => {
+    const { server, save } = createAutosave();
+
+    const a = save.mutate('a');
+    void save.mutate('b');
+    void save.mutate('c');
+    const d = save.mutate('d');
+    await queueTurn();
+    expect(server.started).toEqual(['a']);
+
+    server.succeed('a');
+    await a;
+    await nextTask();
+    server.succeed('d');
+
+    await expect(d).resolves.toBe('saved d');
+    expect(server.started).toEqual(['a', 'd']);
+    expect(save.value()).toBe('saved d');
+  });
+
+  it('rejects a replaced call at once, never sent, out of pendingInputs() and without callbacks', async () => {
+    const removeFns = spyOnPendingTasks();
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const { server, save } = createAutosave({ onError, onSettled });
+
+    const a = save.mutate('a');
+    const b = save.mutate('b');
+    void save.mutate('c');
+    expect(save.pendingInputs()).toEqual(['a', 'c']);
+    expect(save.input()).toBe('c');
+    expect(removeFns[1]).toHaveBeenCalledTimes(1);
+
+    const error = await b.catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ name: 'AbortError', message: 'Replaced' });
+    expect(wasNeverSent(error)).toBe(true);
+
+    server.succeed('a');
+    await a;
+    await nextTask();
+    server.succeed('c');
+    await nextTask();
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSettled.mock.calls.map(([, , doc]) => doc)).toEqual(['a', 'c']);
+  });
+
+  it('sends the latest call even when the call in flight fails', async () => {
+    const { server, save } = createAutosave();
+
+    const a = save.mutate('a');
+    void save.mutate('b');
+    const c = save.mutate('c');
+    await queueTurn();
+
+    server.fail('a');
+    await expect(a).rejects.toThrow('failed a');
+    await nextTask();
+    server.succeed('c');
+
+    await expect(c).resolves.toBe('saved c');
+    expect(server.started).toEqual(['a', 'c']);
+    expect(save.status()).toBe('success');
+  });
+
+  it('never replaces the head of the line, even right after the previous call settles', async () => {
+    const save = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn: (doc) => Promise.resolve(doc) });
+
+    await save.mutate('a');
+    const b = save.mutate('b');
+    const c = save.mutate('c');
+
+    await expect(b).resolves.toBe('b');
+    await expect(c).resolves.toBe('c');
+  });
+
+  it("rejects the waiting call with 'NotStarted' on reset(), and keeps later calls behind a call that ignores its AbortSignal", async () => {
+    const { server, save } = createAutosave();
+
+    const a = save.mutate('a');
+    const b = save.mutate('b');
+    await queueTurn();
+    save.reset();
+
+    await expect(a).rejects.toMatchObject({ message: 'Aborted' });
+    await expect(b).rejects.toMatchObject({ message: 'NotStarted' });
+
+    const c = save.mutate('c');
+    const d = save.mutate('d');
+    await expect(c).rejects.toMatchObject({ message: 'Replaced' });
+
+    server.succeed('a');
+    await nextTask();
+    server.succeed('d');
+
+    await expect(d).resolves.toBe('saved d');
+    expect(server.started).toEqual(['a', 'd']);
+  });
+
+  it('does not report an unhandled rejection for a replaced call the caller ignores', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const { server, save } = createAutosave();
+
+      void save.mutate('a');
+      void save.mutate('b');
+      void save.mutate('c');
+      await nextTask();
+
+      expect(unhandled).not.toHaveBeenCalled();
+      server.succeed('a');
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+});
+
 describe('properties', () => {
   interface Call {
     id: number;
@@ -514,6 +657,48 @@ describe('properties', () => {
             reason: { name: 'AbortError', message: 'Dropped' },
           });
         }
+      }),
+    );
+  });
+  it("'queue-latest' keeps one call waiting at most, never replaces the first call, always sends the last one", async () => {
+    const stepsArb = fc.array(fc.record({ succeeds: fc.boolean(), settleFirst: fc.boolean(), resetFirst: fc.boolean() }), {
+      minLength: 1,
+      maxLength: 8,
+    });
+
+    await fc.assert(
+      fc.asyncProperty(fc.scheduler(), stepsArb, async (scheduler, steps) => {
+        const { mutationFn, started, maxInFlight } = scheduledMutationFn(scheduler);
+        const onSettled = vi.fn();
+        const m = createMutation<Call, number>({ mutationFn, onSettled, concurrency: 'queue-latest' });
+        const promises: Promise<number>[] = [];
+
+        for (const [id, step] of steps.entries()) {
+          if (step.settleFirst) {
+            await scheduler.waitFor(Promise.allSettled(promises));
+          }
+          if (step.resetFirst) {
+            m.reset();
+          }
+          promises.push(m.mutate({ id, succeeds: step.succeeds }));
+          expect(m.pendingInputs().length).toBeLessThanOrEqual(2);
+        }
+        const results = await scheduler.waitFor(Promise.allSettled(promises));
+
+        const lastId = steps.length - 1;
+        expect(maxInFlight()).toBe(1);
+        expect(started).toEqual([...started].sort((x, y) => x - y));
+        expect(results[0]).not.toMatchObject({ reason: { message: 'Replaced' } });
+        expect(started.at(-1)).toBe(lastId);
+        const neverSent = results.filter((_, id) => !started.includes(id));
+        for (const result of neverSent) {
+          expect(result).toMatchObject({ status: 'rejected', reason: { name: 'AbortError' } });
+          expect(['Replaced', 'NotStarted']).toContain((result as PromiseRejectedResult).reason.message);
+          expect(wasNeverSent((result as PromiseRejectedResult).reason)).toBe(true);
+        }
+        const settledIds = onSettled.mock.calls.map(([, , call]) => (call as Call).id);
+        expect(started).toEqual(expect.arrayContaining(settledIds));
+        expect(m.status()).toBe(steps[lastId].succeeds ? 'success' : 'error');
       }),
     );
   });

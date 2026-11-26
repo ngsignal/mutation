@@ -9,7 +9,7 @@ import {
   assertInInjectionContext,
   PendingTasks,
 } from '@angular/core';
-import { markMaybeSent, neverSentError } from './abort-error.js';
+import { markMaybeSent, neverSentError, wasNeverSent } from './abort-error.js';
 import { createCallTracker, type Call } from './call-tracker.js';
 import { createConcurrencyGate } from './concurrency.js';
 import {
@@ -138,12 +138,18 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
     const extra = adapter.createContext();
     let mutationFnStarted = false;
     try {
-      const task = gate.run(() => {
-        mutationFnStarted = true;
-        return untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra }));
-      }, call);
-      // Still queued when aborted, the call never ran; once started, its write may have left.
-      const abortReason = () => (mutationFnStarted ? call.abortSignal.reason : neverSentError('NotStarted'));
+      // Untracked: the gate may write `pendingInputs()` ('queue-latest'), then runs `mutationFn`.
+      const task = untracked(() =>
+        gate.run(() => {
+          mutationFnStarted = true;
+          return adapter.run(input, { abortSignal: call.abortSignal, context: extra });
+        }, call),
+      );
+      // Aborted before it ran: never sent, with the gate's reason if it gave one ('Replaced').
+      const abortReason = () => {
+        const reason: unknown = call.abortSignal.reason;
+        return mutationFnStarted || wasNeverSent(reason) ? reason : neverSentError('NotStarted');
+      };
       const result = await rejectOnAbort(task, call.abortSignal, abortReason);
       commit(call, (current) => succeeded(current, result), (isLatest) => {
         const context = { ...extra, isLatest };

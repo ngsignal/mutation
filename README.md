@@ -83,7 +83,8 @@ signals follow the latest call, and every call runs its callbacks, `isLatest` te
 
 ### Concurrency, per entity
 
-`'parallel'` by default, `'queue'` to keep submission order, `'drop'` against double submits.
+`'parallel'` by default, `'queue'` to keep submission order, `'queue-latest'` to send only the
+latest version (autosave), `'drop'` against double submits.
 A `mutationQueue()` orders writes across mutations, and a key gives one queue per entity: the
 saves of one document stay in order, the other documents save at once.
 

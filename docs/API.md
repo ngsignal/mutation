@@ -103,7 +103,7 @@ onSuccess: (todo, title, { isLatest }) => {
 ```
 
 `onSettled` runs after the success or error callback, for cleanup either way (closing a modal,
-releasing a lock). Calls aborted by a reset or destroy run no callback.
+releasing a lock). Calls aborted by a reset or destroy, or replaced by `'queue-latest'`, run no callback.
 
 ## Reading the state
 
@@ -144,6 +144,7 @@ What happens to a second call while one is still in flight:
 | --------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
 | `'parallel'` (default) | Runs right away, in parallel                                      | Independent writes (adding items to a list)  |
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
+| `'queue-latest'` | Waits like `'queue'`, replacing the call already waiting (`'Replaced'`, never sent) | Autosave: each write carries the whole state (`PUT`) |
 | `'drop'`        | Rejected at once (`'Dropped'`), never sent, signals untouched            | Double-submit protection (payment, form submit) |
 | a `mutationQueue()` | Waits for the previous call of every mutation given the same queue   | Different writes to the same data (rename, then delete) |
 | `{ queue, key }` | Waits for the previous call with the same key; other keys run at once. A call on the same queue without a key waits for every key | Order per entity (autosave of several documents) |
@@ -165,6 +166,7 @@ have reached the server:
 | Cancelled by                                      | Message                           | Write sent?                    |
 | ------------------------------------------------- | --------------------------------- | ------------------------------ |
 | `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No                             |
+| `concurrency: 'queue-latest'`, replaced while waiting | `'Replaced'`, at once         | No                             |
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No                             |
 | `reset()`/destroy while queued                    | `'NotStarted'`, at once           | No                             |
 | `reset()`/destroy while in flight                 | `'Aborted'`, at once              | **Maybe**: the request had left |
@@ -172,7 +174,7 @@ have reached the server:
 `mutate()` rejects at once, like `fetch()`, even if the mutation function ignores the signal:
 pass it on anyway, so the request itself stops.
 
-`wasNeverSent(error)` is true for the first three rows. It is false for any error the mutation
+`wasNeverSent(error)` is true for the first four rows. It is false for any error the mutation
 function rejects with, even another mutation's `'Dropped'`: that call ran. HTTP status codes are
 yours to check. See [Optimistic updates](./RECIPES.md#optimistic-updates) for a rollback that
 skips the writes that may have been applied.

@@ -11,7 +11,8 @@ Tracking the latest call only guards the signals. Callbacks run for every call t
 superseded or not, because a superseded write still happened on the server: skipping its
 `onSuccess` would leave client state out of sync (two quick deletes, one row left on screen).
 They receive `{ isLatest }` for side effects that should only follow the current call. Calls
-aborted by `reset()` or destroy run no callback: the caller asked to forget them.
+aborted by `reset()` or destroy run no callback: the caller asked to forget them. Neither does a
+call replaced by `'queue-latest'`: it was never sent.
 
 ## `httpMutation()` vs `httpResource()`
 

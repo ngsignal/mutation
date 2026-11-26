@@ -30,7 +30,7 @@ export interface MutationCallbackContext {
  * Options of `mutation()`.
  *
  * Callbacks run once for every call that settles, superseded or not, except calls aborted by
- * `reset()` or destroy. Only the latest call writes the signals. A callback that throws is
+ * `reset()` or destroy, or replaced by `'queue-latest'`. Only the latest call writes the signals. A callback that throws is
  * reported to `ErrorHandler` and never changes the call's outcome.
  *
  * `TError` is an assertion, not a check: `error()` and `onError` receive whatever `mutationFn`
@@ -62,13 +62,15 @@ export interface MutationOptions<
   ) => void;
   /**
    * `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`:
-   * a call made while one is in flight rejects at once (`'Dropped'`).
+   * a call made while one is in flight rejects at once (`'Dropped'`). `'queue-latest'`: `'queue'`
+   * with one waiting call at most; a newer call replaces it (`'Replaced'`, never sent). Only for
+   * writes carrying the whole state (autosave with `PUT`).
    *
    * A `mutationQueue()`: one at a time, in call order, with the calls of every mutation given the
    * same queue. `{ queue, key }`: the same, per key, e.g. one queue per entity id; a call given the
    * queue without a key waits for every key, and the calls after it wait for it.
    */
-  concurrency?: 'parallel' | 'queue' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
+  concurrency?: 'parallel' | 'queue' | 'queue-latest' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
   /** Names the state signals in Angular DevTools: `'save'` gives `save.status`, `save.value`, … */

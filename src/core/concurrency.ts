@@ -1,3 +1,4 @@
+import { neverSentError } from './abort-error.js';
 import { createWriteQueue, writeQueueOf, type WriteQueue } from './mutation-queue.js';
 import type { MutationOptions } from './mutation.types.js';
 
@@ -5,6 +6,8 @@ import type { MutationOptions } from './mutation.types.js';
 interface GateCall<TInput> {
   readonly input: TInput;
   readonly abortSignal: AbortSignal;
+  /** Aborts this call alone, before it runs. */
+  abort(reason: unknown): void;
 }
 
 /** A concurrency mode: it frees what it holds by itself, when the call settles or aborts. */
@@ -19,6 +22,8 @@ export function createConcurrencyGate<TInput>(
   switch (concurrency) {
     case 'queue':
       return createQueueGate(createWriteQueue(), noKey);
+    case 'queue-latest':
+      return replaceWaitingCall(createQueueGate(createWriteQueue(), noKey));
     case 'drop':
       return createDropGate();
     case 'parallel':
@@ -39,6 +44,42 @@ function createQueueGate<TInput>(queue: WriteQueue, key: (input: TInput) => unkn
   return {
     admit: () => true,
     run: (task, { input, abortSignal }) => queue.run(key(input), task, abortSignal),
+  };
+}
+
+/**
+ * Decorates a gate with a single line: a call that would wait replaces the call already waiting,
+ * which rejects with `'Replaced'` and never runs. The head of the line is never replaced.
+ */
+function replaceWaitingCall<TInput>(gate: ConcurrencyGate<TInput>): ConcurrencyGate<TInput> {
+  let inLine = 0;
+  let waiting: GateCall<TInput> | undefined;
+  return {
+    admit: gate.admit,
+    run(task, call) {
+      const stopWaiting = () => {
+        if (waiting === call) {
+          waiting = undefined;
+        }
+      };
+      if (inLine > 0) {
+        waiting?.abort(neverSentError('Replaced'));
+        waiting = call;
+        // A call aborted by reset() or destroy stops waiting: don't keep its input.
+        call.abortSignal.addEventListener('abort', stopWaiting, { once: true });
+      }
+      inLine++;
+      const turn = gate.run(() => {
+        stopWaiting();
+        return task();
+      }, call);
+      // Registered before mutation() awaits `turn`, so the line is shorter when its caller resumes.
+      const leaveLine = () => {
+        inLine--;
+      };
+      turn.then(leaveLine, leaveLine);
+      return turn;
+    },
   };
 }
 

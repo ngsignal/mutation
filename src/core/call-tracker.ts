@@ -10,11 +10,13 @@ export interface Call<TInput> {
    * then releases its pending task: a call that `commit` starts keeps the app unstable.
    */
   finish(commit: () => void): void;
+  /** Aborts this call alone: it leaves `pendingInputs()` and releases its task at once. Never the latest call. */
+  abort(reason: unknown): void;
 }
 
 /**
  * A newer call, `reset()` or destroy makes a call no longer the latest; only `reset()` and destroy
- * abort it. Destroy is only listened to while calls are in flight: an idle mutation leaves nothing
+ * abort it, or `Call.abort()`. Destroy is only listened to while calls are in flight: an idle mutation leaves nothing
  * behind in a long-lived injector.
  */
 export function createCallTracker<TInput>(
@@ -70,6 +72,13 @@ export function createCallTracker<TInput>(
           } finally {
             removeTask();
           }
+        },
+        abort(reason): void {
+          // Forgotten before aborting, like abortAll().
+          activeCalls.delete(call);
+          onActiveCallsChanged();
+          controller.abort(reason);
+          removeTask();
         },
       };
       activeCalls.set(call, { controller, removeTask });

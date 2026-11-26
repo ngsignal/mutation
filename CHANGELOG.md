@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Feature: `concurrency: 'queue-latest'`, for autosave: like `'queue'`, but a newer call replaces
+  the one waiting. The replaced call rejects at once with `'Replaced'` (`wasNeverSent()` is true)
+  and runs no callback. See [Autosaving](./docs/RECIPES.md#autosaving).
+
 ## 0.9.2
 
 - Docs: the README's Why explains the gap signals leave for writes, and how a mutation fills it

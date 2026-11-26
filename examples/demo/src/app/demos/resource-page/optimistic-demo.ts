@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, resource } from '@angular
 import { mutation } from '@ngsignal/mutation';
 import { User, createFakeUserServer } from '../../shared/fake-api';
 
-/** What the server does on a rename, applied to a list: pure, testable without Angular. */
+/** What the server does on a rename. */
 const rename = (users: User[], { id, name }: User) => users.map((u) => (u.id === id ? { ...u, name } : u));
 
 @Component({

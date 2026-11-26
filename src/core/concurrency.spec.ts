@@ -660,8 +660,8 @@ describe('properties', () => {
       }),
     );
   });
-  it("'queue-latest' runs calls one at a time, in call order, and always sends the last one", async () => {
-    const stepsArb = fc.array(fc.record({ succeeds: fc.boolean(), settleFirst: fc.boolean() }), {
+  it("'queue-latest' keeps one call waiting at most, never replaces the first call, always sends the last one", async () => {
+    const stepsArb = fc.array(fc.record({ succeeds: fc.boolean(), settleFirst: fc.boolean(), resetFirst: fc.boolean() }), {
       minLength: 1,
       maxLength: 8,
     });
@@ -669,26 +669,35 @@ describe('properties', () => {
     await fc.assert(
       fc.asyncProperty(fc.scheduler(), stepsArb, async (scheduler, steps) => {
         const { mutationFn, started, maxInFlight } = scheduledMutationFn(scheduler);
-        const m = createMutation<Call, number>({ mutationFn, concurrency: 'queue-latest' });
+        const onSettled = vi.fn();
+        const m = createMutation<Call, number>({ mutationFn, onSettled, concurrency: 'queue-latest' });
         const promises: Promise<number>[] = [];
 
         for (const [id, step] of steps.entries()) {
           if (step.settleFirst) {
             await scheduler.waitFor(Promise.allSettled(promises));
           }
+          if (step.resetFirst) {
+            m.reset();
+          }
           promises.push(m.mutate({ id, succeeds: step.succeeds }));
+          expect(m.pendingInputs().length).toBeLessThanOrEqual(2);
         }
         const results = await scheduler.waitFor(Promise.allSettled(promises));
 
         const lastId = steps.length - 1;
         expect(maxInFlight()).toBe(1);
         expect(started).toEqual([...started].sort((x, y) => x - y));
-        expect(started[0]).toBe(0);
+        expect(results[0]).not.toMatchObject({ reason: { message: 'Replaced' } });
         expect(started.at(-1)).toBe(lastId);
-        const replaced = results.filter((_, id) => !started.includes(id));
-        for (const result of replaced) {
-          expect(result).toMatchObject({ status: 'rejected', reason: { name: 'AbortError', message: 'Replaced' } });
+        const neverSent = results.filter((_, id) => !started.includes(id));
+        for (const result of neverSent) {
+          expect(result).toMatchObject({ status: 'rejected', reason: { name: 'AbortError' } });
+          expect(['Replaced', 'NotStarted']).toContain((result as PromiseRejectedResult).reason.message);
+          expect(wasNeverSent((result as PromiseRejectedResult).reason)).toBe(true);
         }
+        const settledIds = onSettled.mock.calls.map(([, , call]) => (call as Call).id);
+        expect(started).toEqual(expect.arrayContaining(settledIds));
         expect(m.status()).toBe(steps[lastId].succeeds ? 'success' : 'error');
       }),
     );

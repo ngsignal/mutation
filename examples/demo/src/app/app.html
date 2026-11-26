@@ -20,19 +20,24 @@
     </div>
 
     <nav id="site-nav" [class.open]="menuOpen()">
-      @for (group of navGroups; track group.heading) {
+      <!-- Group labels, not headings: the page's <h1> comes first in the document outline. -->
+      @for (group of navGroups; track group.heading; let i = $index) {
         <div class="nav-group">
-          <h2>{{ group.heading }}</h2>
-          @for (link of group.links; track link.path) {
-            <a
-              [routerLink]="link.path"
-              [attr.data-api]="link.api"
-              routerLinkActive="active"
-              [routerLinkActiveOptions]="{ exact: true }"
-              ariaCurrentWhenActive="page"
-              >{{ link.label }}</a
-            >
-          }
+          <p class="nav-heading" [id]="'nav-group-' + i">{{ group.heading }}</p>
+          <ul role="list" [attr.aria-labelledby]="'nav-group-' + i">
+            @for (link of group.links; track link.path) {
+              <li>
+                <a
+                  [routerLink]="link.path"
+                  [attr.data-api]="link.api"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  ariaCurrentWhenActive="page"
+                  >{{ link.label }}</a
+                >
+              </li>
+            }
+          </ul>
         </div>
       }
     </nav>

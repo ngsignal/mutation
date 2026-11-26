@@ -21,7 +21,7 @@
       <dt>savedProfile()</dt>
       <dd>{{ savedProfile()?.name ?? '—' }}</dd>
       <dt>saveError()</dt>
-      <dd class="error-text" role="alert">{{ saveError()?.message }}</dd>
+      <dd><span class="error-text" role="alert">{{ saveError()?.message }}</span></dd>
     </dl>
     <app-activity-log heading="Server" [entries]="handWrittenServer.requests()" />
   </section>
@@ -38,7 +38,7 @@
       <dt>value()</dt>
       <dd>{{ saveProfile.value()?.name ?? '—' }}</dd>
       <dt>error()</dt>
-      <dd class="error-text" role="alert">{{ saveProfile.error()?.message }}</dd>
+      <dd><span class="error-text" role="alert">{{ saveProfile.error()?.message }}</span></dd>
       <dt>input()</dt>
       <dd>{{ saveProfile.input() ?? '—' }}</dd>
     </dl>

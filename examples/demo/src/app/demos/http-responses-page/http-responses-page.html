@@ -49,7 +49,7 @@
       }
     </dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
   </dl>
   <p class="hint">
     With the outdated response, <code>status</code> is <code>error</code> while
@@ -95,7 +95,7 @@
       }
     </dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ exportUsers.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ exportUsers.error()?.message }}</span></dd>
   </dl>
   <p class="hint">
     The request description sets <code>reportProgress: true</code>; the fake backend then emits
@@ -131,7 +131,7 @@
       }
     </dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ purgeInactive.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ purgeInactive.error()?.message }}</span></dd>
   </dl>
   <p class="hint">
     The server answers with the plain-text body <code>"2"</code> (artificial 2&nbsp;s delay).

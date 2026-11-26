@@ -67,8 +67,11 @@ jobs:
         working-directory: examples/demo
         run: |
           npm run build -- --base-href "/${GITHUB_REPOSITORY#*/}/"
-          # Pages serves 404.html for unknown paths: let the router handle deep links.
-          cp dist/ngsignal-mutation-demo/browser/index.html dist/ngsignal-mutation-demo/browser/404.html
+          # Every page is pre-rendered to <page>/index.html, served with a 200 status. Pages serves
+          # 404.html, with a 404 status, for any other path: the client-only shell, whose router
+          # shows the not-found page (noindex).
+          cp dist/ngsignal-mutation-demo/browser/index.csr.html dist/ngsignal-mutation-demo/browser/404.html
+          node scripts/sitemap.mjs dist/ngsignal-mutation-demo/browser "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

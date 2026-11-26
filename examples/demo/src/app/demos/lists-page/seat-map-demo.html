@@ -36,7 +36,7 @@
     </div>
     <dl>
       <dt>lockingSeats()</dt>
-      <dd role="status">{{ lockingSeats().join(', ') || '—' }}</dd>
+      <dd><span role="status">{{ lockingSeats().join(', ') || '—' }}</span></dd>
       <dt>Safe to leave the page</dt>
       <dd>{{ lockingSeats().length === 0 ? 'yes' : 'no' }}</dd>
     </dl>
@@ -74,7 +74,7 @@
     </div>
     <dl>
       <dt>pendingInputs()</dt>
-      <dd role="status">{{ lockSeat.pendingInputs().join(', ') || '—' }}</dd>
+      <dd><span role="status">{{ lockSeat.pendingInputs().join(', ') || '—' }}</span></dd>
       <dt>Safe to leave the page</dt>
       <dd>{{ lockSeat.pendingInputs().length === 0 ? 'yes' : 'no' }}</dd>
     </dl>

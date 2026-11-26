@@ -513,6 +513,12 @@ progress {
   border-bottom: none;
 }
 
+/* The empty-log text: .hint's muted color is too dark on this panel (6.7:1 here). */
+.log li.hint {
+  margin: 0;
+  color: #a39cb8;
+}
+
 .card {
   display: flex;
   align-items: center;

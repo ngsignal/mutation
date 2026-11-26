@@ -6,7 +6,7 @@ import type { MutationOptions } from './mutation.types.js';
 interface GateCall<TInput> {
   readonly input: TInput;
   readonly abortSignal: AbortSignal;
-  /** Aborts this call alone, before its `mutationFn` runs: `'queue-latest'` replacing it. */
+  /** Aborts this call alone, before it runs. */
   abort(reason: unknown): void;
 }
 
@@ -23,7 +23,7 @@ export function createConcurrencyGate<TInput>(
     case 'queue':
       return createQueueGate(createWriteQueue(), noKey);
     case 'queue-latest':
-      return createQueueLatestGate();
+      return replaceWaitingCall(createQueueGate(createWriteQueue(), noKey));
     case 'drop':
       return createDropGate();
     case 'parallel':
@@ -48,18 +48,16 @@ function createQueueGate<TInput>(queue: WriteQueue, key: (input: TInput) => unkn
 }
 
 /**
- * `'queue'` that keeps one waiting call at most: a call queued behind another replaces the call
- * waiting before it, which rejects at once with `'Replaced'` and never runs. A call queued behind
- * nothing runs, even if more calls follow in the same task: the head of the line is never replaced.
+ * Decorates a gate with a single line: a call that would wait replaces the call already waiting,
+ * which rejects with `'Replaced'` and never runs. The head of the line is never replaced.
  */
-function createQueueLatestGate<TInput>(): ConcurrencyGate<TInput> {
-  const queue = createWriteQueue();
+function replaceWaitingCall<TInput>(gate: ConcurrencyGate<TInput>): ConcurrencyGate<TInput> {
   let inLine = 0;
   let waiting: GateCall<TInput> | undefined;
   return {
-    admit: () => true,
+    admit: gate.admit,
     run(task, call) {
-      const leaveWaiting = () => {
+      const stopWaiting = () => {
         if (waiting === call) {
           waiting = undefined;
         }
@@ -67,15 +65,15 @@ function createQueueLatestGate<TInput>(): ConcurrencyGate<TInput> {
       if (inLine > 0) {
         waiting?.abort(neverSentError('Replaced'));
         waiting = call;
-        // Aborted by reset() or destroy, it stops waiting: the gate must not keep its input.
-        call.abortSignal.addEventListener('abort', leaveWaiting, { once: true });
+        // A call aborted by reset() or destroy stops waiting: don't keep its input.
+        call.abortSignal.addEventListener('abort', stopWaiting, { once: true });
       }
       inLine++;
-      const turn = queue.run(undefined, () => {
-        leaveWaiting();
+      const turn = gate.run(() => {
+        stopWaiting();
         return task();
-      }, call.abortSignal);
-      // Registered before mutation() awaits the call: the line is shorter once its caller resumes.
+      }, call);
+      // Registered before mutation() awaits `turn`, so the line is shorter when its caller resumes.
       const leaveLine = () => {
         inLine--;
       };

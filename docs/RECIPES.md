@@ -142,9 +142,8 @@ Pitfalls:
 
 ## Autosaving
 
-With `'queue'`, every version typed while a save is in flight is sent in turn, although only the
-last one matters. `'queue-latest'` keeps the order but sends only the call in flight and the
-latest one: a newer call replaces the one waiting.
+`'queue'` sends every version typed while a save is in flight. `'queue-latest'` sends the save in
+flight, then only the latest version:
 
 ```ts
 readonly save = httpMutation<Doc, Doc>({
@@ -153,14 +152,11 @@ readonly save = httpMutation<Doc, Doc>({
 });
 ```
 
-- Send the whole state in every call. A replaced call is never sent: a delta (`PATCH` adding a
-  line) would be lost.
-- A replaced call rejects with `'Replaced'`, fires no callback and leaves `pendingInputs()` at
-  once. `wasNeverSent()` is true for it, but don't roll it back: the newer call carries a more
-  recent state.
-- A debounce on the caller's side still cuts the calls made while nothing is in flight.
-- `'queue-latest'` takes no shared queue or key: for several documents, give each one its own
-  mutation, or use a keyed queue, which sends every version.
+- Send the whole document: a replaced call is never sent, so a delta would be lost.
+- Don't roll back a replaced call, even though `wasNeverSent()` is true: the newer call carries a
+  more recent state.
+- A debounce still cuts the calls made while nothing is in flight.
+- No shared queue or key: use one mutation per document (a keyed queue sends every version).
 
 ## Choosing settings by HTTP method
 
@@ -171,7 +167,7 @@ an aborted call). Idempotent writes still change the server, so they still need 
 
 | Method | Idempotent | Concurrency                                                     | When the write may have been applied |
 | ------ | ---------- | --------------------------------------------------------------- | ------------------------------------ |
-| PUT    | Yes        | `'queue'`, a keyed queue per entity, or `'queue-latest'` for autosave | Send it again                  |
+| PUT    | Yes        | `'queue'`, a keyed queue per entity, `'queue-latest'` for autosave | Send it again                     |
 | DELETE | Yes        | `'parallel'`: a duplicate only gets a 404                       | Send it again, count a 404 as done   |
 | POST   | No         | `'drop'` for a form submit, `'parallel'` for independent creations | Only with an idempotency key      |
 | PATCH  | It depends | `'queue'`, or a keyed queue per entity                          | Only if it sets values rather than adding to them, or with an idempotency key |

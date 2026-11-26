@@ -138,15 +138,14 @@ export function createMutation<TInput, TOutput, TError, TExtra extends object>(
     const extra = adapter.createContext();
     let mutationFnStarted = false;
     try {
-      // Untracked: replacing a waiting call ('queue-latest') writes `pendingInputs()`.
+      // Untracked: the gate may write `pendingInputs()` ('queue-latest'), then runs `mutationFn`.
       const task = untracked(() =>
         gate.run(() => {
           mutationFnStarted = true;
-          return untracked(() => adapter.run(input, { abortSignal: call.abortSignal, context: extra }));
+          return adapter.run(input, { abortSignal: call.abortSignal, context: extra });
         }, call),
       );
-      // Still queued when aborted, the call never ran, unless replaced, whose gate gave the reason;
-      // once started, its write may have left.
+      // Aborted before it ran: never sent, with the gate's reason if it gave one ('Replaced').
       const abortReason = () => {
         const reason: unknown = call.abortSignal.reason;
         return mutationFnStarted || wasNeverSent(reason) ? reason : neverSentError('NotStarted');

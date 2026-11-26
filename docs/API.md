@@ -103,7 +103,7 @@ onSuccess: (todo, title, { isLatest }) => {
 ```
 
 `onSettled` runs after the success or error callback, for cleanup either way (closing a modal,
-releasing a lock). Calls aborted by a reset or destroy run no callback.
+releasing a lock). Calls aborted by a reset or destroy, or replaced by `'queue-latest'`, run no callback.
 
 ## Reading the state
 
@@ -144,7 +144,7 @@ What happens to a second call while one is still in flight:
 | --------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
 | `'parallel'` (default) | Runs right away, in parallel                                      | Independent writes (adding items to a list)  |
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
-| `'queue-latest'` | Waits like `'queue'`, but replaces the call already waiting, which rejects at once (`'Replaced'`) and is never sent | Writes that each carry the whole state (autosave with `PUT`) |
+| `'queue-latest'` | Waits like `'queue'`, replacing the call already waiting (`'Replaced'`, never sent) | Autosave: each write carries the whole state (`PUT`) |
 | `'drop'`        | Rejected at once (`'Dropped'`), never sent, signals untouched            | Double-submit protection (payment, form submit) |
 | a `mutationQueue()` | Waits for the previous call of every mutation given the same queue   | Different writes to the same data (rename, then delete) |
 | `{ queue, key }` | Waits for the previous call with the same key; other keys run at once. A call on the same queue without a key waits for every key | Order per entity (autosave of several documents) |
@@ -166,7 +166,7 @@ have reached the server:
 | Cancelled by                                      | Message                           | Write sent?                    |
 | ------------------------------------------------- | --------------------------------- | ------------------------------ |
 | `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No                             |
-| `concurrency: 'queue-latest'`, a newer call while waiting | `'Replaced'`, at once     | No                             |
+| `concurrency: 'queue-latest'`, replaced while waiting | `'Replaced'`, at once         | No                             |
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No                             |
 | `reset()`/destroy while queued                    | `'NotStarted'`, at once           | No                             |
 | `reset()`/destroy while in flight                 | `'Aborted'`, at once              | **Maybe**: the request had left |

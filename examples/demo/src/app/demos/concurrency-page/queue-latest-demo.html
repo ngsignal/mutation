@@ -3,8 +3,8 @@
   <input #doc type="text" (input)="autosave(doc.value)" />
 </label>
 <p class="hint">
-  Each keystroke saves the whole document with two mutations, one per fake server, which takes
-  1.5 s to save (an artificial delay). Type a word quickly.
+  Each keystroke saves the whole document twice, one mutation per fake server. A save takes 1.5 s
+  (an artificial delay): type a word quickly.
 </p>
 
 <section class="state">
@@ -15,7 +15,7 @@
     <dt>server</dt>
     <dd>"{{ queuedServer.documents().A }}"</dd>
   </dl>
-  <p class="hint">Every intermediate version waits its turn and is sent: the server lags behind.</p>
+  <p class="hint">Every version is sent in turn: the server lags behind.</p>
   <app-activity-log heading="Server" [entries]="queuedServer.requests()" />
 </section>
 
@@ -34,8 +34,8 @@
     <dd>"{{ latestServer.documents().A }}"</dd>
   </dl>
   <p class="hint">
-    At most two calls: the one in flight and the latest keystroke. Each new keystroke replaces the
-    waiting call, which rejects with <code>'Replaced'</code> and is never sent.
+    Two calls at most: the one in flight and the latest. A keystroke replaces the waiting call
+    (<code>'Replaced'</code>, never sent).
   </p>
   <app-activity-log heading="Server" [entries]="latestServer.requests()" />
 </section>

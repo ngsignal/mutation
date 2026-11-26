@@ -28,8 +28,8 @@ export function markMaybeSent(error: unknown): void {
 
 /**
  * Whether a call was cancelled before its `mutationFn` ran, so its write never left: dropped by
- * `concurrency: 'drop'`, replaced by a newer call with `concurrency: 'queue-latest'`, still queued
- * when `reset()` or destroy ran, or made after destroy.
+ * `'drop'`, replaced by `'queue-latest'`, still queued when `reset()` or destroy ran, or made after
+ * destroy.
  * False for a call aborted in flight (`'Aborted'`), whose write may have reached the server, and
  * for any error from `mutationFn`, even one another mutation rejected with: checking an HTTP
  * status is up to you.

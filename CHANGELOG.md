@@ -2,11 +2,9 @@
 
 ## Unreleased
 
-- Feature: `concurrency: 'queue-latest'` queues like `'queue'`, but keeps only the latest call
-  waiting behind the one in flight: a newer call replaces it, and the replaced call rejects at
-  once with a `'Replaced'` `AbortError`, never sent (`wasNeverSent()` is true), without callbacks.
-  For writes that each carry the whole state, such as an autosave. See
-  [Autosaving](./docs/RECIPES.md#autosaving).
+- Feature: `concurrency: 'queue-latest'`, for autosave: like `'queue'`, but a newer call replaces
+  the one waiting. The replaced call rejects at once with `'Replaced'` (`wasNeverSent()` is true)
+  and runs no callback. See [Autosaving](./docs/RECIPES.md#autosaving).
 
 ## 0.9.2
 

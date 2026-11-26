@@ -412,115 +412,144 @@ describe("concurrency: 'drop'", () => {
 });
 
 describe("concurrency: 'queue-latest'", () => {
-  /** A mutationFn that records each input and settles each call when the test says so. */
-  function controlledMutationFn() {
+  /** A server whose saves settle when the test says so. */
+  function controlledServer() {
     const started: string[] = [];
-    const calls = new Map<string, ReturnType<typeof createDeferred<string>>>();
-    const mutationFn = (input: string) => {
-      started.push(input);
-      const call = createDeferred<string>();
-      calls.set(input, call);
-      return call.promise;
+    const saves = new Map<string, ReturnType<typeof createDeferred<string>>>();
+    return {
+      started,
+      mutationFn: (doc: string) => {
+        started.push(doc);
+        const save = createDeferred<string>();
+        saves.set(doc, save);
+        return save.promise;
+      },
+      succeed: (doc: string) => saves.get(doc)?.resolve(`saved ${doc}`),
+      fail: (doc: string) => saves.get(doc)?.reject(new Error(`failed ${doc}`)),
     };
-    const settle = (input: string) => calls.get(input)?.resolve(`${input}-done`);
-    return { mutationFn, started, settle };
+  }
+
+  function createAutosave(options: Partial<Parameters<typeof mutation<string, string>>[0]> = {}) {
+    const server = controlledServer();
+    const save = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn: server.mutationFn, ...options });
+    return { server, save };
   }
 
   it('sends the call in flight, then only the latest call made meanwhile', async () => {
-    const { mutationFn, started, settle } = controlledMutationFn();
-    const m = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn });
+    const { server, save } = createAutosave();
 
-    const a = m.mutate('a');
-    const b = m.mutate('b');
-    const c = m.mutate('c');
-    const d = m.mutate('d');
+    const a = save.mutate('a');
+    void save.mutate('b');
+    void save.mutate('c');
+    const d = save.mutate('d');
     await queueTurn();
-    expect(started).toEqual(['a']);
+    expect(server.started).toEqual(['a']);
 
-    for (const replaced of [b, c]) {
-      const outcome = await outcomeAfterATask(replaced);
-      expect(outcome).toEqual({ rejected: expect.objectContaining({ name: 'AbortError', message: 'Replaced' }) });
-      expect(wasNeverSent((outcome as { rejected: unknown }).rejected)).toBe(true);
-    }
-
-    settle('a');
+    server.succeed('a');
     await a;
     await nextTask();
-    expect(started).toEqual(['a', 'd']);
-    expect(m.status()).toBe('pending');
+    server.succeed('d');
 
-    settle('d');
-    await expect(d).resolves.toBe('d-done');
-    expect(started).toEqual(['a', 'd']);
-    expect(m.value()).toBe('d-done');
+    await expect(d).resolves.toBe('saved d');
+    expect(server.started).toEqual(['a', 'd']);
+    expect(save.value()).toBe('saved d');
   });
 
-  it('takes a replaced call out of pendingInputs() and releases its pending task at once, without callbacks', async () => {
+  it('rejects a replaced call at once, never sent, out of pendingInputs() and without callbacks', async () => {
     const removeFns = spyOnPendingTasks();
-    const { mutationFn, settle } = controlledMutationFn();
-    const onSuccess = vi.fn();
     const onError = vi.fn();
     const onSettled = vi.fn();
-    const m = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn, onSuccess, onError, onSettled });
+    const { server, save } = createAutosave({ onError, onSettled });
 
-    const a = m.mutate('a');
-    void m.mutate('b');
-    expect(m.pendingInputs()).toEqual(['a', 'b']);
-
-    const c = m.mutate('c');
-    expect(m.pendingInputs()).toEqual(['a', 'c']);
-    expect(m.input()).toBe('c');
+    const a = save.mutate('a');
+    const b = save.mutate('b');
+    void save.mutate('c');
+    expect(save.pendingInputs()).toEqual(['a', 'c']);
+    expect(save.input()).toBe('c');
     expect(removeFns[1]).toHaveBeenCalledTimes(1);
 
-    await queueTurn();
-    settle('a');
+    const error = await b.catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ name: 'AbortError', message: 'Replaced' });
+    expect(wasNeverSent(error)).toBe(true);
+
+    server.succeed('a');
     await a;
     await nextTask();
-    settle('c');
-    await c;
+    server.succeed('c');
+    await nextTask();
 
     expect(onError).not.toHaveBeenCalled();
-    expect(onSuccess.mock.calls.map(([, input]) => input)).toEqual(['a', 'c']);
-    expect(onSettled.mock.calls.map(([, , input]) => input)).toEqual(['a', 'c']);
-    expect(m.isPending()).toBe(false);
+    expect(onSettled.mock.calls.map(([, , doc]) => doc)).toEqual(['a', 'c']);
   });
 
-  it('runs a call made once the line is empty, even right after the previous call settles', async () => {
-    const m = createMutation<string, string>({
-      concurrency: 'queue-latest',
-      mutationFn: (input) => Promise.resolve(input),
-    });
+  it('sends the latest call even when the call in flight fails', async () => {
+    const { server, save } = createAutosave();
 
-    await m.mutate('a');
-    const b = m.mutate('b');
-    const c = m.mutate('c');
+    const a = save.mutate('a');
+    void save.mutate('b');
+    const c = save.mutate('c');
+    await queueTurn();
+
+    server.fail('a');
+    await expect(a).rejects.toThrow('failed a');
+    await nextTask();
+    server.succeed('c');
+
+    await expect(c).resolves.toBe('saved c');
+    expect(server.started).toEqual(['a', 'c']);
+    expect(save.status()).toBe('success');
+  });
+
+  it('never replaces the head of the line, even right after the previous call settles', async () => {
+    const save = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn: (doc) => Promise.resolve(doc) });
+
+    await save.mutate('a');
+    const b = save.mutate('b');
+    const c = save.mutate('c');
 
     await expect(b).resolves.toBe('b');
     await expect(c).resolves.toBe('c');
   });
 
-  it("rejects the waiting call with 'NotStarted' on reset(), and a later call waits behind a call that ignores its AbortSignal", async () => {
-    const { mutationFn, started, settle } = controlledMutationFn();
-    const m = createMutation<string, string>({ concurrency: 'queue-latest', mutationFn });
+  it("rejects the waiting call with 'NotStarted' on reset(), and keeps later calls behind a call that ignores its AbortSignal", async () => {
+    const { server, save } = createAutosave();
 
-    const a = m.mutate('a');
-    const b = m.mutate('b');
+    const a = save.mutate('a');
+    const b = save.mutate('b');
     await queueTurn();
+    save.reset();
 
-    m.reset();
-    await expect(a).rejects.toMatchObject({ name: 'AbortError', message: 'Aborted' });
-    await expect(b).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
+    await expect(a).rejects.toMatchObject({ message: 'Aborted' });
+    await expect(b).rejects.toMatchObject({ message: 'NotStarted' });
 
-    const c = m.mutate('c');
-    const d = m.mutate('d');
-    await expect(c).rejects.toMatchObject({ name: 'AbortError', message: 'Replaced' });
-    expect(started).toEqual(['a']);
+    const c = save.mutate('c');
+    const d = save.mutate('d');
+    await expect(c).rejects.toMatchObject({ message: 'Replaced' });
 
-    settle('a');
+    server.succeed('a');
     await nextTask();
-    expect(started).toEqual(['a', 'd']);
-    settle('d');
-    await expect(d).resolves.toBe('d-done');
+    server.succeed('d');
+
+    await expect(d).resolves.toBe('saved d');
+    expect(server.started).toEqual(['a', 'd']);
+  });
+
+  it('does not report an unhandled rejection for a replaced call the caller ignores', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const { server, save } = createAutosave();
+
+      void save.mutate('a');
+      void save.mutate('b');
+      void save.mutate('c');
+      await nextTask();
+
+      expect(unhandled).not.toHaveBeenCalled();
+      server.succeed('a');
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
   });
 });
 

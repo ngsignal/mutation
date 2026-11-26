@@ -18,7 +18,7 @@ Educational first: the library API must stay visible, never hidden behind archit
   hand with `demo-ref: main`: it deploys main's demo, still built with the tag's library.
   The `.d.ts` files in `node_modules/@ngsignal/mutation/dist` are the ground truth.
 - One demo = `src/app/demos/<name>-page/` (`.ts` + `.html`), registered in
-  `src/app/app.routes.ts` and in the sidebar in `src/app/app.html`.
+  `src/app/app.routes.ts` and in the sidebar menu (`NAV_GROUPS` in `src/app/app.ts`).
 - Fake backends: `src/app/shared/fake-api.ts` (delayed promises, one fake server per demo so
   demos don't affect each other), `src/app/shared/fake-http-backend.ts` (`HttpInterceptorFn`).
   Each fake server logs what it receives in `requests()`: show that log rather than logging
@@ -26,6 +26,14 @@ Educational first: the library API must stay visible, never hidden behind archit
 - A page that runs several demos renders one child component per demo, colocated in its folder,
   each wrapped in `<app-restartable>` (`src/app/shared/restartable.ts`): "Restart" recreates it,
   mutations and fake server included, instead of a hand-written reset.
+
+## Search engines
+
+Every page is pre-rendered at build time (`outputMode: "static"`, `src/app/app.routes.server.ts`)
+and hydrated in the browser: GitHub Pages serves each one as its own HTML file, with a 200
+status. Its title, meta description, canonical URL and Open Graph tags come from its route
+(`src/app/shared/seo-title-strategy.ts`). The release workflow writes `sitemap.xml`
+(`scripts/sitemap.mjs`) and a `404.html` that shows the not-found page.
 
 ## Commands
 

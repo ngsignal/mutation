@@ -9,8 +9,11 @@
    Otherwise create `src/app/demos/<name>-page/<name>-page.ts` + `.html` (standalone, OnPush),
    ending the pitch with a "Source" link to the `.ts` on GitHub (one per child demo when the
    page has several).
-4. Add the route in `src/app/app.routes.ts` and the link in the right nav group of
-   `src/app/app.html` (`mutation()` or "Adapters").
+4. Add the route in `src/app/app.routes.ts`, with a `data.description` (the page's meta
+   description: under ~155 characters, accurate, naming the API and Angular), and the link in
+   the right nav group of `src/app/app.ts` (`NAV_GROUPS`).
+   The page is pre-rendered at build time: code that runs on creation must not need the
+   browser (`window`, `document`, `localStorage`); keep it in event handlers or `afterNextRender`.
 5. `npm run build`.
 
 ## What a demo should answer

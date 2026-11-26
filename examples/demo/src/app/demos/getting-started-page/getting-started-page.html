@@ -69,7 +69,7 @@
     <dt>value</dt>
     <dd>{{ createUser.value() | json }}</dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
   </dl>
   <button type="button" (click)="createUser.reset()">Reset</button>
   <p class="hint">
@@ -87,7 +87,7 @@
       }}</span>
     </dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ deleteUser.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ deleteUser.error()?.message }}</span></dd>
   </dl>
   <button type="button" (click)="deleteUser.reset()">Reset</button>
 </section>

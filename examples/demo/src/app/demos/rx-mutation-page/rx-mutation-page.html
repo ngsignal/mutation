@@ -41,7 +41,7 @@
       {{ createUser.hasValue() ? createUser.value().name + ' (#' + createUser.value().id + ')' : '—' }}
     </dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
   </dl>
   <p class="hint">
     <code>rxMutation()</code> only sees the emitted value: for the status code, headers or upload

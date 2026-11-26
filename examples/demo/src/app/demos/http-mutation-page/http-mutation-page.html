@@ -38,7 +38,7 @@
     <dt>headers.get('Location')</dt>
     <dd>{{ createUser.headers()?.get('Location') ?? '—' }}</dd>
     <dt>error</dt>
-    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
+    <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
   </dl>
   <p class="hint">
     <code>statusCode</code> and <code>headers</code> come from the response, or from the

@@ -106,7 +106,20 @@ nav#site-nav.open {
   gap: 0.15rem;
 }
 
-.nav-group h2 {
+.nav-group ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Reset the global list rows (styles.css): the links carry the layout */
+.nav-group li {
+  display: block;
+  padding: 0;
+  border-bottom: none;
+}
+
+.nav-heading {
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -260,7 +273,7 @@ main {
     padding: 0;
   }
 
-  .nav-group h2 {
+  .nav-heading {
     font-size: 0.7rem;
     margin-bottom: 0.5rem;
   }

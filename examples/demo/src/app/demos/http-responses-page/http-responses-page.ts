@@ -28,19 +28,27 @@ export class HttpResponsesPage {
 
   // #region parse
   // `parse` runs on the JSON body before it resolves the call: its return type becomes TOutput.
-  protected readonly createUser = httpMutation<
-    { name: string; outdated: boolean },
-    User,
-    HttpErrorResponse | Error
-  >({
-    request: ({ name, outdated }) => ({
-      method: 'POST',
-      url: outdated ? '/api/users/outdated' : '/api/users',
-      body: { name },
-    }),
+  protected readonly createUser = httpMutation<string, User, HttpErrorResponse | Error>({
+    request: (name) => ({ method: 'POST', url: '/api/users', body: { name } }),
     parse: parseUser,
   });
   // #endregion
+
+  // The same call against an endpoint that answers with an outdated body shape.
+  protected readonly createUserOutdated = httpMutation<string, User, HttpErrorResponse | Error>({
+    request: (name) => ({ method: 'POST', url: '/api/users/outdated', body: { name } }),
+    parse: parseUser,
+  });
+
+  protected create(name: string): void {
+    this.createUser.mutate(name);
+    this.createUserOutdated.mutate(name);
+  }
+
+  protected resetCreate(): void {
+    this.createUser.reset();
+    this.createUserOutdated.reset();
+  }
 
   // #region blob
   // `.blob()` reads the body as a Blob: TOutput defaults to Blob, so `parse` is optional.

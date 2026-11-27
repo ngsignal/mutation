@@ -11,7 +11,8 @@
   </app-restartable>
   <app-code-block [source]="code.ts" />
   <aside class="note">
-    Create the queue in a root service, so every component writing todos shares it; at module
+    The click on Delete blurs the input first, so the rename always leaves just before the delete;
+    each action runs on both fake servers. Create the queue in a root service, so every component writing todos shares it; at module
     level, it would also be shared by every SSR request. A call that never settles holds the queue
     for every mutation sharing it: pass the abort signal on and bound the request with a timeout.
     Other pitfalls (deadlock, dependent writes, several tabs) in the

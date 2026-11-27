@@ -442,7 +442,7 @@ progress {
 }
 
 /* A reference list in the state style: its descriptions are prose, not values */
-.state.modes dd {
+.modes dd {
   font-family: inherit;
   font-size: 0.92rem;
 }

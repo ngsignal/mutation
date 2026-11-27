@@ -1,8 +1,5 @@
 <button type="button" (click)="pay()">Pay 50 €</button>
-<p class="hint">
-  Double-click "Pay". The button is not disabled while pending, to show what each mutation does
-  with the second click.
-</p>
+<p class="hint">Double-click "Pay": the button stays enabled on purpose.</p>
 
 <section class="state">
   <dl>
@@ -14,7 +11,4 @@
     <dd>{{ droppingServer.charges() }}</dd>
   </dl>
 </section>
-<p class="hint">
-  By default every click reaches the server: the card is charged twice. With <code>'drop'</code>,
-  only once.
-</p>
+<p class="hint">Charged twice by default, once with <code>'drop'</code>.</p>

@@ -22,6 +22,13 @@
     </button>
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
+  <!-- #region create -->
+  @if (createUser.statusCode() === 422) {
+    <p class="error-text" role="alert">The name is required.</p>
+  } @else if (createUser.isSuccess()) {
+    <p class="hint" role="status">Created at {{ createUser.headers()?.get('Location') }}</p>
+  }
+  <!-- #endregion -->
   <p class="hint">Create a user, then submit an empty name to get a 422.</p>
   <section class="state">
     <dl>
@@ -31,12 +38,10 @@
           createUser.status()
         }}</span>
       </dd>
-      <!-- #region create -->
       <dt>statusCode</dt>
       <dd>{{ createUser.statusCode() ?? '—' }}</dd>
       <dt>headers.get('Location')</dt>
       <dd>{{ createUser.headers()?.get('Location') ?? '—' }}</dd>
-      <!-- #endregion -->
       <dt>error</dt>
       <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
     </dl>

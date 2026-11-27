@@ -22,7 +22,7 @@
   <p class="error-text" role="alert">{{ error.message }}</p>
 }
 <p class="hint">
-  A rename or a delete takes 2 s (an artificial delay). Rename Ada twice quickly, or clear a name:
-  the server rejects it. Delete "Grace Hopper", which always fails, then quickly Ada.
+  Rename Ada twice quickly, or clear a name (rejected). Delete Grace Hopper (always fails), then
+  quickly Ada. Each call takes 2 s (an artificial delay).
 </p>
 <app-activity-log heading="Server" [entries]="server.requests()" />

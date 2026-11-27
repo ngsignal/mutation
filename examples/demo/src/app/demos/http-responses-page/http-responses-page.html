@@ -8,7 +8,7 @@
 
 <section>
   <h2>Validating the response with <code>parse</code></h2>
-  <form (submit)="$event.preventDefault(); createUser.mutate({ name: nameInput.value, outdated: false })">
+  <form (submit)="$event.preventDefault(); create(nameInput.value)">
     <input
       #nameInput
       type="text"
@@ -16,40 +16,52 @@
       placeholder="New user name (empty answers 422)"
     />
     <button type="submit" [disabled]="createUser.isPending()">Create user</button>
-    <button type="button" [disabled]="createUser.isPending()" (click)="createUser.mutate({ name: nameInput.value, outdated: true })">
-      Create user (outdated response)
-    </button>
-    <button type="button" (click)="createUser.reset()">Reset</button>
+    <button type="button" (click)="resetCreate()">Reset</button>
   </form>
   <p class="hint">
-    "Create user (outdated response)" hits an endpoint that answers <code>201</code> with an old
-    body shape (<code>{{ '{' }} userId, fullName {{ '}' }}</code>), so <code>parse</code> throws.
+    Each create goes to both endpoints (2 s, an artificial delay). The second answers
+    <code>201</code> with an old body shape, <code>{{ '{' }} userId, fullName {{ '}' }}</code>.
   </p>
-  <section class="state">
-    <dl>
-      <dt>status</dt>
-      <dd>
-        <span role="status" class="status-pill" [attr.data-status]="createUser.status()">{{
-          createUser.status()
-        }}</span>
-      </dd>
-      <dt>statusCode</dt>
-      <dd>{{ createUser.statusCode() ?? '—' }}</dd>
-      <dt>value</dt>
-      <dd>
-        @if (createUser.hasValue()) {
-          {{ createUser.value().name }} (#{{ createUser.value().id }})
-        } @else {
-          —
-        }
-      </dd>
-      <dt>error</dt>
-      <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
-    </dl>
-  </section>
+  <div class="compare" style="--compare-rows: 2">
+    <section class="state">
+      <h3>/api/users</h3>
+      <dl>
+        <dt>status</dt>
+        <dd>
+          <span role="status" class="status-pill" [attr.data-status]="createUser.status()">{{
+            createUser.status()
+          }}</span>
+        </dd>
+        <dt>statusCode</dt>
+        <dd>{{ createUser.statusCode() ?? '—' }}</dd>
+        <dt>value</dt>
+        <dd>{{ createUser.value()?.name ?? '—' }}</dd>
+        <dt>error</dt>
+        <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
+      </dl>
+    </section>
+
+    <section class="state">
+      <h3>/api/users/outdated</h3>
+      <dl>
+        <dt>status</dt>
+        <dd>
+          <span role="status" class="status-pill" [attr.data-status]="createUserOutdated.status()">{{
+            createUserOutdated.status()
+          }}</span>
+        </dd>
+        <dt>statusCode</dt>
+        <dd>{{ createUserOutdated.statusCode() ?? '—' }}</dd>
+        <dt>value</dt>
+        <dd>{{ createUserOutdated.value()?.name ?? '—' }}</dd>
+        <dt>error</dt>
+        <dd><span class="error-text" role="alert">{{ createUserOutdated.error()?.message }}</span></dd>
+      </dl>
+    </section>
+  </div>
   <app-code-block [source]="code.ts" region="parse" />
   <aside class="note">
-    With the outdated response, <code>status</code> is <code>error</code> while
+    With the outdated body, <code>status</code> is <code>error</code> while
     <code>statusCode</code> is still <code>201</code> and <code>error</code> is an
     <code>HttpMutationParseError</code>: <strong>the server has already applied the write</strong>.
     Treat it as a contract mismatch, not a failed write: retrying would create the user twice.

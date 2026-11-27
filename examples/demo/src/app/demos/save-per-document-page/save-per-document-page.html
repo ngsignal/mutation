@@ -12,7 +12,8 @@
   </app-restartable>
   <app-code-block [source]="code.ts" />
   <aside class="note">
-    A key orders the calls, it doesn't skip any: every save of A reaches the server. To send only
+    Delete all waits for the save of A in flight, so A isn't created again after it. A key orders
+    the calls, it doesn't skip any: every save of A reaches the server. To send only
     the latest version of each document, use one <code>'queue-latest'</code> mutation per document
     (see <a routerLink="/autosave">Autosave</a>). Pitfalls of shared queues in the
     <a href="https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#ordering-writes-across-mutations">recipes</a>.

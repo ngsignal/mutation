@@ -23,8 +23,8 @@
     }
   </ul>
   <p class="hint">
-    Delete Ada, then quickly Grace (who always fails). Then submit two names quickly: the button
-    stays enabled on purpose. Each call takes 2 s (an artificial delay).
+    Delete Ada, then quickly Grace (always fails); then submit two names quickly. Each call takes
+    2 s (an artificial delay).
   </p>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
@@ -73,45 +73,34 @@
   </aside>
 </section>
 
-<section class="state modes">
+<section>
   <h2>The concurrency option</h2>
-  <dl>
-    <dt><code>'parallel'</code></dt>
-    <dd>The default, shown above: a second call runs at once, in parallel.</dd>
-    <dt><code>'queue'</code></dt>
-    <dd>
-      A second call waits for the previous one to settle, then runs: the server receives the writes
-      in call order. Use case: <a routerLink="/lists">move an item to the top</a>.
-    </dd>
-    <dt><code>'queue-latest'</code></dt>
-    <dd>
-      Waits like <code>'queue'</code>, with one waiting call at most: a newer call replaces it, and
-      the replaced call's <code>mutate()</code> rejects at once with an <code>AbortError</code>
-      (<code>'Replaced'</code>), never sent, no callback. Only for writes carrying the whole state.
-      Use case: <a routerLink="/autosave">autosave</a>.
-    </dd>
-    <dt><code>'drop'</code></dt>
-    <dd>
-      While a call is in flight, <code>mutate()</code> rejects at once with an
-      <code>AbortError</code> (<code>'Dropped'</code>): <code>mutationFn</code> isn't called, no
-      callback runs, the signals don't change. Use case: <a routerLink="/form-submit">pay</a>.
-    </dd>
-    <dt><code>mutationQueue()</code></dt>
-    <dd>
-      One call at a time, in call order, across every mutation given the same queue. Use case:
-      <a routerLink="/rename-then-delete">rename, then delete</a>.
-    </dd>
-    <dt><code>{{ '{' }} queue, key {{ '}' }}</code></dt>
-    <dd>
-      The same, per key: a call waits for the previous call with the same key, other keys run at
-      once. A call given the queue without a key waits for every key, and the calls after it wait
-      for it. Use case: <a routerLink="/save-per-document">save per document</a>.
-    </dd>
-  </dl>
+  <p>What a second <code>mutate()</code> does while a call is in flight:</p>
+  <div class="state modes">
+    <dl>
+      <dt><code>'parallel'</code></dt>
+      <dd>Runs at once (the default, above).</dd>
+      <dt><code>'queue'</code></dt>
+      <dd>Waits for the previous call: <a routerLink="/lists">move an item to the top</a>.</dd>
+      <dt><code>'queue-latest'</code></dt>
+      <dd>Waits, replacing the call already waiting: <a routerLink="/autosave">autosave</a>.</dd>
+      <dt><code>'drop'</code></dt>
+      <dd>Rejected at once, never sent: <a routerLink="/form-submit">pay</a>.</dd>
+      <dt><code>mutationQueue()</code></dt>
+      <dd>
+        Waits for the calls of every mutation sharing the queue:
+        <a routerLink="/rename-then-delete">rename, then delete</a>.
+      </dd>
+      <dt><code>{{ '{' }} queue, key {{ '}' }}</code></dt>
+      <dd>
+        Waits for the calls with the same key:
+        <a routerLink="/save-per-document">save per document</a>.
+      </dd>
+    </dl>
+  </div>
   <aside class="note">
-    In every mode, the state signals follow the mutation's latest call, and
-    <code>pendingInputs()</code> lists the queued calls too. A call that never left
-    (<code>'Dropped'</code>, <code>'Replaced'</code>, or a <code>reset()</code> while queued) makes
-    <code>wasNeverSent(error)</code> true: see <a routerLink="/cancellation">cancellation</a>.
+    A replaced or dropped call rejects with an <code>AbortError</code> (<code>'Replaced'</code>,
+    <code>'Dropped'</code>) and runs no callback; <code>wasNeverSent(error)</code> is true for it. In every mode, the state signals follow the
+    mutation's latest call, and <code>pendingInputs()</code> lists the queued calls too.
   </aside>
 </section>

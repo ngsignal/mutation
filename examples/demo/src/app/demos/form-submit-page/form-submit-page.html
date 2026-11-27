@@ -1,12 +1,22 @@
 <p class="pitch">
   Saving a form, as it is often written by hand with an <code>HttpClient</code>-style Observable,
-  next to the same save with <code>rxMutation()</code> and <code>concurrency: 'drop'</code>.
-  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/form-submit-page/save-demo.ts">Source</a>
+  next to the same save with <code>rxMutation()</code> and <code>concurrency: 'drop'</code>. Then a
+  payment, where a double click must not charge the card twice.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/form-submit-page/save-demo.ts">Source (save)</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/form-submit-page/pay-demo.ts">Source (pay)</a>
 </p>
 
 <section>
   <h2>Save a display name</h2>
   <app-restartable>
     <ng-template><app-save-demo /></ng-template>
+  </app-restartable>
+</section>
+
+<section>
+  <h2>Pay</h2>
+  <app-restartable>
+    <ng-template><app-pay-demo /></ng-template>
   </app-restartable>
 </section>

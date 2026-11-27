@@ -4,12 +4,12 @@ import { ActivityLog } from '../../shared/activity-log';
 import { createFakeTodoServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-shared-queue-demo',
+  selector: 'app-rename-then-delete-demo',
   imports: [ActivityLog],
-  templateUrl: './shared-queue-demo.html',
+  templateUrl: './rename-then-delete-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SharedQueueDemo {
+export class RenameThenDeleteDemo {
   protected readonly parallelServer = createFakeTodoServer();
   protected readonly queuedServer = createFakeTodoServer();
 

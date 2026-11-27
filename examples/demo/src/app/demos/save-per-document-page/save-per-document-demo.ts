@@ -4,12 +4,12 @@ import { ActivityLog } from '../../shared/activity-log';
 import { Draft, createFakeDocumentServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-keyed-queue-demo',
+  selector: 'app-save-per-document-demo',
   imports: [ActivityLog],
-  templateUrl: './keyed-queue-demo.html',
+  templateUrl: './save-per-document-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class KeyedQueueDemo {
+export class SavePerDocumentDemo {
   protected readonly server = createFakeDocumentServer();
   private readonly documentWrites = mutationQueue();
   private edits = 0;

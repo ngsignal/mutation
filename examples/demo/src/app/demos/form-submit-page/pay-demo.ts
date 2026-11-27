@@ -3,11 +3,11 @@ import { mutation } from '@ngsignal/mutation';
 import { createFakePaymentServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-drop-demo',
-  templateUrl: './drop-demo.html',
+  selector: 'app-pay-demo',
+  templateUrl: './pay-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DropDemo {
+export class PayDemo {
   protected readonly defaultServer = createFakePaymentServer();
   protected readonly droppingServer = createFakePaymentServer();
   protected readonly clicks = signal(0);

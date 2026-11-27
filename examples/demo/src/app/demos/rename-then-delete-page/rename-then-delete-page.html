@@ -1,0 +1,13 @@
+<p class="pitch">
+  Two different mutations writing the same todo: a rename, then a delete. Given the same
+  <code>mutationQueue()</code>, the delete waits for the rename, so the rename never reaches a
+  deleted todo.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/rename-then-delete-page/rename-then-delete-demo.ts">Source</a>
+</p>
+
+<section>
+  <h2>Rename, then delete a todo</h2>
+  <app-restartable>
+    <ng-template><app-rename-then-delete-demo /></ng-template>
+  </app-restartable>
+</section>

@@ -1,0 +1,14 @@
+<p class="pitch">
+  Saving several documents: the saves of one document must stay in order, but needn't wait for
+  another document's. <code>{{ '{' }} queue, key {{ '}' }}</code> gives each document its own line
+  in a <code>mutationQueue()</code>; a call without a key, such as Delete all, waits for every
+  document.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/save-per-document-page/save-per-document-demo.ts">Source</a>
+</p>
+
+<section>
+  <h2>Save two documents</h2>
+  <app-restartable>
+    <ng-template><app-save-per-document-demo /></ng-template>
+  </app-restartable>
+</section>

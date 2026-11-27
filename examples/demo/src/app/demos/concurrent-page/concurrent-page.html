@@ -2,7 +2,8 @@
   A second <code>mutate()</code> does <strong>not</strong> abort the first: a write may already
   have reached the server, so both run to completion. Every call runs its callbacks, with
   <code>{{ '{' }} isLatest {{ '}' }}</code>; only the latest call writes <code>status</code>,
-  <code>value</code> and <code>error</code>.
+  <code>value</code> and <code>error</code>. The <code>concurrency</code> option changes what a
+  second call does: see the modes below.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrent-page/concurrent-page.ts">Source</a>
 </p>
 
@@ -77,3 +78,46 @@
   emptyText="Nothing yet: delete two users quickly."
 />
 <app-activity-log heading="Server" [entries]="server.requests()" />
+
+<section class="state modes">
+  <h2>The concurrency option</h2>
+  <dl>
+    <dt><code>'parallel'</code></dt>
+    <dd>The default, shown above: a second call runs at once, in parallel.</dd>
+    <dt><code>'queue'</code></dt>
+    <dd>
+      A second call waits for the previous one to settle, then runs: the server receives the writes
+      in call order. Use case: <a routerLink="/lists">move an item to the top</a>.
+    </dd>
+    <dt><code>'queue-latest'</code></dt>
+    <dd>
+      Waits like <code>'queue'</code>, with one waiting call at most: a newer call replaces it, and
+      the replaced call's <code>mutate()</code> rejects at once with an <code>AbortError</code>
+      (<code>'Replaced'</code>), never sent, no callback. Only for writes carrying the whole state.
+      Use case: <a routerLink="/autosave">autosave</a>.
+    </dd>
+    <dt><code>'drop'</code></dt>
+    <dd>
+      While a call is in flight, <code>mutate()</code> rejects at once with an
+      <code>AbortError</code> (<code>'Dropped'</code>): <code>mutationFn</code> isn't called, no
+      callback runs, the signals don't change. Use case: <a routerLink="/form-submit">pay</a>.
+    </dd>
+    <dt><code>mutationQueue()</code></dt>
+    <dd>
+      One call at a time, in call order, across every mutation given the same queue. Use case:
+      <a routerLink="/rename-then-delete">rename, then delete</a>.
+    </dd>
+    <dt><code>{{ '{' }} queue, key {{ '}' }}</code></dt>
+    <dd>
+      The same, per key: a call waits for the previous call with the same key, other keys run at
+      once. A call given the queue without a key waits for every key, and the calls after it wait
+      for it. Use case: <a routerLink="/save-per-document">save per document</a>.
+    </dd>
+  </dl>
+  <p class="hint">
+    In every mode, the state signals follow the mutation's latest call, and
+    <code>pendingInputs()</code> lists the queued calls too. A call that never left
+    (<code>'Dropped'</code>, <code>'Replaced'</code>, or a <code>reset()</code> while queued) makes
+    <code>wasNeverSent(error)</code> true: see <a routerLink="/cancellation">cancellation</a>.
+  </p>
+</section>

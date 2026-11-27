@@ -29,7 +29,6 @@ const NAV_GROUPS: readonly { heading: string; links: readonly NavLink[] }[] = [
       { path: '/manual', label: 'Without mutation()', api: 'mutation' },
       { path: '/concurrent', label: 'Concurrent calls', api: 'mutation' },
       { path: '/state', label: 'Reading state', api: 'mutation' },
-      { path: '/concurrency', label: "'queue', 'drop', mutationQueue()", api: 'mutation' },
       { path: '/cancellation', label: 'Cancellation and reset()', api: 'mutation' },
       { path: '/resource', label: 'Working with resource()', api: 'mutation' },
     ],
@@ -39,6 +38,9 @@ const NAV_GROUPS: readonly { heading: string; links: readonly NavLink[] }[] = [
     links: [
       { path: '/form-submit', label: 'Form submit' },
       { path: '/lists', label: 'Lists and bulk actions' },
+      { path: '/autosave', label: 'Autosave' },
+      { path: '/rename-then-delete', label: 'Rename, then delete' },
+      { path: '/save-per-document', label: 'Save per document' },
     ],
   },
   {

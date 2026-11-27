@@ -4,12 +4,12 @@ import { ActivityLog } from '../../shared/activity-log';
 import { createFakeReorderServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-queue-demo',
+  selector: 'app-move-to-top-demo',
   imports: [ActivityLog],
-  templateUrl: './queue-demo.html',
+  templateUrl: './move-to-top-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class QueueDemo {
+export class MoveToTopDemo {
   protected readonly parallelServer = createFakeReorderServer();
   protected readonly queuedServer = createFakeReorderServer();
 

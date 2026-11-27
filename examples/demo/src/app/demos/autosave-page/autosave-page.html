@@ -1,0 +1,13 @@
+<p class="pitch">
+  Saving a document on every keystroke. Each save carries the whole document (a
+  <code>PUT</code>), so only the latest version matters: <code>concurrency: 'queue-latest'</code>
+  keeps the saves in order and skips the versions overtaken while a save is in flight.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/autosave-page/autosave-demo.ts">Source</a>
+</p>
+
+<section>
+  <h2>Autosave a document</h2>
+  <app-restartable>
+    <ng-template><app-autosave-demo /></ng-template>
+  </app-restartable>
+</section>

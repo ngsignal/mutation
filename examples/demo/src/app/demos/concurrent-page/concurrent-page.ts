@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { mutation } from '@ngsignal/mutation';
 import { ActivityLog, createActivityLog } from '../../shared/activity-log';
 import { User, createFakeUserServer } from '../../shared/fake-api';
 
 @Component({
   selector: 'app-concurrent-page',
-  imports: [ActivityLog],
+  imports: [ActivityLog, RouterLink],
   templateUrl: './concurrent-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

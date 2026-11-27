@@ -2,39 +2,30 @@
   A second <code>mutate()</code> does <strong>not</strong> abort the first: a write may already
   have reached the server, so both run to completion. Every call runs its callbacks, with
   <code>{{ '{' }} isLatest {{ '}' }}</code>; only the latest call writes <code>status</code>,
-  <code>value</code> and <code>error</code>.
+  <code>value</code> and <code>error</code>. The <code>concurrency</code> option changes what a
+  second call does: see the modes below.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/concurrent-page/concurrent-page.ts">Source</a>
 </p>
 
 <section>
-  <h2>Users</h2>
+  <h2>Two calls at once</h2>
   <ul>
     @for (user of users(); track user.id) {
+      <!-- #region code -->
       @let deleting = deleteUser.pendingInputs().includes(user);
       <li>
         {{ user.name }}
-        <button
-          type="button"
-          class="danger"
-          (click)="deleteUser.mutate(user)"
-          [disabled]="deleting"
-        >
+        <button type="button" class="danger" (click)="deleteUser.mutate(user)" [disabled]="deleting">
           {{ deleting ? 'Deleting…' : 'Delete' }}
         </button>
       </li>
+      <!-- #endregion -->
     }
   </ul>
   <p class="hint">
-    Delete Ada, then quickly Grace (who always fails): Ada disappears through her
-    <code>onSuccess</code> with <code>isLatest: false</code>, and Grace's failure lands in
-    <code>status</code>. Both rows show "Deleting…" until their own call settles:
-    <code>pendingInputs()</code> lists every call in flight, while <code>input()</code> holds the
-    latest one.
+    Delete Ada, then quickly Grace (always fails); then submit two names quickly. Each call takes
+    2 s (an artificial delay).
   </p>
-</section>
-
-<section>
-  <h2>Create user</h2>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
@@ -44,36 +35,72 @@
     />
     <button type="submit">Create user</button>
   </form>
-  <p class="hint">
-    The button stays enabled on purpose: submit two names quickly, both users are created.
-  </p>
+
+  <section class="state">
+    <h3>Latest call only</h3>
+    <dl>
+      <dt>createUser.status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+          createUser.status()
+        }}</span>
+      </dd>
+      <dt>createUser.input</dt>
+      <dd>{{ createUser.input() ?? '—' }}</dd>
+      <dt>deleteUser.status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="deleteUser.status()">{{
+          deleteUser.status()
+        }}</span>
+      </dd>
+      <dt>deleteUser.error</dt>
+      <dd><span class="error-text" role="alert">{{ deleteUser.error()?.message }}</span></dd>
+    </dl>
+    <app-activity-log
+      heading="Callbacks"
+      [entries]="log.entries()"
+      emptyText="Nothing yet: delete two users quickly."
+    />
+    <app-activity-log heading="Server" [entries]="server.requests()" />
+  </section>
+  <app-code-block [source]="code.ts" />
+  <app-code-block [source]="code.html" />
+  <aside class="note">
+    Ada disappears through her <code>onSuccess</code> with <code>isLatest: false</code>, and
+    Grace's failure lands in <code>status</code>. Both rows show "Deleting…" until their own call
+    settles: <code>pendingInputs()</code> lists every call in flight, while <code>input()</code>
+    holds the latest one.
+  </aside>
 </section>
 
-<section class="state">
-  <h2>Latest call only</h2>
-  <dl>
-    <dt>createUser.status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
-        createUser.status()
-      }}</span>
-    </dd>
-    <dt>createUser.input</dt>
-    <dd>{{ createUser.input() ?? '—' }}</dd>
-    <dt>deleteUser.status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="deleteUser.status()">{{
-        deleteUser.status()
-      }}</span>
-    </dd>
-    <dt>deleteUser.error</dt>
-    <dd><span class="error-text" role="alert">{{ deleteUser.error()?.message }}</span></dd>
-  </dl>
+<section>
+  <h2>The concurrency option</h2>
+  <p>What a second <code>mutate()</code> does while a call is in flight:</p>
+  <div class="state modes">
+    <dl>
+      <dt><code>'parallel'</code></dt>
+      <dd>Runs at once (the default, above).</dd>
+      <dt><code>'queue'</code></dt>
+      <dd>Waits for the previous call: <a routerLink="/lists">move an item to the top</a>.</dd>
+      <dt><code>'queue-latest'</code></dt>
+      <dd>Waits, replacing the call already waiting: <a routerLink="/autosave">autosave</a>.</dd>
+      <dt><code>'drop'</code></dt>
+      <dd>Rejected at once, never sent: <a routerLink="/form-submit">pay</a>.</dd>
+      <dt><code>mutationQueue()</code></dt>
+      <dd>
+        Waits for the calls of every mutation sharing the queue:
+        <a routerLink="/rename-then-delete">rename, then delete</a>.
+      </dd>
+      <dt><code>{{ '{' }} queue, key {{ '}' }}</code></dt>
+      <dd>
+        Waits for the calls with the same key:
+        <a routerLink="/save-per-document">save per document</a>.
+      </dd>
+    </dl>
+  </div>
+  <aside class="note">
+    A replaced or dropped call rejects with an <code>AbortError</code> (<code>'Replaced'</code>,
+    <code>'Dropped'</code>) and runs no callback; <code>wasNeverSent(error)</code> is true for it. In every mode, the state signals follow the
+    mutation's latest call, and <code>pendingInputs()</code> lists the queued calls too.
+  </aside>
 </section>
-
-<app-activity-log
-  heading="Callbacks"
-  [entries]="log.entries()"
-  emptyText="Nothing yet: delete two users quickly."
-/>
-<app-activity-log heading="Server" [entries]="server.requests()" />

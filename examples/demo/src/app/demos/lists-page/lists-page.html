@@ -1,10 +1,13 @@
 <p class="pitch">
   One mutation shared by every item of a list, called once per item.
   <code>pendingInputs()</code> lists the inputs of the calls still in flight: a spinner on each item
-  being written, and <code>pendingInputs().length</code> for the progress of a bulk action made of
-  one <code>mutate()</code> per item. A bulk endpoint that takes an array is a single call: its
-  whole array is one entry.
-  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/lists-page/seat-map-demo.ts">Source</a>
+  being written, and <code>pendingInputs().length</code> for the progress of a bulk action. When
+  the order of the writes matters, as when reordering a list, <code>concurrency: 'queue'</code>
+  sends them one at a time.
+  Source:
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/lists-page/seat-map-demo.ts">seats</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/lists-page/move-to-top-demo.ts">move to top</a>
 </p>
 
 <section>
@@ -12,4 +15,30 @@
   <app-restartable>
     <ng-template><app-seat-map-demo /></ng-template>
   </app-restartable>
+  <app-code-block [source]="code.seatsTs" />
+  <app-code-block [source]="code.seatsHtml" />
+  <aside class="note">
+    Each column has its own fake server. By hand, the list of seats in flight is updated in three places: before the call, on success
+    and on error; a branch that forgets it leaves a seat "Locking…" forever. A seat leaves
+    <code>pendingInputs()</code> when its call settles, whatever the outcome, and
+    <code>reset()</code> or destroy empty it. <code>input()</code> only follows the latest call, and
+    <code>isPending()</code> only says whether any call is in flight. A bulk endpoint that takes an
+    array is a single call: its whole array is one entry.
+  </aside>
+</section>
+
+<section>
+  <h2>Move an item to the top</h2>
+  <app-restartable>
+    <ng-template><app-move-to-top-demo /></ng-template>
+  </app-restartable>
+  <app-code-block [source]="code.moveTs" />
+  <aside class="note">
+    Each click runs both mutations, one fake server each. In parallel, Charlie's request ends
+    last, so the server puts Charlie first although Alpha was clicked last; queued, Alpha's
+    request only leaves once Charlie's has settled. The queue orders the writes of this mutation
+    only. Several mutations writing the same data,
+    such as a rename then a delete, share a <code>mutationQueue()</code>: see
+    <a routerLink="/rename-then-delete">Rename, then delete</a>.
+  </aside>
 </section>

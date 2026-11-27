@@ -22,12 +22,7 @@
   <p class="error-text" role="alert">{{ error.message }}</p>
 }
 <p class="hint">
-  A row is hidden while its delete is in <code>pendingInputs()</code>, and removed from the
-  resource by <code>onSuccess</code>. A failed delete, as always for "Grace Hopper", just shows the
-  row again, in place: nothing to roll back. Delete Grace, then quickly Ada.
+  Rename Ada twice quickly, or clear a name (rejected). Delete Grace Hopper (always fails), then
+  quickly Ada. Each call takes 2 s (an artificial delay).
 </p>
-<p class="hint">
-  A rename shows at once: the pending renames are folded over the resource, the latest wins. Each
-  takes 2 s (an artificial delay). Rename Ada twice quickly, or clear a name: the server rejects
-  it, and the old name shows again.
-</p>
+<app-activity-log heading="Server" [entries]="server.requests()" />

@@ -13,10 +13,12 @@ export class ResetDemo {
   protected readonly server = createFakeUserServer();
   protected readonly log = createActivityLog();
 
+  // #region code
   protected readonly createUser = mutation<string, User, Error>({
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
     onSuccess: (user) => this.log.add(`onSuccess("${user.name}")`),
   });
+  // #endregion
 
   protected create(name: string): void {
     this.createUser

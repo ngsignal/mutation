@@ -1,6 +1,7 @@
-// Writes sitemap.xml next to the pre-rendered pages: one URL per `<page>/index.html`.
+// Writes sitemap.xml next to the pre-rendered pages: one URL per `<page>/index.html`, except the
+// redirects to a moved page (a `<meta http-equiv="refresh">`, from a route's `redirectTo`).
 // Usage: node scripts/sitemap.mjs <browser output folder> <site URL ending with "/">
-import { readdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [outputDir, siteUrl] = process.argv.slice(2);
@@ -12,6 +13,7 @@ if (!outputDir || !siteUrl?.endsWith('/')) {
 const pages = readdirSync(outputDir, { recursive: true })
   .map((file) => file.replaceAll('\\', '/'))
   .filter((file) => file === 'index.html' || file.endsWith('/index.html'))
+  .filter((file) => !readFileSync(join(outputDir, file), 'utf8').includes('http-equiv="refresh"'))
   .map((file) => file.slice(0, -'index.html'.length))
   .sort();
 

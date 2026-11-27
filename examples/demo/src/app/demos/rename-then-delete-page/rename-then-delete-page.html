@@ -1,0 +1,21 @@
+<p class="pitch">
+  Two different mutations writing the same todo: a rename, then a delete. Given the same
+  <code>mutationQueue()</code>, the delete waits for the rename, so the rename never reaches a
+  deleted todo.
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/rename-then-delete-page/rename-then-delete-demo.ts">Source</a>
+</p>
+
+<section>
+  <app-restartable>
+    <ng-template><app-rename-then-delete-demo /></ng-template>
+  </app-restartable>
+  <app-code-block [source]="code.ts" />
+  <aside class="note">
+    The click on Delete blurs the input first, so the rename always leaves just before the delete;
+    each action runs on both fake servers. Create the queue in a root service, so every component writing todos shares it; at module
+    level, it would also be shared by every SSR request. A call that never settles holds the queue
+    for every mutation sharing it: pass the abort signal on and bound the request with a timeout.
+    Other pitfalls (deadlock, dependent writes, several tabs) in the
+    <a href="https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#ordering-writes-across-mutations">recipes</a>.
+  </aside>
+</section>

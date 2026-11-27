@@ -1,7 +1,12 @@
 <p class="pitch">
-  Saving a form, as it is often written by hand with an <code>HttpClient</code>-style Observable,
-  next to the same save with <code>rxMutation()</code> and <code>concurrency: 'drop'</code>.
-  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/form-submit-page/save-demo.ts">Source</a>
+  A form that must be submitted once. <code>concurrency: 'drop'</code> ignores a second submit
+  while the first is in flight: first a profile save with <code>rxMutation()</code>, next to the
+  same save written by hand with an Observable, then a payment, where a double click must not
+  charge the card twice.
+  Source:
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/form-submit-page/save-demo.ts">save</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/form-submit-page/pay-demo.ts">pay</a>
 </p>
 
 <section>
@@ -9,4 +14,25 @@
   <app-restartable>
     <ng-template><app-save-demo /></ng-template>
   </app-restartable>
+  <app-code-block [source]="code.save" />
+  <aside class="note">
+    Both versions behave the same, and the hand-written one is correct. What
+    <code>rxMutation()</code> removes is the bookkeeping: three signals, the guard, the flag reset
+    in each branch and <code>takeUntilDestroyed</code>. It also gives <code>input()</code>,
+    <code>status()</code> and <code>reset()</code> for free.
+  </aside>
+</section>
+
+<section>
+  <h2>Pay</h2>
+  <app-restartable>
+    <ng-template><app-pay-demo /></ng-template>
+  </app-restartable>
+  <app-code-block [source]="code.pay" />
+  <aside class="note">
+    A dropped click makes <code>mutate()</code> reject with an <code>AbortError</code>
+    (<code>'Dropped'</code>), without calling <code>mutationFn</code> or touching the signals.
+    Disabling the button while <code>isPending()</code> is the first line of defense;
+    <code>'drop'</code> also covers calls made from code.
+  </aside>
 </section>

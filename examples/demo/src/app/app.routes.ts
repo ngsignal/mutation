@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { CancellationPage } from './demos/cancellation-page/cancellation-page';
-import { ConcurrencyPage } from './demos/concurrency-page/concurrency-page';
+import { AutosavePage } from './demos/autosave-page/autosave-page';
 import { ConcurrentPage } from './demos/concurrent-page/concurrent-page';
 import { FormSubmitPage } from './demos/form-submit-page/form-submit-page';
 import { GettingStartedPage } from './demos/getting-started-page/getting-started-page';
@@ -8,8 +8,11 @@ import { HttpMutationPage } from './demos/http-mutation-page/http-mutation-page'
 import { HttpResponsesPage } from './demos/http-responses-page/http-responses-page';
 import { ListsPage } from './demos/lists-page/lists-page';
 import { NotFoundPage } from './demos/not-found-page/not-found-page';
-import { ResourcePage } from './demos/resource-page/resource-page';
+import { OptimisticPage } from './demos/optimistic-page/optimistic-page';
+import { RefreshPage } from './demos/refresh-page/refresh-page';
+import { RenameThenDeletePage } from './demos/rename-then-delete-page/rename-then-delete-page';
 import { RxMutationPage } from './demos/rx-mutation-page/rx-mutation-page';
+import { SavePerDocumentPage } from './demos/save-per-document-page/save-per-document-page';
 import { StatePage } from './demos/state-page/state-page';
 import { WithoutMutationPage } from './demos/without-mutation-page/without-mutation-page';
 
@@ -43,7 +46,7 @@ export const routes: Routes = [
     title: 'Concurrent calls',
     data: {
       description:
-        'What happens when mutate() is called again while a call is in flight: both calls complete, and only the latest one writes status, value and error.',
+        "A second mutate() while a call is in flight: parallel by default, or queued, replaced or dropped with Angular mutation()'s concurrency option.",
     },
   },
   {
@@ -55,15 +58,8 @@ export const routes: Routes = [
         "Reading an Angular mutation's state as signals: status() and its flags, hasValue(), snapshot() for an exhaustive @switch, input() and a typed error().",
     },
   },
-  {
-    path: 'concurrency',
-    component: ConcurrencyPage,
-    title: "concurrency: 'queue', 'drop' and mutationQueue()",
-    data: {
-      description:
-        "Ordering Angular writes: run calls in parallel, queue them with concurrency: 'queue' or 'queue-latest', drop them with 'drop', or share a mutationQueue().",
-    },
-  },
+  // The concurrency modes moved to /concurrent (reference) and the use-case pages.
+  { path: 'concurrency', redirectTo: 'concurrent' },
   {
     path: 'cancellation',
     component: CancellationPage,
@@ -73,22 +69,15 @@ export const routes: Routes = [
         'How reset() and destroying the component abort an Angular mutation in flight: the AbortSignal fires, no callback runs and mutate() rejects.',
     },
   },
-  {
-    path: 'resource',
-    component: ResourcePage,
-    title: 'Working with resource()',
-    data: {
-      description:
-        'Keeping an Angular resource() up to date after a write with mutation(): reload it after success, or show the change at once from pendingInputs().',
-    },
-  },
+  // Split into the Refresh a resource() and Optimistic update use cases.
+  { path: 'resource', redirectTo: 'optimistic' },
   {
     path: 'form-submit',
     component: FormSubmitPage,
     title: 'Form submit',
     data: {
       description:
-        "Saving an Angular form: the hand-written Observable version next to the same save with rxMutation() and concurrency: 'drop' against double submits.",
+        "Saving an Angular form or paying: rxMutation() next to the hand-written Observable version, and concurrency: 'drop' against double submits.",
     },
   },
   {
@@ -97,7 +86,52 @@ export const routes: Routes = [
     title: 'Lists and bulk actions',
     data: {
       description:
-        'One Angular mutation shared by every item of a list: pendingInputs() shows which items are being written and the progress of a bulk action.',
+        "One Angular mutation shared by every item of a list: pendingInputs() for progress, concurrency: 'queue' to reorder items in order.",
+    },
+  },
+  {
+    path: 'autosave',
+    component: AutosavePage,
+    title: 'Autosave',
+    data: {
+      description:
+        "Autosaving an Angular document on every keystroke with mutation() and concurrency: 'queue-latest': saves stay in order, overtaken versions are skipped.",
+    },
+  },
+  {
+    path: 'rename-then-delete',
+    component: RenameThenDeletePage,
+    title: 'Rename, then delete',
+    data: {
+      description:
+        'Ordering two different Angular mutations on the same data with a shared mutationQueue(): a delete waits for the rename sent before it.',
+    },
+  },
+  {
+    path: 'save-per-document',
+    component: SavePerDocumentPage,
+    title: 'Save per document',
+    data: {
+      description:
+        'Saving several documents in Angular with mutationQueue() and { queue, key }: saves stay in order per document, other documents never wait.',
+    },
+  },
+  {
+    path: 'refresh',
+    component: RefreshPage,
+    title: 'Refresh a resource()',
+    data: {
+      description:
+        'Keeping an Angular resource() up to date after a write: mutation() reloads it in onSuccess, and the server stays the source of truth.',
+    },
+  },
+  {
+    path: 'optimistic',
+    component: OptimisticPage,
+    title: 'Optimistic update',
+    data: {
+      description:
+        'Showing an Angular write at once: fold mutation() pendingInputs() over a resource() in a computed(), with nothing to roll back on failure.',
     },
   },
   {

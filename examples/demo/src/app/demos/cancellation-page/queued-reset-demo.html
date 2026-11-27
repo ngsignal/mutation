@@ -5,10 +5,8 @@
   <button type="button" (click)="createUser.reset()">Reset</button>
 </div>
 <p class="hint">
-  With <code>concurrency: 'queue'</code>, "Second" waits for "First". Reset before "First"
-  settles: both reject, and "Second" never appears in the server log. Its
-  <code>mutationFn</code> never ran, so <code>wasNeverSent(error)</code> is true; "First" may
-  have reached the server, so it is false.
+  "Second" waits for "First" (<code>concurrency: 'queue'</code>). Reset before "First" settles
+  (2 s, an artificial delay).
 </p>
 <app-activity-log heading="mutate()" [entries]="log.entries()" />
 <app-activity-log heading="Server" [entries]="server.requests()" />

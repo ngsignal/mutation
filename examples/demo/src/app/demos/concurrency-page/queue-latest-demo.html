@@ -3,8 +3,8 @@
   <input #doc type="text" (input)="autosave(doc.value)" />
 </label>
 <p class="hint">
-  Each keystroke saves the whole document twice, one mutation per fake server. A save takes 1.5 s
-  (an artificial delay): type a word quickly.
+  Each keystroke saves the whole document three times, one mutation per fake server. A save takes
+  1.5 s (an artificial delay): type a word quickly, then type slowly.
 </p>
 
 <section class="state">
@@ -38,4 +38,19 @@
     (<code>'Replaced'</code>, never sent).
   </p>
   <app-activity-log heading="Server" [entries]="latestServer.requests()" />
+</section>
+
+<section class="state">
+  <h3>concurrency: {{ '{' }} mode: 'queue-latest', debounce: 500 {{ '}' }}</h3>
+  <dl>
+    <dt>saveDebounced.isPending()</dt>
+    <dd>{{ saveDebounced.isPending() }}</dd>
+    <dt>server</dt>
+    <dd>"{{ debouncedServer.documents().A }}"</dd>
+  </dl>
+  <p class="hint">
+    Typed slowly, <code>'queue-latest'</code> sends every keystroke, since nothing is in flight.
+    With a debounce, a call waits for a 500 ms pause, pending from the keystroke.
+  </p>
+  <app-activity-log heading="Server" [entries]="debouncedServer.requests()" />
 </section>

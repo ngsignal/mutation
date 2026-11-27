@@ -12,6 +12,7 @@ import { createFakeDocumentServer } from '../../shared/fake-api';
 export class QueueLatestDemo {
   protected readonly queuedServer = createFakeDocumentServer();
   protected readonly latestServer = createFakeDocumentServer();
+  protected readonly debouncedServer = createFakeDocumentServer();
 
   protected readonly saveQueued = mutation<string, void>({
     concurrency: 'queue',
@@ -24,8 +25,15 @@ export class QueueLatestDemo {
     mutationFn: (content, abortSignal) => this.latestServer.save({ docId: 'A', content }, abortSignal),
   });
 
+  // Pending from the keystroke, sent once typing pauses for 500 ms.
+  protected readonly saveDebounced = mutation<string, void>({
+    concurrency: { mode: 'queue-latest', debounce: 500 },
+    mutationFn: (content, abortSignal) => this.debouncedServer.save({ docId: 'A', content }, abortSignal),
+  });
+
   protected autosave(content: string): void {
     this.saveQueued.mutate(content);
     this.saveLatest.mutate(content);
+    this.saveDebounced.mutate(content);
   }
 }

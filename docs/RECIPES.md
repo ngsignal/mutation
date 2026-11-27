@@ -187,8 +187,19 @@ readonly save = httpMutation<Doc, Doc>({
 - Send the whole document: a replaced call is never sent, so a delta would be lost.
 - Don't roll back a replaced call, even though `wasNeverSent()` is true: the newer call carries a
   more recent state.
-- A debounce still cuts the calls made while nothing is in flight.
 - No shared queue or key: use one mutation per document (a keyed queue sends every version).
+
+While nothing is in flight, each call is sent at once: someone typing slowly sends one save per
+keystroke. Add a `debounce` to wait for a pause:
+
+```ts
+concurrency: { mode: 'queue-latest', debounce: 500 },
+```
+
+Each call waits 500 ms after its `mutate()`, and a newer call replaces it meanwhile. The wait
+overlaps the save in flight: a call leaves once both are over. Prefer it to a debounce before
+`mutate()` (`debounceTime()`): the call is pending from the first keystroke, so `isPending()`, a
+"leave the page?" guard and SSR see the edit not saved yet.
 
 ## Choosing settings by HTTP method
 

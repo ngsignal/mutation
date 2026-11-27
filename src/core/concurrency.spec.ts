@@ -553,6 +553,138 @@ describe("concurrency: 'queue-latest'", () => {
   });
 });
 
+describe("concurrency: { mode: 'queue-latest', debounce }", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function createDebouncedAutosave(options: Partial<Parameters<typeof mutation<string, string>>[0]> = {}) {
+    const started: string[] = [];
+    const saves = new Map<string, ReturnType<typeof createDeferred<string>>>();
+    const save = createMutation<string, string>({
+      concurrency: { mode: 'queue-latest', debounce: 300 },
+      mutationFn: (doc) => {
+        started.push(doc);
+        const deferred = createDeferred<string>();
+        saves.set(doc, deferred);
+        return deferred.promise;
+      },
+      ...options,
+    });
+    return { save, started, succeed: (doc: string) => saves.get(doc)?.resolve(`saved ${doc}`) };
+  }
+
+  it('sends the call debounce ms after its mutate(), pending from the start', async () => {
+    const { save, started, succeed } = createDebouncedAutosave();
+
+    const a = save.mutate('a');
+    expect(save.isPending()).toBe(true);
+    expect(save.pendingInputs()).toEqual(['a']);
+    await vi.advanceTimersByTimeAsync(299);
+    expect(started).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(started).toEqual(['a']);
+    succeed('a');
+    await expect(a).resolves.toBe('saved a');
+  });
+
+  it('replaces the call waiting for its delay: only the last call of a burst is sent', async () => {
+    const onSettled = vi.fn();
+    const { save, started, succeed } = createDebouncedAutosave({ onSettled });
+
+    const a = save.mutate('a');
+    await vi.advanceTimersByTimeAsync(200);
+    const b = save.mutate('b');
+    expect(save.pendingInputs()).toEqual(['b']);
+
+    const error = await a.catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ name: 'AbortError', message: 'Replaced' });
+    expect(wasNeverSent(error)).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(200);
+    expect(started).toEqual([]);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(started).toEqual(['b']);
+
+    succeed('b');
+    await expect(b).resolves.toBe('saved b');
+    expect(onSettled.mock.calls.map(([, , doc]) => doc)).toEqual(['b']);
+  });
+
+  it('waits for the call in flight and for its own delay, whichever ends last', async () => {
+    const { save, started, succeed } = createDebouncedAutosave();
+
+    const a = save.mutate('a');
+    await vi.advanceTimersByTimeAsync(300);
+    const b = save.mutate('b');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(started).toEqual(['a']);
+
+    succeed('a');
+    await a;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(started).toEqual(['a', 'b']);
+
+    const c = save.mutate('c');
+    succeed('b');
+    await b;
+    await vi.advanceTimersByTimeAsync(299);
+    expect(started).toEqual(['a', 'b']);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(started).toEqual(['a', 'b', 'c']);
+    succeed('c');
+    await expect(c).resolves.toBe('saved c');
+  });
+
+  it('never sends a call replaced right after its delay elapsed', async () => {
+    const { save, started, succeed } = createDebouncedAutosave();
+
+    const a = save.mutate('a');
+    await queueTurn();
+    vi.advanceTimersByTime(300);
+    const b = save.mutate('b');
+
+    await expect(a).rejects.toMatchObject({ message: 'Replaced' });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(started).toEqual(['b']);
+    succeed('b');
+    await expect(b).resolves.toBe('saved b');
+  });
+
+  it("rejects with 'NotStarted' on reset() during the delay, releases the task and never sends", async () => {
+    const removeFns = spyOnPendingTasks();
+    const { save, started } = createDebouncedAutosave();
+
+    const a = save.mutate('a');
+    await vi.advanceTimersByTimeAsync(100);
+    save.reset();
+    expect(removeFns[0]).toHaveBeenCalled();
+
+    await expect(a).rejects.toMatchObject({ message: 'NotStarted' });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(started).toEqual([]);
+  });
+
+  it('accepts the object form without a debounce, as plain queue-latest', async () => {
+    const save = createMutation<string, string>({
+      concurrency: { mode: 'queue-latest' },
+      mutationFn: (doc) => Promise.resolve(doc),
+    });
+
+    const a = save.mutate('a');
+    void save.mutate('b');
+    const c = save.mutate('c');
+
+    await expect(a).resolves.toBe('a');
+    await expect(c).resolves.toBe('c');
+  });
+});
+
 describe('properties', () => {
   interface Call {
     id: number;

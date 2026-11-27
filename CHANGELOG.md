@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Feature: `concurrency: { mode: 'queue-latest', debounce }` waits `debounce` ms after each
+  `mutate()` before sending, so an autosave on every keystroke saves once typing pauses. A newer
+  call made meanwhile replaces the waiting one (`'Replaced'`). The call counts as pending from
+  `mutate()`: `isPending()`, `pendingInputs()` and `PendingTasks` cover the delay, unlike a
+  debounce before `mutate()`. The delay overlaps the call in flight, so a slow request adds no
+  extra wait. See [Autosaving](./docs/RECIPES.md#autosaving).
+
 ## 0.10.0
 
 - Feature: `concurrency: 'queue-latest'`, for autosave: like `'queue'`, but a newer call replaces

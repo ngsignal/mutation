@@ -20,6 +20,17 @@ export interface KeyedMutationQueue<TInput> {
   readonly key: (input: TInput) => string | number;
 }
 
+/** `concurrency` option for `'queue-latest'` with settings: `{ mode: 'queue-latest' }` alone is `'queue-latest'`. */
+export interface QueueLatestConcurrency {
+  readonly mode: 'queue-latest';
+  /**
+   * Milliseconds a call waits after its `mutate()` before it is sent, e.g. to save once typing
+   * pauses. A newer call made meanwhile replaces it. The wait overlaps the call in flight: a call
+   * leaves once both are over. The call counts as pending from `mutate()`.
+   */
+  readonly debounce?: number;
+}
+
 /** Last argument of `onSuccess`, `onError` and `onSettled`. */
 export interface MutationCallbackContext {
   /** False when a more recent `mutate()` superseded this call: its outcome never reached the signals. */
@@ -64,13 +75,21 @@ export interface MutationOptions<
    * `'parallel'` (the default): calls run at once. `'queue'`: one at a time, in call order. `'drop'`:
    * a call made while one is in flight rejects at once (`'Dropped'`). `'queue-latest'`: `'queue'`
    * with one waiting call at most; a newer call replaces it (`'Replaced'`, never sent). Only for
-   * writes carrying the whole state (autosave with `PUT`).
+   * writes carrying the whole state (autosave with `PUT`). `{ mode: 'queue-latest', debounce }`: the
+   * same, each call waiting `debounce` ms after its `mutate()` before it is sent.
    *
    * A `mutationQueue()`: one at a time, in call order, with the calls of every mutation given the
    * same queue. `{ queue, key }`: the same, per key, e.g. one queue per entity id; a call given the
    * queue without a key waits for every key, and the calls after it wait for it.
    */
-  concurrency?: 'parallel' | 'queue' | 'queue-latest' | 'drop' | MutationQueue | KeyedMutationQueue<TInput>;
+  concurrency?:
+    | 'parallel'
+    | 'queue'
+    | 'queue-latest'
+    | 'drop'
+    | QueueLatestConcurrency
+    | MutationQueue
+    | KeyedMutationQueue<TInput>;
   /** Needed outside an injection context. Destroying it aborts in-flight calls, like `reset()`. */
   injector?: Injector;
   /** Names the state signals in Angular DevTools: `'save'` gives `save.status`, `save.value`, … */

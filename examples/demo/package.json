@@ -29,7 +29,7 @@
     "@angular/platform-server": "^22.2.6",
     "@angular/router": "^22.2.6",
     "@angular/ssr": "^22.2.7",
-    "@ngsignal/mutation": "0.8.0",
+    "@ngsignal/mutation": "0.9.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

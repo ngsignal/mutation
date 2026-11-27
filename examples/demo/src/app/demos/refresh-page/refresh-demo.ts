@@ -12,12 +12,12 @@ import { User, createFakeUserServer } from '../../shared/fake-api';
 export class RefreshDemo {
   protected readonly server = createFakeUserServer();
 
-  // #region code
   protected readonly users = resource({
     loader: ({ abortSignal }) => this.server.fetchUsers(abortSignal),
     defaultValue: [],
   });
 
+  // #region code
   protected readonly createUser = mutation<string, User, Error>({
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
     onSuccess: () => this.users.reload(),

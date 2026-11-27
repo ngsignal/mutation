@@ -8,7 +8,6 @@
 
 <section>
   <h2>Validating the response with <code>parse</code></h2>
-  <!-- #region parse -->
   <form (submit)="$event.preventDefault(); createUser.mutate({ name: nameInput.value, outdated: false })">
     <input
       #nameInput
@@ -22,7 +21,6 @@
     </button>
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
-  <!-- #endregion -->
   <p class="hint">
     "Create user (outdated response)" hits an endpoint that answers <code>201</code> with an old
     body shape (<code>{{ '{' }} userId, fullName {{ '}' }}</code>), so <code>parse</code> throws.
@@ -50,7 +48,6 @@
     </dl>
   </section>
   <app-code-block [source]="code.ts" region="parse" />
-  <app-code-block [source]="code.html" region="parse" />
   <aside class="note">
     With the outdated response, <code>status</code> is <code>error</code> while
     <code>statusCode</code> is still <code>201</code> and <code>error</code> is an
@@ -63,7 +60,6 @@
 
 <section>
   <h2>A file in the response: <code>httpMutation.blob()</code> + <code>downloadProgress</code></h2>
-  <!-- #region blob -->
   <div class="actions">
     <button type="button" [disabled]="exportUsers.isPending()" (click)="exportUsers.mutate()">
       {{ exportUsers.isPending() ? 'Exporting…' : 'Export users as CSV' }}
@@ -74,6 +70,7 @@
     <button type="button" (click)="exportUsers.reset()">Reset</button>
   </div>
 
+  <!-- #region blob -->
   @if (exportUsers.downloadProgress(); as p) {
     <div class="actions">
       <progress [value]="p.loaded" [max]="p.total ?? 100" aria-label="Download progress"></progress>

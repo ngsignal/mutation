@@ -4,7 +4,8 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
  * A demo's own code, copyable: the `code` region(s) of a template or a TypeScript file imported as
  * text (`import source from './demo.html' with { loader: 'text' }`), marked with
  * `<!-- #region code -->` … `<!-- #endregion -->` or `// #region code` … `// #endregion`.
- * The code shown is the code that runs. Several regions with the same name are shown together.
+ * The code shown is the code that runs. Several regions with the same name are shown together:
+ * mark only what matters (the mutation, its `mutate()` call, the template reading its state).
  */
 @Component({
   selector: 'app-code-block',
@@ -53,11 +54,14 @@ interface Token {
   text: string;
 }
 
-/** The regions called `name`, each without its common indentation, separated by a blank line. */
+/**
+ * The regions called `name`. Template regions are fragments of one tree, shown one after the
+ * other with their nesting; TypeScript regions stand alone, one blank line apart.
+ */
 function extractRegions(source: string, name: string): { code: string; isTemplate: boolean } {
   const lines = source.split('\n');
   const isMarker = (line: string) => /#(end)?region\b/.test(line);
-  const regions: string[] = [];
+  const regions: string[][] = [];
   let isTemplate = false;
   lines.forEach((line, start) => {
     if (!new RegExp(`#region ${name}\\b`).test(line)) {
@@ -65,17 +69,22 @@ function extractRegions(source: string, name: string): { code: string; isTemplat
     }
     isTemplate = line.includes('<!--');
     const end = lines.findIndex((other, index) => index > start && other.includes('#endregion'));
-    const body = lines.slice(start + 1, end === -1 ? lines.length : end).filter((l) => !isMarker(l));
-    const indent = Math.min(
-      ...body.filter((l) => l.trim()).map((l) => l.length - l.trimStart().length),
-    );
-    regions.push(body.map((l) => l.slice(indent)).join('\n'));
+    regions.push(lines.slice(start + 1, end === -1 ? lines.length : end).filter((l) => !isMarker(l)));
   });
   if (regions.length === 0) {
     // Fails the pre-rendering, so a renamed region can't ship an empty code block.
     throw new Error(`Code region "${name}" not found`);
   }
-  return { code: regions.join('\n\n'), isTemplate };
+  // A template keeps the nesting between its fragments; each TypeScript region stands alone.
+  const dedent = (block: string[]) => {
+    const indent = Math.min(
+      ...block.filter((l) => l.trim()).map((l) => l.length - l.trimStart().length),
+    );
+    return block.map((l) => l.slice(indent)).join('\n');
+  };
+  return isTemplate
+    ? { code: dedent(regions.flat()), isTemplate }
+    : { code: regions.map(dedent).join('\n\n'), isTemplate };
 }
 
 const KEYWORDS = new Set(

@@ -18,7 +18,9 @@ export class QueuedResetDemo {
     concurrency: 'queue',
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
   });
+  // #endregion
 
+  // #region code
   protected createTwo(): void {
     for (const name of ['First', 'Second']) {
       this.createUser

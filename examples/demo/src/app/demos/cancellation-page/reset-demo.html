@@ -2,7 +2,9 @@
   <button type="button" (click)="create('Ada')" [disabled]="createUser.isPending()">
     Create "Ada"
   </button>
+  <!-- #region code -->
   <button type="button" (click)="createUser.reset()">Reset</button>
+  <!-- #endregion -->
   <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
     createUser.status()
   }}</span>

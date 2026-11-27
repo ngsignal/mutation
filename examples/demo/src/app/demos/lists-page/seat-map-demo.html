@@ -45,9 +45,9 @@
 
   <section class="state">
     <h3>rxMutation()</h3>
-    <!-- #region code -->
     <div class="seat-map">
       @for (seat of mutationServer.seats; track seat) {
+        <!-- #region code -->
         @let state =
           mutationLocked().includes(seat)
             ? 'locked'
@@ -56,6 +56,7 @@
               : mutationRefused().includes(seat)
                 ? 'refused'
                 : 'free';
+        <!-- #endregion -->
         <button
           type="button"
           class="seat"
@@ -73,7 +74,6 @@
         </button>
       }
     </div>
-    <!-- #endregion -->
     <dl>
       <dt>pendingInputs()</dt>
       <dd><span role="status">{{ lockSeat.pendingInputs().join(', ') || '—' }}</span></dd>

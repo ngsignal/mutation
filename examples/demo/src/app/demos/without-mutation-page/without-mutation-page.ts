@@ -11,7 +11,6 @@ import { JsonPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CodeBlock } from '../../shared/code-block';
 import { User, createFakeUserServer } from '../../shared/fake-api';
-import html from './without-mutation-page.html' with { loader: 'text' };
 // @ts-expect-error: imported as text, see text-imports.d.ts
 import ts from './without-mutation-page.ts' with { loader: 'text' };
 
@@ -29,7 +28,7 @@ type Status = 'idle' | 'pending' | 'success' | 'error';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WithoutMutationPage {
-  protected readonly code = { ts: ts as string, html };
+  protected readonly code = { ts: ts as string };
   private readonly server = createFakeUserServer();
   private readonly pendingTasks = inject(PendingTasks);
 
@@ -43,7 +42,6 @@ export class WithoutMutationPage {
     });
   }
 
-  // #region create
   protected readonly createUserStatus = signal<Status>('idle');
   protected readonly createUserValue = signal<User | undefined>(undefined);
   protected readonly createUserError = signal<Error | undefined>(undefined);
@@ -52,6 +50,7 @@ export class WithoutMutationPage {
   private createUserGeneration = 0;
   private readonly createUserControllers = new Set<AbortController>();
 
+  // #region create
   protected async createUser(name: string): Promise<void> {
     const generation = ++this.createUserGeneration;
     const controller = new AbortController();
@@ -78,6 +77,7 @@ export class WithoutMutationPage {
       if (!controller.signal.aborted) this.panelOpen.set(false);
     }
   }
+  // #endregion
 
   protected resetCreateUser(): void {
     this.createUserGeneration++;
@@ -87,9 +87,7 @@ export class WithoutMutationPage {
     this.createUserError.set(undefined);
     this.createUserInput.set(undefined);
   }
-  // #endregion
 
-  // #region delete
   protected readonly deleteUserStatus = signal<Status>('idle');
   protected readonly deleteUserError = signal<Error | undefined>(undefined);
   protected readonly deleteUserInput = signal<User | undefined>(undefined);
@@ -97,6 +95,7 @@ export class WithoutMutationPage {
   private deleteUserGeneration = 0;
   private readonly deleteUserControllers = new Set<AbortController>();
 
+  // #region delete
   protected async remove(user: User): Promise<void> {
     const generation = ++this.deleteUserGeneration;
     const controller = new AbortController();
@@ -120,6 +119,7 @@ export class WithoutMutationPage {
       this.deleteUserControllers.delete(controller);
     }
   }
+  // #endregion
 
   protected resetDeleteUser(): void {
     this.deleteUserGeneration++;
@@ -128,5 +128,4 @@ export class WithoutMutationPage {
     this.deleteUserError.set(undefined);
     this.deleteUserInput.set(undefined);
   }
-  // #endregion
 }

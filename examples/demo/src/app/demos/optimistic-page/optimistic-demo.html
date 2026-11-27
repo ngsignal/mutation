@@ -1,4 +1,3 @@
-<!-- #region code -->
 @if (users.isLoading()) {
   <p class="hint" role="status">Loading users…</p>
 }
@@ -22,7 +21,6 @@
 @if (renameUser.error(); as error) {
   <p class="error-text" role="alert">{{ error.message }}</p>
 }
-<!-- #endregion -->
 <p class="hint">
   A rename or a delete takes 2 s (an artificial delay). Rename Ada twice quickly, or clear a name:
   the server rejects it. Delete "Grace Hopper", which always fails, then quickly Ada.

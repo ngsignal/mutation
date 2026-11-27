@@ -10,7 +10,6 @@
     <ng-template><app-refresh-demo /></ng-template>
   </app-restartable>
   <app-code-block [source]="code.ts" />
-  <app-code-block [source]="code.html" />
   <aside class="note">
     <code>mutation()</code> has no cache and never touches a <code>resource()</code> on its own: the
     reload is one line in <code>onSuccess</code>. To show the change before the server answers, see

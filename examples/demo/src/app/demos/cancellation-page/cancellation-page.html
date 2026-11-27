@@ -16,6 +16,7 @@
     <ng-template><app-reset-demo /></ng-template>
   </app-restartable>
   <app-code-block [source]="code.reset" />
+  <app-code-block [source]="code.resetHtml" />
   <aside class="note">
     No <code>onSuccess</code>, the status goes back to idle, and <code>mutate()</code> rejects with
     <code>'Aborted'</code>, the abort reason the fake API rejects with, as <code>fetch()</code>

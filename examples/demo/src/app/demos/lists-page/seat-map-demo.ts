@@ -38,9 +38,9 @@ export class SeatMapDemo {
 
   // rxMutation(): pendingInputs() lists the seats whose call is still in flight.
   protected readonly mutationServer = createFakeSeatServer();
-  // #region code
   protected readonly mutationLocked = signal<number[]>([]);
   protected readonly mutationRefused = signal<number[]>([]);
+  // #region code
   protected readonly lockSeat = rxMutation<number, number>({
     mutationFn: (seat) => this.mutationServer.lockSeat(seat),
     onSuccess: (seat) => this.mutationLocked.update((seats) => [...seats, seat]),

@@ -9,24 +9,19 @@
 
 <section>
   <h2>Two calls at once</h2>
-  <!-- #region code -->
   <ul>
     @for (user of users(); track user.id) {
+      <!-- #region code -->
       @let deleting = deleteUser.pendingInputs().includes(user);
       <li>
         {{ user.name }}
-        <button
-          type="button"
-          class="danger"
-          (click)="deleteUser.mutate(user)"
-          [disabled]="deleting"
-        >
+        <button type="button" class="danger" (click)="deleteUser.mutate(user)" [disabled]="deleting">
           {{ deleting ? 'Deleting…' : 'Delete' }}
         </button>
       </li>
+      <!-- #endregion -->
     }
   </ul>
-  <!-- #endregion -->
   <p class="hint">
     Delete Ada, then quickly Grace (who always fails). Then submit two names quickly: the button
     stays enabled on purpose. Each call takes 2 s (an artificial delay).

@@ -8,7 +8,6 @@ import html from './http-responses-page.html' with { loader: 'text' };
 // @ts-expect-error: imported as text, see text-imports.d.ts
 import ts from './http-responses-page.ts' with { loader: 'text' };
 
-// #region parse
 /** A hand-written check; a schema library's parse (Zod, Valibot…) plugs in the same way. */
 function parseUser(raw: unknown): User {
   const candidate = raw as Partial<User> | null;
@@ -17,7 +16,6 @@ function parseUser(raw: unknown): User {
   }
   return { id: candidate.id, name: candidate.name };
 }
-// #endregion
 
 @Component({
   selector: 'app-http-responses-page',
@@ -59,7 +57,6 @@ export class HttpResponsesPage {
   });
   // #endregion
 
-  // #region blob
   protected saveExport(): void {
     if (!this.exportUsers.hasValue()) return;
     const url = URL.createObjectURL(this.exportUsers.value());
@@ -68,5 +65,5 @@ export class HttpResponsesPage {
     link.download = 'users.csv';
     link.click();
     URL.revokeObjectURL(url);
-  }  // #endregion
+  }
 }

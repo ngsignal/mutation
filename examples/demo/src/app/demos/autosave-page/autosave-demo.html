@@ -1,9 +1,9 @@
-<!-- #region code -->
 <label>
   Document
+  <!-- #region code -->
   <input #doc type="text" (input)="save.mutate(doc.value)" />
+  <!-- #endregion -->
 </label>
-<!-- #endregion -->
 <p class="hint">
   Each keystroke saves the whole document. A save takes 1.5 s (an artificial delay): type a word
   quickly.

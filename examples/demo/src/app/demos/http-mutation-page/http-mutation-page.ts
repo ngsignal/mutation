@@ -32,10 +32,10 @@ export class HttpMutationPage {
       return { method: 'POST', url: '/api/avatar', body, reportProgress: true };
     },
   });
+  // #endregion
 
   protected upload(files: FileList | null): void {
     const file = files?.[0];
     if (file) this.uploadAvatar.mutate(file);
   }
-  // #endregion
 }

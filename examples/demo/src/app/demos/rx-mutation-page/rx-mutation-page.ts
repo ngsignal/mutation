@@ -17,9 +17,9 @@ import ts from './rx-mutation-page.ts' with { loader: 'text' };
 export class RxMutationPage {
   protected readonly code = { ts: ts as string, html };
 
-  // #region code
   private readonly http = inject(HttpClient);
 
+  // #region code
   protected readonly createUser = rxMutation<string, User, HttpErrorResponse>({
     mutationFn: (name) => this.http.post<User>('/api/users', { name }),
   });

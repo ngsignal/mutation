@@ -13,13 +13,17 @@ export class SavePerDocumentDemo {
   protected readonly server = createFakeDocumentServer();
   // #region code
   private readonly documentWrites = mutationQueue();
+  // #endregion
   private edits = 0;
 
+  // #region code
   protected readonly save = mutation<Draft, void, Error>({
     concurrency: { queue: this.documentWrites, key: (draft) => draft.docId },
     mutationFn: (draft, abortSignal) => this.server.save(draft, abortSignal),
   });
+  // #endregion
 
+  // #region code
   // No key: waits for the saves of every document, and the saves made after it wait for it.
   protected readonly removeAll = mutation<void, void, Error>({
     concurrency: this.documentWrites,

@@ -10,18 +10,20 @@
 <section>
   <!-- #region code -->
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+  <!-- #endregion -->
     <input
       #nameInput
       type="text"
       aria-label="New user name"
       placeholder="New user name (empty answers 422)"
     />
+    <!-- #region code -->
     <button type="submit" [disabled]="createUser.isPending()">
       {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
     </button>
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
-  <!-- #endregion -->
+    <!-- #endregion -->
   <p class="hint">
     The fake backend answers after an artificial 2&nbsp;s delay: reset while pending to
     unsubscribe, which cancels the request.

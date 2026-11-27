@@ -21,8 +21,8 @@ export class GettingStartedPage {
   protected readonly users = signal<User[]>(this.server.initialUsers());
   protected readonly panelOpen = signal(false);
 
-  // #region create
   // Side effects declared with the mutation.
+  // #region create
   protected readonly createUser = mutation<string, User, Error>({
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
     onSuccess: (user) => this.users.update((current) => [...current, user]),
@@ -30,12 +30,14 @@ export class GettingStartedPage {
   });
   // #endregion
 
-  // #region delete
   // No callbacks: the call site awaits mutate().
+  // #region delete
   protected readonly deleteUser = mutation<User, void, Error>({
     mutationFn: (user, abortSignal) => this.server.deleteUser(user, abortSignal),
   });
+  // #endregion
 
+  // #region delete
   protected async remove(user: User): Promise<void> {
     try {
       await this.deleteUser.mutate(user);

@@ -20,7 +20,6 @@ export class ConcurrentPage {
   protected readonly log = createActivityLog();
   protected readonly users = signal<User[]>(this.server.initialUsers());
 
-  // #region code
   protected readonly createUser = mutation<string, User, Error>({
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
     onSuccess: (user, _name, { isLatest }) => {
@@ -31,6 +30,7 @@ export class ConcurrentPage {
       this.log.add(`createUser("${name}") failed: ${error.message}, isLatest: ${isLatest}`),
   });
 
+  // #region code
   protected readonly deleteUser = mutation<User, void, Error>({
     mutationFn: (user, abortSignal) => this.server.deleteUser(user, abortSignal),
     onSuccess: (_result, user, { isLatest }) => {

@@ -8,9 +8,9 @@
 
 <section>
   <h2>Delete a user: await mutate()</h2>
-  <!-- #region delete -->
   <ul>
     @for (user of users(); track user.id) {
+      <!-- #region delete -->
       @let deleting = deleteUser.pendingInputs().includes(user);
       <li>
         {{ user.name }}
@@ -18,9 +18,9 @@
           {{ deleting ? 'Deleting…' : 'Delete' }}
         </button>
       </li>
+      <!-- #endregion -->
     }
   </ul>
-  <!-- #endregion -->
   <p class="hint">Deleting "Grace Hopper" always fails (each delete takes 2 s, an artificial delay).</p>
   <section class="state">
     <dl>
@@ -45,19 +45,22 @@
 
 <section>
   <h2>Add a user: callbacks</h2>
-  <!-- #region create -->
   @if (panelOpen()) {
+    <!-- #region create -->
     <form class="card" (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+    <!-- #endregion -->
       <input
         #nameInput
         type="text"
         aria-label="New user name"
         placeholder="New user name (empty fails validation)"
       />
+      <!-- #region create -->
       <button type="submit" [disabled]="createUser.isPending()">
         {{ createUser.isPending() ? 'Adding…' : 'Add' }}
       </button>
     </form>
+      <!-- #endregion -->
   } @else {
     <div class="actions">
       <button type="button" (click)="panelOpen.set(true)">Add user</button>
@@ -68,7 +71,6 @@
       }
     </div>
   }
-  <!-- #endregion -->
   <p class="hint">Add a user, then submit an empty name: <code>value</code> keeps the last success.</p>
   <section class="state">
     <dl>

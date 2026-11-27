@@ -8,7 +8,6 @@
 
 <section>
   <h2>Delete a user</h2>
-  <!-- #region delete -->
   <ul>
     @for (user of users(); track user.id) {
       @let deleting = deleteUserIsPending() && deleteUserInput()?.id === user.id;
@@ -20,7 +19,6 @@
       </li>
     }
   </ul>
-  <!-- #endregion -->
   <p class="hint">Deleting "Grace Hopper" always fails (each delete takes 2 s, an artificial delay).</p>
   <section class="state">
     <dl>
@@ -36,7 +34,6 @@
     <button type="button" (click)="resetDeleteUser()">Reset</button>
   </section>
   <app-code-block [source]="code.ts" region="delete" />
-  <app-code-block [source]="code.html" region="delete" />
   <aside class="note">
     The row label can only follow the latest call: delete two users quickly and the first row
     stops showing "Deleting…" while its call is still in flight. Tracking every call needs one more
@@ -46,7 +43,6 @@
 
 <section>
   <h2>Add a user</h2>
-  <!-- #region create -->
   @if (panelOpen()) {
     <form class="card" (submit)="$event.preventDefault(); createUser(nameInput.value)">
       <input
@@ -69,7 +65,6 @@
       }
     </div>
   }
-  <!-- #endregion -->
   <section class="state">
     <dl>
       <dt>createUserStatus()</dt>
@@ -86,7 +81,6 @@
     <button type="button" (click)="resetCreateUser()">Reset</button>
   </section>
   <app-code-block [source]="code.ts" region="create" />
-  <app-code-block [source]="code.html" region="create" />
   <aside class="note">
     Each line has a reason: the generation counter keeps a superseded call from writing the state,
     the <code>AbortController</code> lets reset and destroy stop the request, and

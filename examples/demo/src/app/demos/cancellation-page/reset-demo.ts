@@ -18,11 +18,11 @@ export class ResetDemo {
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
     onSuccess: (user) => this.log.add(`onSuccess("${user.name}")`),
   });
+  // #endregion
 
   protected create(name: string): void {
     this.createUser
       .mutate(name)
       .catch((error: Error) => this.log.add(`mutate("${name}") rejected: '${error.message}'`));
   }
-  // #endregion
 }

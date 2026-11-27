@@ -8,6 +8,7 @@ import { QueuedResetDemo } from './queued-reset-demo';
 // @ts-expect-error: imported as text, see text-imports.d.ts
 import queuedReset from './queued-reset-demo.ts' with { loader: 'text' };
 import { ResetDemo } from './reset-demo';
+import resetHtml from './reset-demo.html' with { loader: 'text' };
 // @ts-expect-error: imported as text, see text-imports.d.ts
 import reset from './reset-demo.ts' with { loader: 'text' };
 
@@ -20,6 +21,7 @@ import reset from './reset-demo.ts' with { loader: 'text' };
 export class CancellationPage {
   protected readonly code = {
     reset: reset as string,
+    resetHtml,
     queuedReset: queuedReset as string,
     destroy: destroy as string,
   };

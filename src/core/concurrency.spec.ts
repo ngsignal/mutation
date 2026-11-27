@@ -670,6 +670,91 @@ describe("concurrency: { mode: 'queue-latest', debounce }", () => {
     expect(started).toEqual([]);
   });
 
+  it('releases the pending task of a call replaced during its delay at once, not when its timer ends', async () => {
+    const removeFns = spyOnPendingTasks();
+    const { save } = createDebouncedAutosave();
+
+    void save.mutate('a');
+    await vi.advanceTimersByTimeAsync(100);
+    void save.mutate('b');
+
+    expect(removeFns[0]).toHaveBeenCalled();
+    expect(removeFns[1]).not.toHaveBeenCalled();
+  });
+
+  it('still sends the waiting call when the call in flight fails, and follows it', async () => {
+    const started: string[] = [];
+    const save = createMutation<string, string>({
+      concurrency: { mode: 'queue-latest', debounce: 300 },
+      mutationFn: (doc) => {
+        started.push(doc);
+        return doc === 'a' ? Promise.reject(new Error('a failed')) : Promise.resolve(`saved ${doc}`);
+      },
+    });
+
+    const a = save.mutate('a');
+    await vi.advanceTimersByTimeAsync(300);
+    const b = save.mutate('b');
+
+    await expect(a).rejects.toThrow('a failed');
+    await vi.advanceTimersByTimeAsync(300);
+    await expect(b).resolves.toBe('saved b');
+    expect(started).toEqual(['a', 'b']);
+    expect(save.status()).toBe('success');
+  });
+
+  it('gives a call made after reset() its own full delay, and never sends the call reset', async () => {
+    const { save, started, succeed } = createDebouncedAutosave();
+
+    const a = save.mutate('a');
+    await vi.advanceTimersByTimeAsync(200);
+    save.reset();
+    const b = save.mutate('b');
+    await expect(a).rejects.toMatchObject({ message: 'NotStarted' });
+
+    await vi.advanceTimersByTimeAsync(299);
+    expect(started).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(started).toEqual(['b']);
+    succeed('b');
+    await expect(b).resolves.toBe('saved b');
+  });
+
+  it('sends exactly the calls followed by debounce ms without a newer call, whatever the timing', async () => {
+    const debounce = 300;
+    const gapsArb = fc.array(fc.integer({ min: 0, max: 2 * debounce }), { minLength: 1, maxLength: 10 });
+
+    await fc.assert(
+      fc.asyncProperty(gapsArb, async (gaps) => {
+        const started: number[] = [];
+        const save = createMutation<number, number>({
+          concurrency: { mode: 'queue-latest', debounce },
+          mutationFn: (id) => {
+            started.push(id);
+            return Promise.resolve(id);
+          },
+        });
+
+        const outcomes: Promise<number>[] = [];
+        for (const [id, gap] of gaps.entries()) {
+          outcomes.push(save.mutate(id));
+          await vi.advanceTimersByTimeAsync(gap);
+        }
+        await vi.advanceTimersByTimeAsync(debounce);
+        const results = await Promise.allSettled(outcomes);
+
+        const lastId = gaps.length - 1;
+        const expected = gaps.flatMap((gap, id) => (id === lastId || gap >= debounce ? [id] : []));
+        expect(started).toEqual(expected);
+        for (const [id, result] of results.entries()) {
+          expect(result.status).toBe(expected.includes(id) ? 'fulfilled' : 'rejected');
+        }
+        expect(save.isPending()).toBe(false);
+        expect(save.value()).toBe(lastId);
+      }),
+    );
+  });
+
   it("rejects with 'NotStarted' when the injector is destroyed during the delay, and never sends", async () => {
     const removeFns = spyOnPendingTasks();
     const started: string[] = [];

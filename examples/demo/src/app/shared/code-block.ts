@@ -1,35 +1,45 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 /**
- * A code window. `source` + `region` shows a region of a page's own template, imported as text
+ * A page's own code: a region of its template, imported as text
  * (`import template from './page.html' with { loader: 'text' }`) and marked with
- * `<!-- #region name -->` … `<!-- #endregion -->`: the code shown is the code that runs.
- * `code` shows a TypeScript snippet as is.
+ * `<!-- #region name -->` … `<!-- #endregion -->`, so the code shown is the code that runs.
  */
 @Component({
   selector: 'app-code-block',
-  template: `<figure class="code-window">
-    <figcaption>
-      <span class="code-window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-      {{ filename() }}
-    </figcaption>
+  template: `<div class="code-window">
+    <button type="button" class="code-copy" aria-label="Copy code" (click)="copy()">
+      @if (copied()) {
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+      } @else {
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="9" y="9" width="12" height="12" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      }
+    </button>
+    <span class="visually-hidden" role="status">{{ copied() ? 'Code copied' : '' }}</span>
     <pre tabindex="0"><code>@for (token of tokens(); track $index) {<span [class]="token.kind">{{ token.text }}</span>}</code></pre>
-  </figure>`,
+  </div>`,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CodeBlock {
-  readonly filename = input.required<string>();
-  readonly source = input<string>();
-  readonly region = input<string>();
-  readonly code = input<string>();
+  readonly source = input.required<string>();
+  readonly region = input.required<string>();
 
-  protected readonly tokens = computed(() => {
-    const code = this.code();
-    if (code !== undefined) {
-      return highlightTypeScript(code.trim());
+  private readonly code = computed(() => extractRegion(this.source(), this.region()));
+  protected readonly tokens = computed(() => highlightTemplate(this.code()));
+  protected readonly copied = signal(false);
+
+  protected async copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.code());
+    } catch {
+      return; // No clipboard (insecure context, permission denied): the code stays selectable.
     }
-    return highlightTemplate(extractRegion(this.source() ?? '', this.region() ?? ''));
-  });
+    this.copied.set(true);
+    setTimeout(() => this.copied.set(false), 2000);
+  }
 }
 
 type TokenKind = '' | 'comment' | 'keyword' | 'tag' | 'attr' | 'string' | 'fn' | 'type' | 'punct';
@@ -55,9 +65,9 @@ function extractRegion(source: string, name: string): string {
   return body.map((line) => line.slice(indent)).join('\n');
 }
 
-const KEYWORDS = new Set(['true', 'false', 'null', 'undefined', 'as', 'typeof', 'type', 'const']);
+const KEYWORDS = new Set(['true', 'false', 'null', 'undefined', 'as', 'typeof']);
 
-/** A TypeScript expression or type: enough for template bindings and short snippets. */
+/** A TypeScript expression: enough for template bindings. */
 function highlightTypeScript(code: string): Token[] {
   const tokens: Token[] = [];
   const pattern =

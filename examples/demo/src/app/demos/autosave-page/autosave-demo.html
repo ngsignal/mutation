@@ -20,9 +20,5 @@
     <dt>server</dt>
     <dd>"{{ server.documents().A }}"</dd>
   </dl>
-  <p class="hint">
-    Two calls at most: the one in flight and the latest. A keystroke replaces the waiting call
-    (<code>'Replaced'</code>, never sent), so the server skips the intermediate versions.
-  </p>
   <app-activity-log heading="Server" [entries]="server.requests()" />
 </section>

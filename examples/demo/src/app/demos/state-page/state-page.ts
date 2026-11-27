@@ -1,13 +1,26 @@
 import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 import { mutation } from '@ngsignal/mutation';
+import { CodeBlock } from '../../shared/code-block';
 import { ApiError, User, createFakeUserServer } from '../../shared/fake-api';
+import template from './state-page.html' with { loader: 'text' };
 
 @Component({
   selector: 'app-state-page',
+  imports: [CodeBlock],
   templateUrl: './state-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatePage {
+  /** This page's template, shown region by region next to what it renders. */
+  protected readonly template = template;
+  protected readonly snapshotType = `
+// createUser.snapshot() returns one of:
+  | { status: 'idle'; value: undefined; error: undefined }
+  | { status: 'pending'; value: User | undefined; error: undefined }
+  | { status: 'success'; value: User; error: undefined }
+  | { status: 'error'; value: User | undefined; error: ApiError };
+`;
+
   protected readonly server = createFakeUserServer();
 
   // TError types error() and onError; mutation() does not check it at runtime.

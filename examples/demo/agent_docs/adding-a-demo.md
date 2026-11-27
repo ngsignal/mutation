@@ -58,3 +58,6 @@ User action → mutation.mutate(...) → mutationFn(...) → mutation state → 
   safe), no state that duplicates the mutation's own (`input()`, `isPending()`), no side
   effects inside `mutationFn` (use callbacks), comments only where the code doesn't say it.
 - Link to the library README instead of repeating it.
+- To show a page's code, use `<app-code-block>` (`src/app/shared/code-block.ts`) with a region of
+  the page's own template, imported as text and marked `<!-- #region name -->` … `<!-- #endregion -->`:
+  the code shown is the code that runs, and a missing region fails the build.

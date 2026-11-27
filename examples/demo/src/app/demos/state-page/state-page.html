@@ -2,7 +2,7 @@
   The ways to read a mutation's state: <code>status()</code> and its boolean flags,
   <code>hasValue()</code> to narrow <code>value()</code>, <code>snapshot()</code> for an exhaustive
   <code>&#64;switch</code>, <code>input()</code> to know what was submitted, and a typed
-  <code>error()</code>.
+  <code>error()</code>. Each block shows the template that renders it.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/state-page/state-page.ts">Source</a>
 </p>
 
@@ -15,9 +15,11 @@
       aria-label="New user name"
       placeholder="New user name (empty fails validation)"
     />
+    <!-- #region submit -->
     <button type="submit" [disabled]="createUser.isPending()">
       {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
     </button>
+    <!-- #endregion -->
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
   <label>
@@ -32,88 +34,119 @@
   <p class="hint">Create a user, then submit an empty name, then reset.</p>
 </section>
 
-<section class="state">
+<section>
   <h2>status() and the flags</h2>
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
-        createUser.status()
-      }}</span>
-    </dd>
-    <dt>isIdle / isPending / isSuccess / isError</dt>
-    <dd>
-      {{ createUser.isIdle() }} / {{ createUser.isPending() }} / {{ createUser.isSuccess() }} /
-      {{ createUser.isError() }}
-    </dd>
-  </dl>
+  <p>
+    <code>status()</code> is <code>'idle'</code>, <code>'pending'</code>, <code>'success'</code> or
+    <code>'error'</code>, and each flag is one of them as a boolean. The submit button above reads
+    <code>isPending()</code>:
+  </p>
+  <app-code-block filename="state-page.html" [source]="template" region="submit" />
+  <section class="state">
+    <dl>
+      <dt>status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+          createUser.status()
+        }}</span>
+      </dd>
+      <dt>isIdle / isPending / isSuccess / isError</dt>
+      <dd>
+        {{ createUser.isIdle() }} / {{ createUser.isPending() }} / {{ createUser.isSuccess() }} /
+        {{ createUser.isError() }}
+      </dd>
+    </dl>
+  </section>
 </section>
 
 <section>
   <h2>hasValue()</h2>
-  @if (createUser.hasValue()) {
-    <div class="card">
-      <strong>{{ createUser.value().name }}</strong>
-      <span>#{{ createUser.value().id }}</span>
-    </div>
-  } @else {
-    <p class="hint">No user created yet.</p>
-  }
+  <p>
+    A type guard: inside the <code>&#64;if</code>, <code>value()</code> is <code>User</code>, not
+    <code>User | undefined</code>, so no <code>?.</code> or <code>!</code>.
+  </p>
+  <app-code-block filename="state-page.html" [source]="template" region="has-value" />
+  <div class="code-result">
+    <!-- #region has-value -->
+    @if (createUser.hasValue()) {
+      <div class="card">
+        <strong>{{ createUser.value().name }}</strong>
+        <span>#{{ createUser.value().id }}</span>
+      </div>
+    } @else {
+      <p class="hint">No user created yet.</p>
+    }
+    <!-- #endregion -->
+  </div>
   <p class="hint">
-    Inside the <code>&#64;if</code>, <code>value()</code> is <code>User</code>, not
-    <code>User | undefined</code>; the same guard works in <code>computed()</code>
-    (last created: {{ lastCreatedName() ?? '—' }}). The card stays after an error: only a new
-    success or <code>reset()</code> replaces <code>value()</code>.
+    The same guard works in <code>computed()</code> (last created:
+    {{ lastCreatedName() ?? '—' }}). The card stays after an error: only a new success or
+    <code>reset()</code> replaces <code>value()</code>.
   </p>
 </section>
 
 <section>
   <h2>snapshot()</h2>
-  @let snap = createUser.snapshot();
-  @switch (snap.status) {
-    @case ('idle') {
-      <p class="hint">Idle.</p>
-    }
-    @case ('pending') {
-      <p class="hint">Pending, previous value: {{ snap.value?.name ?? 'none' }}.</p>
-    }
-    @case ('success') {
-      <p class="hint">Created {{ snap.value.name }}.</p>
-    }
-    @case ('error') {
-      <p class="hint">
-        <span class="error-text">{{ snap.error.message }}</span>, previous value:
-        {{ snap.value?.name ?? 'none' }}.
-      </p>
-    }
-  }
-  <p class="hint">
-    One read narrows <code>value</code> and <code>error</code> together: in the
-    <code>'success'</code> branch <code>snap.value</code> is a <code>User</code>, in
-    <code>'error'</code> <code>snap.error</code> is defined.
+  <p>
+    <code>status</code>, <code>value</code> and <code>error</code> in one read, as a discriminated
+    union on <code>status</code>:
   </p>
+  <app-code-block filename="MutationSnapshot&lt;User, ApiError&gt;" [code]="snapshotType" />
+  <p>
+    Each <code>&#64;case</code> narrows it: <code>snap.value</code> is a <code>User</code> in
+    <code>'success'</code>, <code>snap.error</code> an <code>ApiError</code> in <code>'error'</code>.
+  </p>
+  <app-code-block filename="state-page.html" [source]="template" region="snapshot" />
+  <div class="code-result">
+    <!-- #region snapshot -->
+    @let snap = createUser.snapshot();
+    @switch (snap.status) {
+      @case ('idle') {
+        <p class="hint">Idle.</p>
+      }
+      @case ('pending') {
+        <p class="hint">Pending, previous value: {{ snap.value?.name ?? 'none' }}.</p>
+      }
+      @case ('success') {
+        <p class="hint">Created {{ snap.value.name }}.</p>
+      }
+      @case ('error') {
+        <p class="hint">
+          <span class="error-text">{{ snap.error.message }}</span>, previous value:
+          {{ snap.value?.name ?? 'none' }}.
+        </p>
+      }
+    }
+    <!-- #endregion -->
+  </div>
 </section>
 
 <section>
   <h2>input() and a typed error</h2>
-  @if (createUser.error(); as error) {
-    <p class="error-text" role="alert">
-      Could not create "{{ createUser.input() }}": {{ error.message }} (code:
-      <code>{{ error.code }}</code>)
-    </p>
-    @if (error.code === 'unavailable') {
-      <button type="button" (click)="retry()">Retry "{{ createUser.input() }}"</button>
+  <p>
+    <code>input()</code> is what the latest <code>mutate()</code> was called with, set at once: the
+    messages name the user being created, and Retry sends it again. <code>error.code</code> compiles
+    because the mutation is declared as <code>mutation&lt;string, User, ApiError&gt;</code>.
+  </p>
+  <app-code-block filename="state-page.html" [source]="template" region="input" />
+  <div class="code-result">
+    <!-- #region input -->
+    @if (createUser.error(); as error) {
+      <p class="error-text" role="alert">
+        Could not create "{{ createUser.input() }}": {{ error.message }}
+      </p>
+      @if (error.code === 'unavailable') {
+        <button type="button" (click)="retry()">Retry "{{ createUser.input() }}"</button>
+      }
+    } @else if (createUser.isPending()) {
+      <p class="hint">Creating "{{ createUser.input() }}"…</p>
+    } @else {
+      <p class="hint">No error.</p>
     }
-  } @else if (createUser.isPending()) {
-    <p class="hint">Creating "{{ createUser.input() }}"…</p>
-  } @else {
-    <p class="hint">No error.</p>
-  }
+    <!-- #endregion -->
+  </div>
   <p class="hint">
-    Check "Fail the next call", create a user, then retry: <code>retry()</code> re-sends
-    <code>createUser.input()</code>, what the latest <code>mutate()</code> was called with.
-    <code>error.code</code> compiles because the mutation is declared as
-    <code>mutation&lt;string, User, ApiError&gt;</code>; only <code>'unavailable'</code> is worth
+    Check "Fail the next call", create a user, then retry. Only <code>'unavailable'</code> is worth
     retrying.
   </p>
 </section>

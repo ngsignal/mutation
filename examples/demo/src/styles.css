@@ -541,3 +541,117 @@ progress {
   font-family: var(--font-mono);
   font-size: 0.85rem;
 }
+
+/* Code window (app-code-block): a page's own code, dark like the activity logs */
+
+.code-window {
+  margin: 0.9rem 0;
+  border-radius: var(--radius-md);
+  background: var(--color-text);
+  color: #e4e0f0;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(28, 21, 48, 0.18);
+}
+
+.code-window figcaption {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #b3abc9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.code-window-dots {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.code-window-dots i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.code-window-dots i:nth-child(2) {
+  background: #febc2e;
+}
+
+.code-window-dots i:nth-child(3) {
+  background: #28c840;
+}
+
+.code-window pre {
+  margin: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.code-window code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Token colors: contrast at least 7:1 on the window's background */
+.code-window .comment {
+  color: #aea7c6;
+  font-style: italic;
+}
+
+.code-window .keyword {
+  color: #ff8fc8;
+}
+
+.code-window .tag {
+  color: #7fd4ff;
+}
+
+.code-window .attr {
+  color: #c4b5ff;
+}
+
+.code-window .string {
+  color: #a5e8a0;
+}
+
+.code-window .fn {
+  color: #ffd27a;
+}
+
+.code-window .type {
+  color: #7fe6d9;
+}
+
+.code-window .punct {
+  color: #b3abc9;
+}
+
+/* What the code window above renders */
+.code-result {
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.code-result::before {
+  content: 'Result';
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
+}
+
+.code-result > :first-child {
+  margin-top: 0;
+}
+

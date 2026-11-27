@@ -84,14 +84,14 @@ branches on the mode and never unlocks a gate.
   `mutationFn`. Only the latest submitted
   call commits. `reset()` does not clear the tail: a call made after it still waits for an
   aborted call whose `mutationFn` ignores its `AbortSignal`, so writes stay ordered.
-- `'queue-latest'` (`replaceWaitingCall`, a decorator over a `'queue'` gate): a call made while
+- `'queue-latest'` (`createQueueLatestGate`: the `singleWaitingSlot` decorator over a `'queue'` gate): a call made while
   the line isn't empty replaces the waiting one (`Call.abort(neverSentError('Replaced'))`), which
   leaves `pendingInputs()` at once and keeps its turn, skipped like any aborted call. The decorator
   counts the calls in line and decrements before `mutation()` resumes the caller, so the head of
   the line is never replaced. Single line only: a keyed variant needs a count per key.
   `{ mode: 'queue-latest', debounce }` gives the decorator a delay: every call, the first one
   too, is the waiting call until it is sent, and its task waits for a timer started at `mutate()`
-  (`afterDelay`). An abort clears the timer and settles the task at once, so the queue never waits
+  (`startDelay`). An abort clears the timer and settles the task at once, so the queue never waits
   for an aborted call's delay; the abort is checked again after the timer, before sending.
 - `'drop'` (`createDropGate`): while locked, `admit()` returns false and `mutate()` rejects
   immediately with `DOMException('Dropped', 'AbortError')`, with no state change.

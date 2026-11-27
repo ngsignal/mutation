@@ -16,10 +16,12 @@ export class PayDemo {
     mutationFn: (_input, abortSignal) => this.defaultServer.charge(abortSignal),
   });
 
+  // #region code
   protected readonly payDropping = mutation<void, void>({
     concurrency: 'drop',
     mutationFn: (_input, abortSignal) => this.droppingServer.charge(abortSignal),
   });
+  // #endregion
 
   protected pay(): void {
     this.clicks.update((count) => count + 1);

@@ -15,10 +15,6 @@
   </dl>
 </section>
 <p class="hint">
-  By default every click reaches the server: the card is charged twice. With
-  <code>'drop'</code>, a click made while a charge is in flight makes <code>mutate()</code> reject
-  with an <code>AbortError</code> whose message is <code>'Dropped'</code>, without calling
-  <code>mutationFn</code> or touching the signals. In a real form, disabling the button while
-  <code>isPending()</code> is the first line of defense; <code>'drop'</code> also covers calls
-  made from code.
+  By default every click reaches the server: the card is charged twice. With <code>'drop'</code>,
+  only once.
 </p>

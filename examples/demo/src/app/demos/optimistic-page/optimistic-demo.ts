@@ -1,18 +1,23 @@
 import { ChangeDetectionStrategy, Component, computed, resource } from '@angular/core';
 import { mutation } from '@ngsignal/mutation';
+import { ActivityLog } from '../../shared/activity-log';
 import { User, createFakeUserServer } from '../../shared/fake-api';
 
+// #region code
 /** What the server does on a rename. */
 const rename = (users: User[], { id, name }: User) => users.map((u) => (u.id === id ? { ...u, name } : u));
+// #endregion
 
 @Component({
   selector: 'app-optimistic-demo',
+  imports: [ActivityLog],
   templateUrl: './optimistic-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OptimisticDemo {
-  private readonly server = createFakeUserServer();
+  protected readonly server = createFakeUserServer();
 
+  // #region code
   protected readonly users = resource({
     loader: ({ abortSignal }) => this.server.fetchUsers(abortSignal),
     defaultValue: [],
@@ -34,4 +39,5 @@ export class OptimisticDemo {
     const renamed = this.renameUser.pendingInputs().reduce(rename, this.users.value());
     return renamed.filter((user) => !deleting.has(user.id));
   });
+  // #endregion
 }

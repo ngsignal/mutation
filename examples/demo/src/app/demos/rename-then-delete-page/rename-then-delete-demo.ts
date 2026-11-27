@@ -20,6 +20,7 @@ export class RenameThenDeleteDemo {
     mutationFn: (_input, abortSignal) => this.parallelServer.remove(abortSignal),
   });
 
+  // #region code
   // In an app, create it in a root service so that every component writing todos shares it.
   private readonly todoWrites = mutationQueue();
 
@@ -31,6 +32,7 @@ export class RenameThenDeleteDemo {
     concurrency: this.todoWrites,
     mutationFn: (_input, abortSignal) => this.queuedServer.remove(abortSignal),
   });
+  // #endregion
 
   protected rename(title: string): void {
     this.renameParallel.mutate(title);

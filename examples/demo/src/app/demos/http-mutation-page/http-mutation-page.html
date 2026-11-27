@@ -10,6 +10,7 @@
 
 <section>
   <h2>Create user</h2>
+  <!-- #region create -->
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
@@ -22,32 +23,35 @@
     </button>
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
-</section>
-
-<section class="state">
-  <h2>createUser</h2>
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
-        createUser.status()
-      }}</span>
-    </dd>
-    <dt>statusCode</dt>
-    <dd>{{ createUser.statusCode() ?? '—' }}</dd>
-    <dt>headers.get('Location')</dt>
-    <dd>{{ createUser.headers()?.get('Location') ?? '—' }}</dd>
-    <dt>error</dt>
-    <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
-  </dl>
-  <p class="hint">
+  <!-- #endregion -->
+  <p class="hint">Create a user, then submit an empty name to get a 422.</p>
+  <section class="state">
+    <dl>
+      <dt>status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+          createUser.status()
+        }}</span>
+      </dd>
+      <dt>statusCode</dt>
+      <dd>{{ createUser.statusCode() ?? '—' }}</dd>
+      <dt>headers.get('Location')</dt>
+      <dd>{{ createUser.headers()?.get('Location') ?? '—' }}</dd>
+      <dt>error</dt>
+      <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
+    </dl>
+  </section>
+  <app-code-block [source]="code.ts" region="create" />
+  <app-code-block [source]="code.html" region="create" />
+  <aside class="note">
     <code>statusCode</code> and <code>headers</code> come from the response, or from the
-    <code>HttpErrorResponse</code>: submit an empty name to see the 422.
-  </p>
+    <code>HttpErrorResponse</code> when the server answers with an error.
+  </aside>
 </section>
 
 <section>
   <h2>Upload with progress</h2>
+  <!-- #region upload -->
   <div class="actions">
     <input #fileInput type="file" aria-label="Avatar file" />
     <button type="button" [disabled]="uploadAvatar.isPending()" (click)="upload(fileInput.files)">
@@ -70,10 +74,12 @@
   @if (uploadAvatar.error(); as error) {
     <p class="error-text" role="alert">{{ error.message }}</p>
   }
-  <p class="hint">
-    The request sends the file in a <code>FormData</code> with <code>reportProgress: true</code>,
-    which feeds <code>uploadProgress</code>. Angular 22's default <code>fetch</code> backend
-    reports no upload progress: this app adds <code>withXhr()</code> to
+  <!-- #endregion -->
+  <app-code-block [source]="code.ts" region="upload" />
+  <app-code-block [source]="code.html" region="upload" />
+  <aside class="note">
+    <code>reportProgress: true</code> feeds <code>uploadProgress</code>. Angular 22's default
+    <code>fetch</code> backend reports no upload progress: this app adds <code>withXhr()</code> to
     <code>provideHttpClient()</code>.
-  </p>
+  </aside>
 </section>

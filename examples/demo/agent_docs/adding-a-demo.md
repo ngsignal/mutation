@@ -24,22 +24,23 @@ the relevant edge cases.
 
 ## Page layout
 
+Every page has the same shape:
+
 ```text
 Title
-Short explanation · Source link
+Intro (.pitch): what the page shows and why · Source link
 
-┌──────────────────────────────────────┐
-│ Interactive example                  │
-│ [ Action ]                           │
-│ Current state                        │
-│ Result / Error                       │
-└──────────────────────────────────────┘
-
-How it works
+┌ section (one per use case; no h2 when the page has a single one) ────┐
+│ Interactive example, labeled delays and instructions (.hint)         │
+│ State (.state) and logs (app-activity-log) when they show the change │
+│ Code: <app-code-block> TypeScript, then template when it matters     │
+│ Note (aside.note): what's worth knowing beyond the intro             │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-Keep it consistent across pages, but don't force it when it makes the concept harder
-to understand.
+Keep explanations out of the example itself: the intro says what to look at, the note what
+the example doesn't show. A reference page (Reading state) may put a short explanation and its
+code above each block instead.
 
 ## Keeping the API visible
 
@@ -58,6 +59,8 @@ User action → mutation.mutate(...) → mutationFn(...) → mutation state → 
   safe), no state that duplicates the mutation's own (`input()`, `isPending()`), no side
   effects inside `mutationFn` (use callbacks), comments only where the code doesn't say it.
 - Link to the library README instead of repeating it.
-- To show a page's code, use `<app-code-block>` (`src/app/shared/code-block.ts`) with a region of
-  the page's own template, imported as text and marked `<!-- #region name -->` … `<!-- #endregion -->`:
-  the code shown is the code that runs, and a missing region fails the build.
+- Show the code with `<app-code-block>` (`src/app/shared/code-block.ts`): the demo's own `.ts` or
+  `.html`, imported as text, and the part marked `// #region code` … `// #endregion` or
+  `<!-- #region code -->` … `<!-- #endregion -->` (several regions with one name are shown
+  together; don't nest them). The code shown is the code that runs and can be copied; a missing
+  region fails the build.

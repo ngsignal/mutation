@@ -564,14 +564,15 @@ progress {
   height: 2rem;
   min-height: 0;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid #4a4260;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
+  background: #2a2240;
   color: #d7d2e6;
+  box-shadow: 0 0 0 4px var(--color-text);
 }
 
 .code-copy:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
+  background: #3a3155;
   border-color: rgba(255, 255, 255, 0.24);
   color: #ffffff;
 }
@@ -663,6 +664,36 @@ progress {
 }
 
 .code-result > :first-child {
+  margin-top: 0;
+}
+
+/* The end of a use case: what's worth knowing beyond the intro */
+.note {
+  margin: 1rem 0 0;
+  padding: 0.65rem 0.9rem;
+  border-left: 3px solid var(--color-accent-border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.note::before {
+  content: 'Note';
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
+}
+
+.note p {
+  margin: 0.4rem 0 0;
+}
+
+.note p:first-child {
   margin-top: 0;
 }
 

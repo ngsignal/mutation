@@ -1,12 +1,14 @@
 <p class="pitch">
   The <a routerLink="/">getting-started page</a> without <code>mutation()</code>: state signals, a
   generation counter, an <code>AbortController</code> per call, <code>PendingTasks</code> and
-  <code>DestroyRef</code> cleanup, written out for each write.
+  <code>DestroyRef</code> cleanup, written out for each write. It behaves the same; compare the
+  code.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/without-mutation-page/without-mutation-page.ts">Source</a>
 </p>
 
 <section>
-  <h2>Users</h2>
+  <h2>Delete a user</h2>
+  <!-- #region delete -->
   <ul>
     @for (user of users(); track user.id) {
       @let deleting = deleteUserIsPending() && deleteUserInput()?.id === user.id;
@@ -18,11 +20,33 @@
       </li>
     }
   </ul>
-  <p class="hint">Deleting "Grace Hopper" always fails.</p>
+  <!-- #endregion -->
+  <p class="hint">Deleting "Grace Hopper" always fails (each delete takes 2 s, an artificial delay).</p>
+  <section class="state">
+    <dl>
+      <dt>deleteUserStatus()</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="deleteUserStatus()">{{
+          deleteUserStatus()
+        }}</span>
+      </dd>
+      <dt>deleteUserError()</dt>
+      <dd><span class="error-text" role="alert">{{ deleteUserError()?.message }}</span></dd>
+    </dl>
+    <button type="button" (click)="resetDeleteUser()">Reset</button>
+  </section>
+  <app-code-block [source]="code.ts" region="delete" />
+  <app-code-block [source]="code.html" region="delete" />
+  <aside class="note">
+    The row label can only follow the latest call: delete two users quickly and the first row
+    stops showing "Deleting…" while its call is still in flight. Tracking every call needs one more
+    signal, which <code>pendingInputs()</code> gives.
+  </aside>
 </section>
 
 <section>
-  <h2>Quick add</h2>
+  <h2>Add a user</h2>
+  <!-- #region create -->
   @if (panelOpen()) {
     <form class="card" (submit)="$event.preventDefault(); createUser(nameInput.value)">
       <input
@@ -45,36 +69,28 @@
       }
     </div>
   }
-</section>
-
-<section class="state">
-  <h2>createUser</h2>
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="createUserStatus()">{{
-        createUserStatus()
-      }}</span>
-    </dd>
-    <dt>value</dt>
-    <dd>{{ createUserValue() | json }}</dd>
-    <dt>error</dt>
-    <dd><span class="error-text" role="alert">{{ createUserError()?.message }}</span></dd>
-  </dl>
-  <button type="button" (click)="resetCreateUser()">Reset</button>
-</section>
-
-<section class="state">
-  <h2>deleteUser</h2>
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="deleteUserStatus()">{{
-        deleteUserStatus()
-      }}</span>
-    </dd>
-    <dt>error</dt>
-    <dd><span class="error-text" role="alert">{{ deleteUserError()?.message }}</span></dd>
-  </dl>
-  <button type="button" (click)="resetDeleteUser()">Reset</button>
+  <!-- #endregion -->
+  <section class="state">
+    <dl>
+      <dt>createUserStatus()</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="createUserStatus()">{{
+          createUserStatus()
+        }}</span>
+      </dd>
+      <dt>createUserValue()</dt>
+      <dd>{{ createUserValue() | json }}</dd>
+      <dt>createUserError()</dt>
+      <dd><span class="error-text" role="alert">{{ createUserError()?.message }}</span></dd>
+    </dl>
+    <button type="button" (click)="resetCreateUser()">Reset</button>
+  </section>
+  <app-code-block [source]="code.ts" region="create" />
+  <app-code-block [source]="code.html" region="create" />
+  <aside class="note">
+    Each line has a reason: the generation counter keeps a superseded call from writing the state,
+    the <code>AbortController</code> lets reset and destroy stop the request, and
+    <code>PendingTasks</code> makes SSR wait for the write. Forgetting one is a silent bug, and it
+    is all repeated for every write.
+  </aside>
 </section>

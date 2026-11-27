@@ -17,10 +17,12 @@ export class MoveToTopDemo {
     mutationFn: (item, abortSignal) => this.parallelServer.moveToTop(item, abortSignal),
   });
 
+  // #region code
   protected readonly moveQueued = mutation<string, string[]>({
     concurrency: 'queue',
     mutationFn: (item, abortSignal) => this.queuedServer.moveToTop(item, abortSignal),
   });
+  // #endregion
 
   protected moveToTop(item: string): void {
     this.moveParallel.mutate(item);

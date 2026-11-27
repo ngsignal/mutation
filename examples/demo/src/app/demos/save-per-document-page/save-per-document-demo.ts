@@ -11,6 +11,7 @@ import { Draft, createFakeDocumentServer } from '../../shared/fake-api';
 })
 export class SavePerDocumentDemo {
   protected readonly server = createFakeDocumentServer();
+  // #region code
   private readonly documentWrites = mutationQueue();
   private edits = 0;
 
@@ -24,6 +25,7 @@ export class SavePerDocumentDemo {
     concurrency: this.documentWrites,
     mutationFn: (_input, abortSignal) => this.server.removeAll(abortSignal),
   });
+  // #endregion
 
   protected edit(docId: Draft['docId']): void {
     this.save.mutate({ docId, content: `edit ${++this.edits}` });

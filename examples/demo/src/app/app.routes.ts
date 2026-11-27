@@ -8,8 +8,9 @@ import { HttpMutationPage } from './demos/http-mutation-page/http-mutation-page'
 import { HttpResponsesPage } from './demos/http-responses-page/http-responses-page';
 import { ListsPage } from './demos/lists-page/lists-page';
 import { NotFoundPage } from './demos/not-found-page/not-found-page';
+import { OptimisticPage } from './demos/optimistic-page/optimistic-page';
+import { RefreshPage } from './demos/refresh-page/refresh-page';
 import { RenameThenDeletePage } from './demos/rename-then-delete-page/rename-then-delete-page';
-import { ResourcePage } from './demos/resource-page/resource-page';
 import { RxMutationPage } from './demos/rx-mutation-page/rx-mutation-page';
 import { SavePerDocumentPage } from './demos/save-per-document-page/save-per-document-page';
 import { StatePage } from './demos/state-page/state-page';
@@ -68,15 +69,8 @@ export const routes: Routes = [
         'How reset() and destroying the component abort an Angular mutation in flight: the AbortSignal fires, no callback runs and mutate() rejects.',
     },
   },
-  {
-    path: 'resource',
-    component: ResourcePage,
-    title: 'Working with resource()',
-    data: {
-      description:
-        'Keeping an Angular resource() up to date after a write with mutation(): reload it after success, or show the change at once from pendingInputs().',
-    },
-  },
+  // Split into the Refresh a resource() and Optimistic update use cases.
+  { path: 'resource', redirectTo: 'optimistic' },
   {
     path: 'form-submit',
     component: FormSubmitPage,
@@ -120,6 +114,24 @@ export const routes: Routes = [
     data: {
       description:
         'Saving several documents in Angular with mutationQueue() and { queue, key }: saves stay in order per document, other documents never wait.',
+    },
+  },
+  {
+    path: 'refresh',
+    component: RefreshPage,
+    title: 'Refresh a resource()',
+    data: {
+      description:
+        'Keeping an Angular resource() up to date after a write: mutation() reloads it in onSuccess, and the server stays the source of truth.',
+    },
+  },
+  {
+    path: 'optimistic',
+    component: OptimisticPage,
+    title: 'Optimistic update',
+    data: {
+      description:
+        'Showing an Angular write at once: fold mutation() pendingInputs() over a resource() in a computed(), with nothing to roll back on failure.',
     },
   },
   {

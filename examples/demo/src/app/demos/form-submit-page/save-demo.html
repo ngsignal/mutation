@@ -45,11 +45,3 @@
     <app-activity-log heading="Server" [entries]="mutationServer.requests()" />
   </section>
 </div>
-
-<p class="hint">
-  Both behave the same: a second save while one is in flight is ignored, and leaving the page
-  aborts the request. The hand-written version is correct. What <code>rxMutation()</code> removes is
-  the bookkeeping: three signals, the guard, the flag reset in each branch and
-  <code>takeUntilDestroyed</code>. It also gives <code>input()</code>, <code>status()</code> and
-  <code>reset()</code> for free.
-</p>

@@ -2,14 +2,13 @@
   Three ways <code>httpMutation()</code> reads a response body: <code>parse</code> to validate
   or transform it, <code>httpMutation.blob()</code> / <code>.text()</code> for non-JSON bodies,
   and <code>downloadProgress</code> while it arrives. A fake <code>HttpInterceptorFn</code>
-  (<code>fake-http-backend.ts</code>) stands in for the server, with artificial delays.
-  Details in the library's
-  <a href="https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#validating-the-response">recipes</a>.
+  stands in for the server, with artificial delays.
   <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/http-responses-page/http-responses-page.ts">Source</a>
 </p>
 
 <section>
   <h2>Validating the response with <code>parse</code></h2>
+  <!-- #region parse -->
   <form (submit)="$event.preventDefault(); createUser.mutate({ name: nameInput.value, outdated: false })">
     <input
       #nameInput
@@ -23,45 +22,48 @@
     </button>
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
+  <!-- #endregion -->
   <p class="hint">
     "Create user (outdated response)" hits an endpoint that answers <code>201</code> with an old
     body shape (<code>{{ '{' }} userId, fullName {{ '}' }}</code>), so <code>parse</code> throws.
   </p>
-</section>
-
-<section class="state">
-  <h2>createUser: state</h2>
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span role="status" class="status-pill" [attr.data-status]="createUser.status()">{{
-        createUser.status()
-      }}</span>
-    </dd>
-    <dt>statusCode</dt>
-    <dd>{{ createUser.statusCode() ?? '—' }}</dd>
-    <dt>value</dt>
-    <dd>
-      @if (createUser.hasValue()) {
-        {{ createUser.value().name }} (#{{ createUser.value().id }})
-      } @else {
-        —
-      }
-    </dd>
-    <dt>error</dt>
-    <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
-  </dl>
-  <p class="hint">
+  <section class="state">
+    <dl>
+      <dt>status</dt>
+      <dd>
+        <span role="status" class="status-pill" [attr.data-status]="createUser.status()">{{
+          createUser.status()
+        }}</span>
+      </dd>
+      <dt>statusCode</dt>
+      <dd>{{ createUser.statusCode() ?? '—' }}</dd>
+      <dt>value</dt>
+      <dd>
+        @if (createUser.hasValue()) {
+          {{ createUser.value().name }} (#{{ createUser.value().id }})
+        } @else {
+          —
+        }
+      </dd>
+      <dt>error</dt>
+      <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
+    </dl>
+  </section>
+  <app-code-block [source]="code.ts" region="parse" />
+  <app-code-block [source]="code.html" region="parse" />
+  <aside class="note">
     With the outdated response, <code>status</code> is <code>error</code> while
     <code>statusCode</code> is still <code>201</code> and <code>error</code> is an
-    <code>HttpMutationParseError</code>: <strong>the server has already applied the
-    write</strong>. Treat it as a contract mismatch, not a failed write — retrying would create
-    the user twice.
-  </p>
+    <code>HttpMutationParseError</code>: <strong>the server has already applied the write</strong>.
+    Treat it as a contract mismatch, not a failed write: retrying would create the user twice.
+    Details in the
+    <a href="https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#validating-the-response">recipes</a>.
+  </aside>
 </section>
 
 <section>
   <h2>A file in the response: <code>httpMutation.blob()</code> + <code>downloadProgress</code></h2>
+  <!-- #region blob -->
   <div class="actions">
     <button type="button" [disabled]="exportUsers.isPending()" (click)="exportUsers.mutate()">
       {{ exportUsers.isPending() ? 'Exporting…' : 'Export users as CSV' }}
@@ -78,32 +80,35 @@
       <span>{{ p.total ? ((p.loaded / p.total) * 100 | number: '1.0-0') + '%' : p.loaded + ' bytes' }}</span>
     </div>
   }
-
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span role="status" class="status-pill" [attr.data-status]="exportUsers.status()">{{
-        exportUsers.status()
-      }}</span>
-    </dd>
-    <dt>value</dt>
-    <dd>
-      @if (exportUsers.hasValue()) {
-        Blob, {{ exportUsers.value().size }} bytes, type {{ exportUsers.value().type }}
-      } @else {
-        —
-      }
-    </dd>
-    <dt>error</dt>
-    <dd><span class="error-text" role="alert">{{ exportUsers.error()?.message }}</span></dd>
-  </dl>
-  <p class="hint">
-    The request description sets <code>reportProgress: true</code>; the fake backend then emits
-    <code>DownloadProgress</code> events (artificial 400&nbsp;ms each) before the file.
-    The request itself has no body: the file comes back in the <em>response</em>, so it's a
-    download. <code>uploadProgress</code> tracks the request body instead (see the
+  <!-- #endregion -->
+  <p class="hint">The fake backend emits progress events every 400&nbsp;ms (an artificial delay).</p>
+  <section class="state">
+    <dl>
+      <dt>status</dt>
+      <dd>
+        <span role="status" class="status-pill" [attr.data-status]="exportUsers.status()">{{
+          exportUsers.status()
+        }}</span>
+      </dd>
+      <dt>value</dt>
+      <dd>
+        @if (exportUsers.hasValue()) {
+          Blob, {{ exportUsers.value().size }} bytes, type {{ exportUsers.value().type }}
+        } @else {
+          —
+        }
+      </dd>
+      <dt>error</dt>
+      <dd><span class="error-text" role="alert">{{ exportUsers.error()?.message }}</span></dd>
+    </dl>
+  </section>
+  <app-code-block [source]="code.ts" region="blob" />
+  <app-code-block [source]="code.html" region="blob" />
+  <aside class="note">
+    The request has no body: the file comes back in the response, so it's a download.
+    <code>uploadProgress</code> tracks the request body instead (see the
     <code>httpMutation()</code> page) and stays <code>undefined</code> here.
-  </p>
+  </aside>
 </section>
 
 <section>
@@ -114,29 +119,31 @@
     </button>
     <button type="button" (click)="purgeInactive.reset()">Reset</button>
   </div>
-
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span role="status" class="status-pill" [attr.data-status]="purgeInactive.status()">{{
-        purgeInactive.status()
-      }}</span>
-    </dd>
-    <dt>value</dt>
-    <dd>
-      @if (purgeInactive.hasValue()) {
-        {{ purgeInactive.value() }} user(s) purged
-      } @else {
-        —
-      }
-    </dd>
-    <dt>error</dt>
-    <dd><span class="error-text" role="alert">{{ purgeInactive.error()?.message }}</span></dd>
-  </dl>
-  <p class="hint">
-    The server answers with the plain-text body <code>"2"</code> (artificial 2&nbsp;s delay).
+  <p class="hint">The server answers with the plain-text body <code>"2"</code> (artificial 2&nbsp;s delay).</p>
+  <section class="state">
+    <dl>
+      <dt>status</dt>
+      <dd>
+        <span role="status" class="status-pill" [attr.data-status]="purgeInactive.status()">{{
+          purgeInactive.status()
+        }}</span>
+      </dd>
+      <dt>value</dt>
+      <dd>
+        @if (purgeInactive.hasValue()) {
+          {{ purgeInactive.value() }} user(s) purged
+        } @else {
+          —
+        }
+      </dd>
+      <dt>error</dt>
+      <dd><span class="error-text" role="alert">{{ purgeInactive.error()?.message }}</span></dd>
+    </dl>
+  </section>
+  <app-code-block [source]="code.ts" region="text" />
+  <aside class="note">
     Since <code>TOutput</code> is <code>number</code>, not <code>string</code>, the typings make
-    <code>parse</code> required: <code>parse: (raw) =&gt; Number(raw)</code>.
-    <code>httpMutation.arrayBuffer()</code> works the same way with an <code>ArrayBuffer</code>.
-  </p>
+    <code>parse</code> required. <code>httpMutation.arrayBuffer()</code> works the same way with an
+    <code>ArrayBuffer</code>.
+  </aside>
 </section>

@@ -40,10 +40,12 @@ export class SaveDemo {
 
   // rxMutation(): the same behavior.
   protected readonly mutationServer = createFakeProfileServer();
+  // #region code
   protected readonly saveProfile = rxMutation<string, Profile, ApiError>({
     concurrency: 'drop',
     mutationFn: (name) => this.mutationServer.saveProfile(name),
   });
+  // #endregion
 
   protected submit(name: string): void {
     this.save(name);

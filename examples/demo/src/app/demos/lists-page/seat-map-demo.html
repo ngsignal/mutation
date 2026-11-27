@@ -45,6 +45,7 @@
 
   <section class="state">
     <h3>rxMutation()</h3>
+    <!-- #region code -->
     <div class="seat-map">
       @for (seat of mutationServer.seats; track seat) {
         @let state =
@@ -72,6 +73,7 @@
         </button>
       }
     </div>
+    <!-- #endregion -->
     <dl>
       <dt>pendingInputs()</dt>
       <dd><span role="status">{{ lockSeat.pendingInputs().join(', ') || '—' }}</span></dd>
@@ -81,13 +83,3 @@
     <app-activity-log heading="Server" [entries]="mutationServer.requests()" />
   </section>
 </div>
-
-<p class="hint">
-  Both seat maps behave the same. By hand, the list of seats in flight is updated in three places:
-  before the call, on success and on error; a branch that forgets it leaves a seat "Locking…"
-  forever. With <code>rxMutation()</code>, <code>pendingInputs()</code> lists the inputs of the
-  calls still in flight: a seat leaves it when its call settles, whatever the outcome, and
-  <code>reset()</code> or destroy empty it. <code>input()</code> only follows the latest call, and
-  <code>isPending()</code> only says whether any call is in flight: neither tells which seats are
-  still locking.
-</p>

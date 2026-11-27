@@ -8,7 +8,8 @@
 </p>
 
 <section>
-  <h2>Users</h2>
+  <h2>Two calls at once</h2>
+  <!-- #region code -->
   <ul>
     @for (user of users(); track user.id) {
       @let deleting = deleteUser.pendingInputs().includes(user);
@@ -25,17 +26,11 @@
       </li>
     }
   </ul>
+  <!-- #endregion -->
   <p class="hint">
-    Delete Ada, then quickly Grace (who always fails): Ada disappears through her
-    <code>onSuccess</code> with <code>isLatest: false</code>, and Grace's failure lands in
-    <code>status</code>. Both rows show "Deleting…" until their own call settles:
-    <code>pendingInputs()</code> lists every call in flight, while <code>input()</code> holds the
-    latest one.
+    Delete Ada, then quickly Grace (who always fails). Then submit two names quickly: the button
+    stays enabled on purpose. Each call takes 2 s (an artificial delay).
   </p>
-</section>
-
-<section>
-  <h2>Create user</h2>
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
     <input
       #nameInput
@@ -45,39 +40,43 @@
     />
     <button type="submit">Create user</button>
   </form>
-  <p class="hint">
-    The button stays enabled on purpose: submit two names quickly, both users are created.
-  </p>
-</section>
 
-<section class="state">
-  <h2>Latest call only</h2>
-  <dl>
-    <dt>createUser.status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
-        createUser.status()
-      }}</span>
-    </dd>
-    <dt>createUser.input</dt>
-    <dd>{{ createUser.input() ?? '—' }}</dd>
-    <dt>deleteUser.status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="deleteUser.status()">{{
-        deleteUser.status()
-      }}</span>
-    </dd>
-    <dt>deleteUser.error</dt>
-    <dd><span class="error-text" role="alert">{{ deleteUser.error()?.message }}</span></dd>
-  </dl>
+  <section class="state">
+    <h3>Latest call only</h3>
+    <dl>
+      <dt>createUser.status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+          createUser.status()
+        }}</span>
+      </dd>
+      <dt>createUser.input</dt>
+      <dd>{{ createUser.input() ?? '—' }}</dd>
+      <dt>deleteUser.status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="deleteUser.status()">{{
+          deleteUser.status()
+        }}</span>
+      </dd>
+      <dt>deleteUser.error</dt>
+      <dd><span class="error-text" role="alert">{{ deleteUser.error()?.message }}</span></dd>
+    </dl>
+    <app-activity-log
+      heading="Callbacks"
+      [entries]="log.entries()"
+      emptyText="Nothing yet: delete two users quickly."
+    />
+    <app-activity-log heading="Server" [entries]="server.requests()" />
+  </section>
+  <app-code-block [source]="code.ts" />
+  <app-code-block [source]="code.html" />
+  <aside class="note">
+    Ada disappears through her <code>onSuccess</code> with <code>isLatest: false</code>, and
+    Grace's failure lands in <code>status</code>. Both rows show "Deleting…" until their own call
+    settles: <code>pendingInputs()</code> lists every call in flight, while <code>input()</code>
+    holds the latest one.
+  </aside>
 </section>
-
-<app-activity-log
-  heading="Callbacks"
-  [entries]="log.entries()"
-  emptyText="Nothing yet: delete two users quickly."
-/>
-<app-activity-log heading="Server" [entries]="server.requests()" />
 
 <section class="state modes">
   <h2>The concurrency option</h2>
@@ -114,10 +113,10 @@
       for it. Use case: <a routerLink="/save-per-document">save per document</a>.
     </dd>
   </dl>
-  <p class="hint">
+  <aside class="note">
     In every mode, the state signals follow the mutation's latest call, and
     <code>pendingInputs()</code> lists the queued calls too. A call that never left
     (<code>'Dropped'</code>, <code>'Replaced'</code>, or a <code>reset()</code> while queued) makes
     <code>wasNeverSent(error)</code> true: see <a routerLink="/cancellation">cancellation</a>.
-  </p>
+  </aside>
 </section>

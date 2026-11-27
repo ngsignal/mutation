@@ -20,6 +20,7 @@ import { User, createFakeUserServer } from '../../shared/fake-api';
 export class DestroyDemo {
   protected readonly server = createFakeUserServer();
   protected readonly log = createActivityLog();
+  // #region code
   private readonly childInjector = createEnvironmentInjector([], inject(EnvironmentInjector));
   protected readonly destroyed = signal(false);
 
@@ -28,6 +29,7 @@ export class DestroyDemo {
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
     onSuccess: (user) => this.log.add(`onSuccess("${user.name}")`),
   });
+  // #endregion
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.destroyChildInjector());

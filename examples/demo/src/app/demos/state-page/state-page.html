@@ -31,7 +31,16 @@
     />
     Fail the next call (the fake server answers 'unavailable' once)
   </label>
-  <p class="hint">Create a user, then submit an empty name, then reset.</p>
+  <p class="hint">
+    Create a user, then submit an empty name, then reset. A create takes 2 s (an artificial delay).
+  </p>
+  <app-code-block [source]="ts" region="create" />
+  <aside class="note">
+    <code>TError</code> only types <code>error()</code> and <code>onError</code>:
+    <code>mutation()</code> doesn't check it at runtime, so a <code>mutationFn</code> that rejects
+    with something else still lands in <code>error()</code>. A <code>void</code> mutation never has a
+    value: check <code>isSuccess()</code> rather than <code>hasValue()</code>.
+  </aside>
 </section>
 
 <section>

@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 /**
- * A page's own code: a region of its template, imported as text
- * (`import template from './page.html' with { loader: 'text' }`) and marked with
- * `<!-- #region name -->` … `<!-- #endregion -->`, so the code shown is the code that runs.
+ * A demo's own code, copyable: the `code` region(s) of a template or a TypeScript file imported as
+ * text (`import source from './demo.html' with { loader: 'text' }`), marked with
+ * `<!-- #region code -->` … `<!-- #endregion -->` or `// #region code` … `// #endregion`.
+ * The code shown is the code that runs. Several regions with the same name are shown together.
  */
 @Component({
   selector: 'app-code-block',
@@ -25,15 +26,18 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 })
 export class CodeBlock {
   readonly source = input.required<string>();
-  readonly region = input.required<string>();
+  readonly region = input('code');
 
-  private readonly code = computed(() => extractRegion(this.source(), this.region()));
-  protected readonly tokens = computed(() => highlightTemplate(this.code()));
+  private readonly extracted = computed(() => extractRegions(this.source(), this.region()));
+  protected readonly tokens = computed(() => {
+    const { code, isTemplate } = this.extracted();
+    return isTemplate ? highlightTemplate(code) : highlightTypeScript(code);
+  });
   protected readonly copied = signal(false);
 
   protected async copy(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(this.code());
+      await navigator.clipboard.writeText(this.extracted().code);
     } catch {
       return; // No clipboard (insecure context, permission denied): the code stays selectable.
     }
@@ -49,29 +53,43 @@ interface Token {
   text: string;
 }
 
-/** The lines between `#region name` and `#endregion`, without their common indentation. */
-function extractRegion(source: string, name: string): string {
+/** The regions called `name`, each without its common indentation, separated by a blank line. */
+function extractRegions(source: string, name: string): { code: string; isTemplate: boolean } {
   const lines = source.split('\n');
-  const start = lines.findIndex((line) => line.includes(`#region ${name} `));
-  const end = lines.findIndex((line, index) => index > start && line.includes('#endregion'));
-  if (start === -1 || end === -1) {
+  const isMarker = (line: string) => /#(end)?region\b/.test(line);
+  const regions: string[] = [];
+  let isTemplate = false;
+  lines.forEach((line, start) => {
+    if (!new RegExp(`#region ${name}\\b`).test(line)) {
+      return;
+    }
+    isTemplate = line.includes('<!--');
+    const end = lines.findIndex((other, index) => index > start && other.includes('#endregion'));
+    const body = lines.slice(start + 1, end === -1 ? lines.length : end).filter((l) => !isMarker(l));
+    const indent = Math.min(
+      ...body.filter((l) => l.trim()).map((l) => l.length - l.trimStart().length),
+    );
+    regions.push(body.map((l) => l.slice(indent)).join('\n'));
+  });
+  if (regions.length === 0) {
     // Fails the pre-rendering, so a renamed region can't ship an empty code block.
     throw new Error(`Code region "${name}" not found`);
   }
-  const body = lines.slice(start + 1, end);
-  const indent = Math.min(
-    ...body.filter((line) => line.trim()).map((line) => line.length - line.trimStart().length),
-  );
-  return body.map((line) => line.slice(indent)).join('\n');
+  return { code: regions.join('\n\n'), isTemplate };
 }
 
-const KEYWORDS = new Set(['true', 'false', 'null', 'undefined', 'as', 'typeof']);
+const KEYWORDS = new Set(
+  (
+    'true false null undefined as typeof import from export const let new return if else this ' +
+    'private protected public readonly async await void class extends implements function try catch'
+  ).split(' '),
+);
 
-/** A TypeScript expression: enough for template bindings. */
+/** TypeScript: enough for these demos' code and template bindings. */
 function highlightTypeScript(code: string): Token[] {
   const tokens: Token[] = [];
   const pattern =
-    /(\/\/[^\n]*)|('[^']*'|"[^"]*"|`[^`]*`)|([A-Za-z_$][\w$]*)(\s*\()?|(\?\?|\?\.|===|!==|=>|[=!<>]=?|[?:.,;|&()[\]{}+\-*/])|(\s+|.)/g;
+    /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('[^']*'|"[^"]*"|`[^`]*`)|(@?[A-Za-z_$][\w$]*)(\s*\()?|(\?\?|\?\.|===|!==|=>|[=!<>]=?|[?:.,;|&()[\]{}+\-*/])|(\s+|.)/g;
   for (const match of code.matchAll(pattern)) {
     const [, comment, string, word, call, punct, other] = match;
     if (comment) {

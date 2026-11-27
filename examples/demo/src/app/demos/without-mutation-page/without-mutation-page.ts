@@ -9,7 +9,11 @@ import {
 } from '@angular/core';
 import { JsonPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { CodeBlock } from '../../shared/code-block';
 import { User, createFakeUserServer } from '../../shared/fake-api';
+import html from './without-mutation-page.html' with { loader: 'text' };
+// @ts-expect-error: imported as text, see text-imports.d.ts
+import ts from './without-mutation-page.ts' with { loader: 'text' };
 
 type Status = 'idle' | 'pending' | 'success' | 'error';
 
@@ -20,11 +24,12 @@ type Status = 'idle' | 'pending' | 'success' | 'error';
  */
 @Component({
   selector: 'app-without-mutation-page',
-  imports: [JsonPipe, RouterLink],
+  imports: [JsonPipe, RouterLink, CodeBlock],
   templateUrl: './without-mutation-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WithoutMutationPage {
+  protected readonly code = { ts: ts as string, html };
   private readonly server = createFakeUserServer();
   private readonly pendingTasks = inject(PendingTasks);
 
@@ -38,6 +43,7 @@ export class WithoutMutationPage {
     });
   }
 
+  // #region create
   protected readonly createUserStatus = signal<Status>('idle');
   protected readonly createUserValue = signal<User | undefined>(undefined);
   protected readonly createUserError = signal<Error | undefined>(undefined);
@@ -81,7 +87,9 @@ export class WithoutMutationPage {
     this.createUserError.set(undefined);
     this.createUserInput.set(undefined);
   }
+  // #endregion
 
+  // #region delete
   protected readonly deleteUserStatus = signal<Status>('idle');
   protected readonly deleteUserError = signal<Error | undefined>(undefined);
   protected readonly deleteUserInput = signal<User | undefined>(undefined);
@@ -120,4 +128,5 @@ export class WithoutMutationPage {
     this.deleteUserError.set(undefined);
     this.deleteUserInput.set(undefined);
   }
+  // #endregion
 }

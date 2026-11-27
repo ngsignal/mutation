@@ -8,8 +8,7 @@
   <button type="submit">Save</button>
 </form>
 <p class="hint">
-  Each save goes to both versions, one fake server each (1.5 s artificial delay). The button stays
-  enabled so a second click shows the guard: press Enter twice.
+  Press Enter twice: each save goes to both versions and takes 1.5 s (an artificial delay).
 </p>
 
 <div class="compare">
@@ -21,7 +20,7 @@
       <dt>savedProfile()</dt>
       <dd>{{ savedProfile()?.name ?? '—' }}</dd>
       <dt>saveError()</dt>
-      <dd class="error-text" role="alert">{{ saveError()?.message }}</dd>
+      <dd><span class="error-text" role="alert">{{ saveError()?.message }}</span></dd>
     </dl>
     <app-activity-log heading="Server" [entries]="handWrittenServer.requests()" />
   </section>
@@ -38,18 +37,10 @@
       <dt>value()</dt>
       <dd>{{ saveProfile.value()?.name ?? '—' }}</dd>
       <dt>error()</dt>
-      <dd class="error-text" role="alert">{{ saveProfile.error()?.message }}</dd>
+      <dd><span class="error-text" role="alert">{{ saveProfile.error()?.message }}</span></dd>
       <dt>input()</dt>
       <dd>{{ saveProfile.input() ?? '—' }}</dd>
     </dl>
     <app-activity-log heading="Server" [entries]="mutationServer.requests()" />
   </section>
 </div>
-
-<p class="hint">
-  Both behave the same: a second save while one is in flight is ignored, and leaving the page
-  aborts the request. The hand-written version is correct. What <code>rxMutation()</code> removes is
-  the bookkeeping: three signals, the guard, the flag reset in each branch and
-  <code>takeUntilDestroyed</code>. It also gives <code>input()</code>, <code>status()</code> and
-  <code>reset()</code> for free.
-</p>

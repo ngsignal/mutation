@@ -7,8 +7,7 @@
   }
 </ul>
 <p class="hint">
-  Each click moves the item with two mutations, one per fake server. "Charlie" answers slower
-  than the others (an artificial delay): click Charlie, then quickly Alpha.
+  Click Charlie, then quickly Alpha. Charlie takes 1.2 s, the others 0.3 s (artificial delays).
 </p>
 
 <section class="state">
@@ -19,10 +18,7 @@
     <dt>server order</dt>
     <dd>{{ parallelServer.order().join(', ') }}</dd>
   </dl>
-  <p class="hint">
-    Both requests reach the server at once, and Charlie's ends last: the server ends with Charlie
-    first although Alpha was clicked last, and <code>value()</code> doesn't match it.
-  </p>
+  <p class="hint">Charlie ends first, and <code>value()</code> doesn't match the server.</p>
   <app-activity-log heading="Server" [entries]="parallelServer.requests()" />
 </section>
 
@@ -34,9 +30,6 @@
     <dt>server order</dt>
     <dd>{{ queuedServer.order().join(', ') }}</dd>
   </dl>
-  <p class="hint">
-    Alpha's request only leaves once Charlie's has settled: the server ends with Alpha first, and
-    <code>value()</code> matches it.
-  </p>
+  <p class="hint">Alpha ends first, and <code>value()</code> matches the server.</p>
   <app-activity-log heading="Server" [entries]="queuedServer.requests()" />
 </section>

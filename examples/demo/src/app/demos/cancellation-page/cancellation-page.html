@@ -15,6 +15,14 @@
   <app-restartable>
     <ng-template><app-reset-demo /></ng-template>
   </app-restartable>
+  <app-code-block [source]="code.reset" />
+  <app-code-block [source]="code.resetHtml" />
+  <aside class="note">
+    No <code>onSuccess</code>, the status goes back to idle, and <code>mutate()</code> rejects with
+    <code>'Aborted'</code>, the abort reason the fake API rejects with, as <code>fetch()</code>
+    does. The server log shows the request was received: on a real server, the user may have been
+    created anyway.
+  </aside>
 </section>
 
 <section>
@@ -22,6 +30,12 @@
   <app-restartable>
     <ng-template><app-queued-reset-demo /></ng-template>
   </app-restartable>
+  <app-code-block [source]="code.queuedReset" />
+  <aside class="note">
+    Both calls reject, and "Second" never appears in the server log. Its <code>mutationFn</code>
+    never ran, so <code>wasNeverSent(error)</code> is true; "First" may have reached the server, so
+    it is false.
+  </aside>
 </section>
 
 <section>
@@ -29,4 +43,11 @@
   <app-restartable>
     <ng-template><app-destroy-demo /></ng-template>
   </app-restartable>
+  <app-code-block [source]="code.destroy" />
+  <aside class="note">
+    Destroying the injector aborts the call in flight, like navigating away from a component does.
+    A <code>mutate()</code> after that rejects at once with <code>'Destroyed'</code>, and no request
+    leaves. A longer-lived injector (a root service, or <code>inject(EnvironmentInjector)</code>) is
+    how a write outlives the component.
+  </aside>
 </section>

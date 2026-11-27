@@ -4,12 +4,12 @@ import { ActivityLog } from '../../shared/activity-log';
 import { createFakeTodoServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-shared-queue-demo',
+  selector: 'app-rename-then-delete-demo',
   imports: [ActivityLog],
-  templateUrl: './shared-queue-demo.html',
+  templateUrl: './rename-then-delete-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SharedQueueDemo {
+export class RenameThenDeleteDemo {
   protected readonly parallelServer = createFakeTodoServer();
   protected readonly queuedServer = createFakeTodoServer();
 
@@ -21,16 +21,22 @@ export class SharedQueueDemo {
   });
 
   // In an app, create it in a root service so that every component writing todos shares it.
+  // #region code
   private readonly todoWrites = mutationQueue();
+  // #endregion
 
+  // #region code
   protected readonly renameQueued = mutation<string, string, Error>({
     concurrency: this.todoWrites,
     mutationFn: (title, abortSignal) => this.queuedServer.rename(title, abortSignal),
   });
+  // #endregion
+  // #region code
   protected readonly removeQueued = mutation<void, void, Error>({
     concurrency: this.todoWrites,
     mutationFn: (_input, abortSignal) => this.queuedServer.remove(abortSignal),
   });
+  // #endregion
 
   protected rename(title: string): void {
     this.renameParallel.mutate(title);

@@ -1,15 +1,21 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { mutation } from '@ngsignal/mutation';
 import { ActivityLog, createActivityLog } from '../../shared/activity-log';
+import { CodeBlock } from '../../shared/code-block';
 import { User, createFakeUserServer } from '../../shared/fake-api';
+import html from './concurrent-page.html' with { loader: 'text' };
+// @ts-expect-error: imported as text, see text-imports.d.ts
+import ts from './concurrent-page.ts' with { loader: 'text' };
 
 @Component({
   selector: 'app-concurrent-page',
-  imports: [ActivityLog],
+  imports: [ActivityLog, RouterLink, CodeBlock],
   templateUrl: './concurrent-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConcurrentPage {
+  protected readonly code = { ts: ts as string, html };
   protected readonly server = createFakeUserServer();
   protected readonly log = createActivityLog();
   protected readonly users = signal<User[]>(this.server.initialUsers());
@@ -24,6 +30,7 @@ export class ConcurrentPage {
       this.log.add(`createUser("${name}") failed: ${error.message}, isLatest: ${isLatest}`),
   });
 
+  // #region code
   protected readonly deleteUser = mutation<User, void, Error>({
     mutationFn: (user, abortSignal) => this.server.deleteUser(user, abortSignal),
     onSuccess: (_result, user, { isLatest }) => {
@@ -33,4 +40,5 @@ export class ConcurrentPage {
     onError: (error, user, { isLatest }) =>
       this.log.add(`deleteUser("${user.name}") failed: ${error.message}, isLatest: ${isLatest}`),
   });
+  // #endregion
 }

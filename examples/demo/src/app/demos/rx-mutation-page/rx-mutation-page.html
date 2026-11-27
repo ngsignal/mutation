@@ -8,43 +8,44 @@
 </p>
 
 <section>
-  <h2>Create user</h2>
+  <!-- #region code -->
   <form (submit)="$event.preventDefault(); createUser.mutate(nameInput.value)">
+  <!-- #endregion -->
     <input
       #nameInput
       type="text"
       aria-label="New user name"
       placeholder="New user name (empty answers 422)"
     />
+    <!-- #region code -->
     <button type="submit" [disabled]="createUser.isPending()">
       {{ createUser.isPending() ? 'Creating…' : 'Create user' }}
     </button>
     <button type="button" (click)="createUser.reset()">Reset</button>
   </form>
-  <p class="hint">
-    Reset while pending: the request is unsubscribed, which cancels it. The fake backend answers
-    after an artificial 2&nbsp;s delay.
-  </p>
-</section>
-
-<section class="state">
-  <h2>createUser</h2>
-  <dl>
-    <dt>status</dt>
-    <dd>
-      <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
-        createUser.status()
-      }}</span>
-    </dd>
-    <dt>value</dt>
-    <dd>
-      {{ createUser.hasValue() ? createUser.value().name + ' (#' + createUser.value().id + ')' : '—' }}
-    </dd>
-    <dt>error</dt>
-    <dd class="error-text" role="alert">{{ createUser.error()?.message }}</dd>
-  </dl>
-  <p class="hint">
+    <!-- #endregion -->
+  <p class="hint">Reset while pending to cancel the request (an artificial 2&nbsp;s delay).</p>
+  <section class="state">
+    <dl>
+      <dt>status</dt>
+      <dd>
+        <span class="status-pill" role="status" [attr.data-status]="createUser.status()">{{
+          createUser.status()
+        }}</span>
+      </dd>
+      <dt>value</dt>
+      <dd>
+        {{ createUser.hasValue() ? createUser.value().name + ' (#' + createUser.value().id + ')' : '—' }}
+      </dd>
+      <dt>error</dt>
+      <dd><span class="error-text" role="alert">{{ createUser.error()?.message }}</span></dd>
+    </dl>
+  </section>
+  <app-code-block [source]="code.ts" />
+  <app-code-block [source]="code.html" />
+  <aside class="note">
     <code>rxMutation()</code> only sees the emitted value: for the status code, headers or upload
-    progress, use <code>httpMutation()</code>.
-  </p>
+    progress, use <a routerLink="/http"><code>httpMutation()</code></a>. An Observable that
+    completes without emitting rejects the call.
+  </aside>
 </section>

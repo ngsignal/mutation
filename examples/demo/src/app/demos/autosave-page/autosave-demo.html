@@ -1,0 +1,26 @@
+<label>
+  Document
+  <!-- #region code -->
+  <input #doc type="text" (input)="save.mutate(doc.value)" />
+  <!-- #endregion -->
+</label>
+<p class="hint">
+  Each keystroke saves the whole document. A save takes 1.5 s (an artificial delay): type a word
+  quickly.
+</p>
+
+<section class="state">
+  <dl>
+    <dt>save.pendingInputs()</dt>
+    <dd>
+      @for (content of save.pendingInputs(); track $index) {
+        "{{ content }}"{{ $last ? '' : ', ' }}
+      } @empty {
+        —
+      }
+    </dd>
+    <dt>server</dt>
+    <dd>"{{ server.documents().A }}"</dd>
+  </dl>
+  <app-activity-log heading="Server" [entries]="server.requests()" />
+</section>

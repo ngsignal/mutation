@@ -4,12 +4,12 @@ import { ActivityLog } from '../../shared/activity-log';
 import { createFakeReorderServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-queue-demo',
+  selector: 'app-move-to-top-demo',
   imports: [ActivityLog],
-  templateUrl: './queue-demo.html',
+  templateUrl: './move-to-top-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class QueueDemo {
+export class MoveToTopDemo {
   protected readonly parallelServer = createFakeReorderServer();
   protected readonly queuedServer = createFakeReorderServer();
 
@@ -17,10 +17,12 @@ export class QueueDemo {
     mutationFn: (item, abortSignal) => this.parallelServer.moveToTop(item, abortSignal),
   });
 
+  // #region code
   protected readonly moveQueued = mutation<string, string[]>({
     concurrency: 'queue',
     mutationFn: (item, abortSignal) => this.queuedServer.moveToTop(item, abortSignal),
   });
+  // #endregion
 
   protected moveToTop(item: string): void {
     this.moveParallel.mutate(item);

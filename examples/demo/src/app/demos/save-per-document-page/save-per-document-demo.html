@@ -2,8 +2,8 @@
 <button type="button" (click)="edit('B')">Save B</button>
 <button type="button" class="danger" (click)="removeAll.mutate()">Delete all</button>
 <p class="hint">
-  The fake server takes 1.5 s to save A, 0.3 s to save B or delete all (artificial delays). Click
-  Save A twice, then Save B: B doesn't wait for A. Then click Save A, then Delete all.
+  Click Save A twice, then Save B; then Save A, then Delete all. Saving A takes 1.5 s, the rest
+  0.3 s (artificial delays).
 </p>
 
 <section class="state">
@@ -21,9 +21,6 @@
     <dt>server</dt>
     <dd>A: {{ server.documents().A ?? 'deleted' }} · B: {{ server.documents().B ?? 'deleted' }}</dd>
   </dl>
-  <p class="hint">
-    The saves of A stay in order, B saves at once. Delete all waits for the save of A in flight,
-    so A isn't created again after it.
-  </p>
+  <p class="hint">A's saves stay in order, B doesn't wait, Delete all comes after A.</p>
   <app-activity-log heading="Server" [entries]="server.requests()" />
 </section>

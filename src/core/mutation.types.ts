@@ -26,7 +26,8 @@ export interface QueueLatestConcurrency {
   /**
    * Milliseconds a call waits after its `mutate()` before it is sent, e.g. to save once typing
    * pauses. A newer call made meanwhile replaces it. The wait overlaps the call in flight: a call
-   * leaves once both are over. The call counts as pending from `mutate()`.
+   * leaves once both are over. The call counts as pending from `mutate()`. A finite number `>= 0`:
+   * anything else throws a `RangeError` when the mutation is created.
    */
   readonly debounce?: number;
 }

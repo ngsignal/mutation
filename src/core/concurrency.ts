@@ -31,7 +31,12 @@ export function createConcurrencyGate<TInput>(
       return { admit: () => true, run: (task) => task() };
     default:
       if ('mode' in concurrency) {
-        return replaceWaitingCall(createQueueGate(createWriteQueue(), noKey), concurrency.debounce);
+        const { debounce } = concurrency;
+        // A NaN or negative delay would silently mean no debounce: fail where the mutation is created.
+        if (debounce !== undefined && !(Number.isFinite(debounce) && debounce >= 0)) {
+          throw new RangeError(`debounce must be a finite number of milliseconds >= 0, got ${debounce}`);
+        }
+        return replaceWaitingCall(createQueueGate(createWriteQueue(), noKey), debounce);
       }
       return 'key' in concurrency
         ? createQueueGate(writeQueueOf(concurrency.queue), concurrency.key)

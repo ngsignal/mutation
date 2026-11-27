@@ -7,7 +7,8 @@
   call made meanwhile replaces the waiting one (`'Replaced'`). The call counts as pending from
   `mutate()`: `isPending()`, `pendingInputs()` and `PendingTasks` cover the delay, unlike a
   debounce before `mutate()`. The delay overlaps the call in flight, so a slow request adds no
-  extra wait. See [Autosaving](./docs/RECIPES.md#autosaving).
+  extra wait. A negative, `NaN` or infinite `debounce` throws a `RangeError` when the mutation is
+  created. See [Autosaving](./docs/RECIPES.md#autosaving).
 
 ## 0.10.0
 

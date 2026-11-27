@@ -201,6 +201,11 @@ overlaps the save in flight: a call leaves once both are over. Prefer it to a de
 `mutate()` (`debounceTime()`): the call is pending from the first keystroke, so `isPending()`, a
 "leave the page?" guard and SSR see the edit not saved yet.
 
+Destroying the injection context rejects the call still waiting for its delay (`'NotStarted'`),
+like the save in flight: the last edit is lost. To save on leave, create the mutation in a root
+service (see [Requests that must outlive the component](#requests-that-must-outlive-the-component)):
+the waiting call is then sent once its delay ends.
+
 ## Choosing settings by HTTP method
 
 [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#name-idempotent-methods) calls a method

@@ -670,6 +670,52 @@ describe("concurrency: { mode: 'queue-latest', debounce }", () => {
     expect(started).toEqual([]);
   });
 
+  it("rejects with 'NotStarted' when the injector is destroyed during the delay, and never sends", async () => {
+    const removeFns = spyOnPendingTasks();
+    const started: string[] = [];
+    const childInjector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+    const save = mutation<string, string>({
+      concurrency: { mode: 'queue-latest', debounce: 300 },
+      mutationFn: (doc) => {
+        started.push(doc);
+        return Promise.resolve(doc);
+      },
+      injector: childInjector,
+    });
+
+    const a = save.mutate('a');
+    await vi.advanceTimersByTimeAsync(100);
+    childInjector.destroy();
+    expect(removeFns[0]).toHaveBeenCalled();
+
+    await expect(a).rejects.toMatchObject({ message: 'NotStarted' });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(started).toEqual([]);
+  });
+
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('throws a RangeError on creation for a debounce of %s', (debounce) => {
+    expect(() =>
+      createMutation<string, string>({
+        concurrency: { mode: 'queue-latest', debounce },
+        mutationFn: (doc) => Promise.resolve(doc),
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it('accepts a debounce of 0, as plain queue-latest', async () => {
+    const save = createMutation<string, string>({
+      concurrency: { mode: 'queue-latest', debounce: 0 },
+      mutationFn: (doc) => Promise.resolve(doc),
+    });
+
+    const a = save.mutate('a');
+    void save.mutate('b');
+    const c = save.mutate('c');
+
+    await expect(a).resolves.toBe('a');
+    await expect(c).resolves.toBe('c');
+  });
+
   it('accepts the object form without a debounce, as plain queue-latest', async () => {
     const save = createMutation<string, string>({
       concurrency: { mode: 'queue-latest' },

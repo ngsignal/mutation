@@ -1,0 +1,20 @@
+<label>
+  Document
+  <!-- #region code -->
+  <input #doc type="text" (input)="save.mutate(doc.value)" />
+  <!-- #endregion -->
+</label>
+<p class="hint">
+  Each keystroke saves the whole document, 500 ms after the last one. A save takes 1.5 s (an
+  artificial delay): type slowly, then pause.
+</p>
+
+<section class="state">
+  <dl>
+    <dt>save.isPending()</dt>
+    <dd>{{ save.isPending() }}</dd>
+    <dt>server</dt>
+    <dd>"{{ server.documents().A }}"</dd>
+  </dl>
+  <app-activity-log heading="Server" [entries]="server.requests()" />
+</section>

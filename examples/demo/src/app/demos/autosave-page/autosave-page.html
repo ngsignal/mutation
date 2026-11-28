@@ -1,0 +1,42 @@
+<p class="pitch">
+  Saving a document on every keystroke. Each save carries the whole document (a
+  <code>PUT</code>), so only the latest version matters: <code>concurrency: 'queue-latest'</code>
+  keeps the saves in order and skips the versions overtaken while a save is in flight. Two calls
+  at most: the one in flight and the latest. A keystroke replaces the waiting call, whose
+  <code>mutate()</code> rejects with <code>'Replaced'</code>, never sent. With a
+  <code>debounce</code>, a save also waits for a pause in typing.
+  Source:
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/autosave-page/autosave-demo.ts">queue-latest</a>
+  ·
+  <a href="https://github.com/ngsignal/mutation/blob/main/examples/demo/src/app/demos/autosave-page/debounced-autosave-demo.ts">debounce</a>
+</p>
+
+<section>
+  <h2>Save on every keystroke</h2>
+  <app-restartable>
+    <ng-template><app-autosave-demo /></ng-template>
+  </app-restartable>
+  <app-code-block [source]="code.ts" />
+  <app-code-block [source]="code.html" />
+  <aside class="note">
+    Send the whole document: a replaced call is never sent, so a delta would be lost. Don't roll
+    it back either, although <code>wasNeverSent()</code> is true: the newer call carries a more
+    recent state. Typed slowly, every keystroke is sent, since nothing is in flight: see the
+    debounce below. More in the
+    <a href="https://github.com/ngsignal/mutation/blob/main/docs/RECIPES.md#autosaving">recipes</a>.
+  </aside>
+</section>
+
+<section>
+  <h2>Save once typing pauses</h2>
+  <app-restartable>
+    <ng-template><app-debounced-autosave-demo /></ng-template>
+  </app-restartable>
+  <app-code-block [source]="code.debounced" />
+  <aside class="note">
+    Each call waits 500 ms after its <code>mutate()</code>, and a newer call replaces it
+    meanwhile. Unlike a debounce before <code>mutate()</code>, the call is pending from the first
+    keystroke: <code>isPending()</code> shows the edit isn't saved yet. The wait overlaps the save
+    in flight, so a slow request adds no extra delay.
+  </aside>
+</section>

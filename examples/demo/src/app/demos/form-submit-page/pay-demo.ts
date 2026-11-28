@@ -3,11 +3,11 @@ import { mutation } from '@ngsignal/mutation';
 import { createFakePaymentServer } from '../../shared/fake-api';
 
 @Component({
-  selector: 'app-drop-demo',
-  templateUrl: './drop-demo.html',
+  selector: 'app-pay-demo',
+  templateUrl: './pay-demo.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DropDemo {
+export class PayDemo {
   protected readonly defaultServer = createFakePaymentServer();
   protected readonly droppingServer = createFakePaymentServer();
   protected readonly clicks = signal(0);
@@ -16,10 +16,12 @@ export class DropDemo {
     mutationFn: (_input, abortSignal) => this.defaultServer.charge(abortSignal),
   });
 
+  // #region code
   protected readonly payDropping = mutation<void, void>({
     concurrency: 'drop',
     mutationFn: (_input, abortSignal) => this.droppingServer.charge(abortSignal),
   });
+  // #endregion
 
   protected pay(): void {
     this.clicks.update((count) => count + 1);

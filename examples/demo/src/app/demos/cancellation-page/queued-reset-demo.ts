@@ -13,11 +13,14 @@ export class QueuedResetDemo {
   protected readonly server = createFakeUserServer();
   protected readonly log = createActivityLog();
 
+  // #region code
   protected readonly createUser = mutation<string, User, Error>({
     concurrency: 'queue',
     mutationFn: (name, abortSignal) => this.server.createUser(name, abortSignal),
   });
+  // #endregion
 
+  // #region code
   protected createTwo(): void {
     for (const name of ['First', 'Second']) {
       this.createUser
@@ -27,4 +30,5 @@ export class QueuedResetDemo {
         );
     }
   }
+  // #endregion
 }

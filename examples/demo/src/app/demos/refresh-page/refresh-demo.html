@@ -20,7 +20,5 @@
 @if (createUser.error(); as error) {
   <p class="error-text" role="alert">{{ error.message }}</p>
 }
-<p class="hint">
-  <code>onSuccess</code> calls <code>users.reload()</code>: the server stays the source of
-  truth, and the new user appears once the list is fetched again.
-</p>
+<p class="hint">A create takes 2 s, a fetch 0.8 s (artificial delays).</p>
+<app-activity-log heading="Server" [entries]="server.requests()" />

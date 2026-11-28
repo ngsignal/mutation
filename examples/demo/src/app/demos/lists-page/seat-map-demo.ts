@@ -40,9 +40,11 @@ export class SeatMapDemo {
   protected readonly mutationServer = createFakeSeatServer();
   protected readonly mutationLocked = signal<number[]>([]);
   protected readonly mutationRefused = signal<number[]>([]);
+  // #region code
   protected readonly lockSeat = rxMutation<number, number>({
     mutationFn: (seat) => this.mutationServer.lockSeat(seat),
     onSuccess: (seat) => this.mutationLocked.update((seats) => [...seats, seat]),
     onError: (_error, seat) => this.mutationRefused.update((seats) => [...seats, seat]),
   });
+  // #endregion
 }

@@ -1,0 +1,14 @@
+<button type="button" (click)="pay()">Pay 50 €</button>
+<p class="hint">Double-click "Pay": the button stays enabled on purpose.</p>
+
+<section class="state">
+  <dl>
+    <dt>Clicks</dt>
+    <dd>{{ clicks() }}</dd>
+    <dt>Default: charges on the server</dt>
+    <dd>{{ defaultServer.charges() }}</dd>
+    <dt>'drop': charges on the server</dt>
+    <dd>{{ droppingServer.charges() }}</dd>
+  </dl>
+</section>
+<p class="hint">Charged twice by default, once with <code>'drop'</code>.</p>

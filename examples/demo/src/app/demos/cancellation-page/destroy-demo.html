@@ -5,11 +5,7 @@
   </button>
 </div>
 <p class="hint">
-  This mutation is created with <code>injector: childInjector</code>. Destroying it aborts the
-  call in flight, like navigating away from a component does. A <code>mutate()</code> after that
-  rejects at once with <code>'Destroyed'</code>, and the server log stays empty: no request left.
-  A longer-lived injector (a root service, or <code>inject(EnvironmentInjector)</code>) is how a
-  write outlives the component.
+  Create "Grace", destroy the injector while the call is in flight, then create "Grace" again.
 </p>
 <app-activity-log heading="Callbacks and mutate()" [entries]="log.entries()" />
 <app-activity-log heading="Server" [entries]="server.requests()" />

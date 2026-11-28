@@ -103,10 +103,8 @@ function singleWaitingSlot<TInput>(gate: ConcurrencyGate<TInput>, debounce: numb
 }
 
 /**
- * Starts a `ms` timer now, not when the returned task runs. The task waits for the timer, then runs
- * `task`, or rejects with the abort reason if `abortSignal` aborted. An abort clears the timer and
- * ends the wait at once, so a queue never waits for an aborted call's delay (`mutate()` itself
- * already rejected, through `rejectOnAbort`).
+ * Starts a `ms` timer now, not when the returned task runs; the task waits for it, then runs `task`.
+ * An abort clears the timer, so a queue never waits for an aborted call's delay.
  */
 function startDelay<T>(ms: number, abortSignal: AbortSignal, task: () => Promise<T>): () => Promise<T> {
   const elapsed = new Promise<void>((resolve) => {
@@ -118,7 +116,7 @@ function startDelay<T>(ms: number, abortSignal: AbortSignal, task: () => Promise
       resolve();
     }
   });
-  // Checked after the timer too: a call replaced right after its delay elapsed is never sent.
+  // Checked after the timer: a call aborted during its delay, or replaced right after it, is never sent.
   return () => elapsed.then(() => (abortSignal.aborted ? Promise.reject(abortSignal.reason) : task()));
 }
 

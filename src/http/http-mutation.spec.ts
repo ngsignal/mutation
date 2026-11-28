@@ -734,6 +734,97 @@ describe('concurrency: "queue-latest"', () => {
   });
 });
 
+describe("concurrency: { mode: 'queue-latest', debounce }", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function debouncedSave(token = signal('t1')) {
+    const request = vi.fn((doc: string) => ({
+      method: 'PUT',
+      url: '/api/doc',
+      body: doc,
+      headers: { Authorization: token() },
+    }));
+    const m = TestBed.runInInjectionContext(() =>
+      httpMutation<string, string>({ concurrency: { mode: 'queue-latest', debounce: 300 }, request }),
+    );
+    return { m, request, token };
+  }
+
+  it('sends one request after the delay, with the latest input, and never calls request() for a replaced call', async () => {
+    const { m, request } = debouncedSave();
+
+    const v1 = m.mutate('v1');
+    await vi.advanceTimersByTimeAsync(200);
+    const v2 = m.mutate('v2');
+    await expect(v1).rejects.toMatchObject({ name: 'AbortError', message: 'Replaced' });
+
+    await vi.advanceTimersByTimeAsync(299);
+    httpTesting.expectNone('/api/doc');
+    expect(m.isPending()).toBe(true);
+    expect(m.statusCode()).toBeUndefined();
+
+    await vi.advanceTimersByTimeAsync(1);
+    const req = httpTesting.expectOne('/api/doc');
+    expect(req.request.body).toBe('v2');
+    req.flush('saved v2', { status: 200, statusText: 'OK' });
+
+    await expect(v2).resolves.toBe('saved v2');
+    expect(m.statusCode()).toBe(200);
+    expect(request.mock.calls.map(([doc]) => doc)).toEqual(['v2']);
+  });
+
+  it('builds the request when it is sent, after the delay: it reads the current signals', async () => {
+    const { m, token } = debouncedSave();
+
+    const save = m.mutate('v1');
+    token.set('t2');
+    await vi.advanceTimersByTimeAsync(300);
+
+    const req = httpTesting.expectOne('/api/doc');
+    expect(req.request.headers.get('Authorization')).toBe('t2');
+    req.flush('saved v1');
+    await save;
+  });
+
+  it('waits for the request in flight and for its own delay before sending the next one', async () => {
+    const { m } = debouncedSave();
+
+    const v1 = m.mutate('v1');
+    await vi.advanceTimersByTimeAsync(300);
+    const firstReq = httpTesting.expectOne('/api/doc');
+    const v2 = m.mutate('v2');
+    await vi.advanceTimersByTimeAsync(1000);
+    httpTesting.expectNone('/api/doc');
+
+    firstReq.flush('saved v1');
+    await v1;
+    await vi.advanceTimersByTimeAsync(0);
+    const secondReq = httpTesting.expectOne('/api/doc');
+    expect(secondReq.request.body).toBe('v2');
+    secondReq.flush('saved v2');
+    await expect(v2).resolves.toBe('saved v2');
+  });
+
+  it("never sends a request for a call reset during its delay ('NotStarted')", async () => {
+    const { m, request } = debouncedSave();
+
+    const save = m.mutate('v1');
+    await vi.advanceTimersByTimeAsync(100);
+    m.reset();
+
+    await expect(save).rejects.toMatchObject({ name: 'AbortError', message: 'NotStarted' });
+    await vi.advanceTimersByTimeAsync(300);
+    httpTesting.expectNone('/api/doc');
+    expect(request).not.toHaveBeenCalled();
+  });
+});
+
 describe('concurrency: "drop"', () => {
   it('does not clear the signals of the request in flight when a call is dropped', async () => {
     const m = TestBed.runInInjectionContext(() =>

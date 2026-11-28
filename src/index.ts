@@ -9,4 +9,5 @@ export type {
   MutationRef,
   MutationSnapshot,
   MutationStatus,
+  QueueLatestConcurrency,
 } from './core/mutation.types.js';

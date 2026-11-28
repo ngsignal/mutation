@@ -27,7 +27,7 @@ argument.
 | `onSuccess?`  | `(output: TOutput, input: TInput, context: MutationCallbackContext) => void`   |
 | `onError?`    | `(error: TError, input: TInput, context: MutationCallbackContext) => void`     |
 | `onSettled?`  | `(output: TOutput \| undefined, error: TError \| undefined, input: TInput, context: MutationCallbackContext) => void` |
-| `concurrency?`| `'parallel' \| 'queue' \| 'drop' \| MutationQueue \| { queue, key }` (default `'parallel'`) |
+| `concurrency?`| `'parallel' \| 'queue' \| 'queue-latest' \| 'drop' \| { mode: 'queue-latest', debounce? } \| MutationQueue \| { queue, key }` (default `'parallel'`) |
 | `injector?`   | `Injector`: creates the mutation outside an injection context (e.g. factory functions) |
 | `debugName?`  | `string`: names the state signals in Angular DevTools (`'save'` → `save.status`) |
 
@@ -145,6 +145,7 @@ What happens to a second call while one is still in flight:
 | `'parallel'` (default) | Runs right away, in parallel                                      | Independent writes (adding items to a list)  |
 | `'queue'`       | Waits for the previous call, then runs: submission order is kept         | Writes that must reach the server in order (reordering, autosave) |
 | `'queue-latest'` | Waits like `'queue'`, replacing the call already waiting (`'Replaced'`, never sent) | Autosave: each write carries the whole state (`PUT`) |
+| `{ mode: 'queue-latest', debounce }` | Like `'queue-latest'`, and each call also waits `debounce` ms (finite, `>= 0`, else a `RangeError` on creation) after its `mutate()`, replaceable meanwhile | Autosave on every keystroke, sent once typing pauses |
 | `'drop'`        | Rejected at once (`'Dropped'`), never sent, signals untouched            | Double-submit protection (payment, form submit) |
 | a `mutationQueue()` | Waits for the previous call of every mutation given the same queue   | Different writes to the same data (rename, then delete) |
 | `{ queue, key }` | Waits for the previous call with the same key; other keys run at once. A call on the same queue without a key waits for every key | Order per entity (autosave of several documents) |
@@ -166,9 +167,9 @@ have reached the server:
 | Cancelled by                                      | Message                           | Write sent?                    |
 | ------------------------------------------------- | --------------------------------- | ------------------------------ |
 | `concurrency: 'drop'`, a call already in flight   | `'Dropped'`                       | No                             |
-| `concurrency: 'queue-latest'`, replaced while waiting | `'Replaced'`, at once         | No                             |
+| `concurrency: 'queue-latest'`, replaced while waiting or during its `debounce` | `'Replaced'`, at once | No             |
 | `mutate()` after the injection context is destroyed | `'Destroyed'`                   | No                             |
-| `reset()`/destroy while queued                    | `'NotStarted'`, at once           | No                             |
+| `reset()`/destroy while queued or in its `debounce` | `'NotStarted'`, at once           | No                             |
 | `reset()`/destroy while in flight                 | `'Aborted'`, at once              | **Maybe**: the request had left |
 
 `mutate()` rejects at once, like `fetch()`, even if the mutation function ignores the signal:

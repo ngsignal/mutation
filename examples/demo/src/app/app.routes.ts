@@ -95,7 +95,7 @@ export const routes: Routes = [
     title: 'Autosave',
     data: {
       description:
-        "Autosaving an Angular document on every keystroke with mutation() and concurrency: 'queue-latest': saves stay in order, overtaken versions are skipped.",
+        "Autosaving an Angular document with mutation() and concurrency: 'queue-latest': saves stay in order, overtaken versions skipped, optional debounce.",
     },
   },
   {
